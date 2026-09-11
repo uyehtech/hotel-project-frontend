@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">Uyeh hotel — Book direct, no OTA fees, real-time availability</title>
+<meta name="description" id="pageDescription" content="Book rooms, restaurant, spa and events directly with real-time availability and Paystack payment.">
+<style>
+/* ============================================================
+   This page is fully self-contained — all CSS and JS live in
+   this one file. No external .css or .js files. The only
+   external resource is the Google Fonts stylesheet below (a
+   font, not application logic, so it stays linked).
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --ink: #14181f;
+  --ink-soft: #1c222b;
+  --ivory: #f6f1e7;
+  --ivory-dim: #ede5d4;
+  --brass: #b98d45;
+  --brass-light: #d9b876;
+  --teal: #2f5d5a;
+  --teal-light: #3f7a76;
+  --text-muted: #6b6355;
+  --text-on-ink: #ede6d6;
+  --radius: 3px;
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font-body); background: var(--ivory); color: var(--ink); line-height: 1.55; -webkit-font-smoothing: antialiased; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+
+/* ---- Nav ---- */
+.site-nav { position: sticky; top: 0; z-index: 50; background: rgba(20, 24, 31, 0.92); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(217, 184, 118, 0.15); }
+.site-nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
+.brand { font-family: var(--font-display); font-size: 1.3rem; color: var(--ivory); letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 10px; }
+.brand span { color: var(--brass-light); }
+.brand-logo { height: 32px; width: auto; display: block; }
+.nav-links { display: flex; gap: 36px; align-items: center; }
+.nav-links a { color: var(--text-on-ink); font-size: 0.92rem; letter-spacing: 0.02em; }
+.nav-links a:not(.nav-cta) { position: relative; padding-bottom: 2px; }
+.nav-links a:not(.nav-cta)::after { content: ""; position: absolute; left: 0; right: 100%; bottom: 0; height: 1px; background: var(--brass-light); transition: right 0.3s ease; }
+.nav-links a:not(.nav-cta):hover::after { right: 0; }
+.nav-cta { border: 1px solid var(--brass); color: var(--brass-light) !important; padding: 9px 20px; border-radius: var(--radius); font-size: 0.85rem !important; transition: background 0.2s, color 0.2s; }
+.nav-cta:hover { background: var(--brass); color: var(--ink) !important; }
+
+/* Animated hamburger — three bars morphing into an X, ivory on the
+   dark nav bar (unlike a light-background version, so bars are
+   --ivory, not black). */
+.nav-toggle { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 28px; height: 28px; background: none; border: none; cursor: pointer; padding: 0; }
+.nav-toggle .bar { display: block; width: 100%; height: 2px; background: var(--ivory); transition: transform 0.3s ease, opacity 0.3s ease; }
+.nav-toggle.active .bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.nav-toggle.active .bar:nth-child(2) { opacity: 0; }
+.nav-toggle.active .bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+@media (max-width: 860px) {
+  .nav-links { position: fixed; top: 76px; left: 0; right: 0; background: var(--ink); flex-direction: column; align-items: flex-start; padding: 24px 32px; gap: 20px; transform: translateY(-8px); opacity: 0; pointer-events: none; transition: all 0.25s; }
+  .nav-links.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+  .nav-toggle { display: flex; }
+}
+
+/* ---- Hero ---- */
+.hero { min-height: 100svh; background: var(--ink); color: var(--text-on-ink); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 140px 0 88px; isolation: isolate; }
+@media (min-width: 861px) { .hero { justify-content: center; padding: 0; } }
+
+/* Background photo layer — separate from .hero itself so the slow
+   drift + mouse-parallax transform never fights the grain/gradient
+   overlays below. Renders nothing but the solid ink color when the
+   Director hasn't set a hero image yet (no stock photography
+   standing in for real branch photography). */
+.hero-bg { position: absolute; inset: -8%; z-index: -2; background-image: var(--hero-image, none); background-size: cover; background-position: 70% center; transform: translate3d(0, 0, 0) scale(1.08); will-change: transform; }
+.hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background-image: radial-gradient(circle at 15% 20%, rgba(185, 141, 69, 0.16) 0, transparent 45%), radial-gradient(circle at 85% 75%, rgba(47, 93, 90, 0.4) 0, transparent 50%), linear-gradient(180deg, rgba(20,24,31,0.15) 0%, rgba(20,24,31,0.55) 100%); pointer-events: none; }
+.hero .wrap { position: relative; }
+.hero-content { max-width: 620px; }
+
+/* 1 — blurred whisper-line: a quiet aside before the real headline
+   arrives, not meant to be fully readable — decorative, not motion. */
+.hero-intro-blur { pointer-events: none; user-select: none; margin-bottom: 22px; font-size: clamp(15px, 2.6vw, 18px); line-height: 1.5; font-weight: 400; color: rgba(237, 230, 214, 0.55); filter: blur(3px); opacity: 0; animation: heroFadeIn 0.9s ease 0.15s forwards; }
+
+/* 2 — the real headline, typed out on load. The typing target and
+   the live-settings target are the SAME element (#heroTitle) — the
+   headline you see typed is always the actual configured copy, not
+   a stand-in that gets swapped out later. */
+.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-light); margin-bottom: 20px; opacity: 0; animation: heroFadeIn 0.7s ease 0.4s forwards; }
+.eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--brass); }
+.hero h1 { font-size: clamp(2.4rem, 5vw, 4rem); max-width: 15ch; margin-bottom: 24px; min-height: 1.1em; }
+.type-cursor { display: inline-block; width: 2px; height: 0.9em; background: var(--ivory); vertical-align: -0.1em; margin-left: 2px; animation: blink 1s step-end infinite; }
+.type-cursor.hidden { display: none; }
+.hero p.lead { font-size: 1.1rem; color: rgba(237, 230, 214, 0.75); max-width: 46ch; margin-bottom: 38px; opacity: 0; transform: translateY(6px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.hero p.lead.in { opacity: 1; transform: translateY(0); }
+
+/* 3 — pill actions. Fade in on a fixed timer, independent of the
+   typewriter — a slow typer shouldn't make someone wait to book. */
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; opacity: 0; transform: translateY(8px); transition: opacity 0.4s ease, transform 0.4s ease; }
+.hero-actions.in { opacity: 1; transform: translateY(0); }
+.pill { display: inline-flex; align-items: center; justify-content: center; background: rgba(246, 241, 231, 0.94); color: var(--ink); border: 1px solid transparent; border-radius: 999px; font-size: 0.86rem; font-weight: 500; letter-spacing: 0.01em; padding: 11px 20px; white-space: nowrap; transition: background 0.2s, color 0.2s, transform 0.2s; }
+.pill:hover { background: var(--brass); transform: translateY(-1px); }
+.pill.pill-primary { background: var(--brass); }
+.pill.pill-primary:hover { background: var(--brass-light); }
+.pill-outline { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: var(--ivory); border: 1px solid rgba(237, 230, 214, 0.4); border-radius: 999px; font-size: 0.86rem; padding: 11px 20px; white-space: nowrap; cursor: pointer; transition: background 0.2s, color 0.2s; font-family: var(--font-body); }
+.pill-outline:hover { background: var(--ivory); color: var(--ink); }
+.pill-outline u { text-underline-offset: 2px; }
+.pill-outline .copy-flash { position: absolute; margin-top: -34px; font-size: 0.72rem; background: var(--ink); color: var(--ivory); padding: 4px 10px; border-radius: 3px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+.pill-outline .copy-flash.show { opacity: 1; }
+
+/* Scroll cue — bottom-center, tells you there's more below now that
+   the hero is a full viewport tall. Static line if reduced motion. */
+.scroll-cue { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; color: rgba(237, 230, 214, 0.5); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0; animation: heroFadeIn 0.8s ease 1s forwards; }
+.scroll-cue .line { width: 1px; height: 26px; background: rgba(237, 230, 214, 0.35); position: relative; overflow: hidden; }
+.scroll-cue .line::after { content: ""; position: absolute; top: -100%; left: 0; width: 100%; height: 100%; background: var(--brass-light); animation: scrollDrip 1.8s ease-in-out infinite; }
+@keyframes scrollDrip { 0% { top: -100%; } 60%, 100% { top: 100%; } }
+@keyframes heroFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+.tide-divider { display: block; width: 100%; height: 48px; background: var(--ink); }
+.tide-divider svg { display: block; width: 100%; height: 48px; }
+
+/* ---- Buttons (used outside the hero — CTA banner, branch cards, etc.) ---- */
+.btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 28px; border-radius: var(--radius); font-size: 0.9rem; letter-spacing: 0.02em; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
+.btn-primary { background: var(--brass); color: var(--ink); }
+.btn-primary:hover { background: var(--brass-light); }
+.btn-ghost { border-color: rgba(237, 230, 214, 0.3); color: var(--text-on-ink); }
+.btn-ghost:hover { border-color: var(--brass-light); color: var(--brass-light); }
+.btn-dark { background: var(--ink); color: var(--ivory); }
+.btn-dark:hover { background: var(--teal); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Section scaffolding ---- */
+section { padding: 96px 0; }
+.section-head { max-width: 640px; margin-bottom: 56px; }
+.section-head .eyebrow { color: var(--teal); opacity: 1; animation: none; }
+.section-head .eyebrow::before { background: var(--teal); }
+.section-head h2 { font-size: clamp(1.9rem, 3.5vw, 2.6rem); color: var(--ink); }
+.section-head p { color: var(--text-muted); margin-top: 14px; font-size: 1.02rem; }
+
+/* ---- Key-tag signature element ---- */
+.key-tag { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: var(--brass); border-radius: 6px; color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: 1rem; transform: rotate(-4deg); }
+.key-tag::after { content: ""; position: absolute; top: 8px; left: -7px; width: 8px; height: 8px; border-radius: 50%; background: var(--ivory); border: 2px solid var(--ink); }
+
+/* ---- Branch cards (multi-location) ---- */
+.branch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; }
+.branch-card { background: #fff; border: 1px solid rgba(107, 99, 85, 0.12); border-radius: 4px; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; }
+.branch-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -20px rgba(20, 24, 31, 0.25); }
+.branch-card-top { height: 130px; background: linear-gradient(135deg, var(--teal) 0%, var(--teal-light) 60%, var(--brass) 140%); display: flex; align-items: flex-end; padding: 18px 22px; }
+.branch-card-top .city-tag { font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ivory); background: rgba(20,24,31,0.35); padding: 5px 12px; border-radius: 20px; }
+.branch-card-body { padding: 22px 24px 26px; }
+.branch-card-body h3 { font-size: 1.2rem; margin-bottom: 6px; }
+.branch-card-body p.addr { color: var(--text-muted); font-size: 0.88rem; margin-bottom: 16px; }
+.branch-services { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.branch-services span { font-size: 0.72rem; letter-spacing: 0.02em; text-transform: capitalize; color: var(--teal); background: rgba(47, 93, 90, 0.08); padding: 4px 10px; border-radius: 20px; }
+
+/* ---- Amenities band ---- */
+.amenities-band { background: var(--ink); color: var(--text-on-ink); }
+.amenities-band .section-head h2 { color: var(--ivory); }
+.amenities-band .section-head p { color: rgba(237, 230, 214, 0.65); }
+.amenities-band .section-head .eyebrow { color: var(--brass-light); }
+.amenities-band .section-head .eyebrow::before { background: var(--brass); }
+.amenity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 40px; }
+.amenity-item .key-tag { margin-bottom: 20px; }
+.amenity-item h4 { font-size: 1.15rem; margin-bottom: 10px; color: var(--ivory); }
+.amenity-item p { color: rgba(237, 230, 214, 0.6); font-size: 0.92rem; }
+
+/* ---- Trust grid ---- */
+.trust-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 36px; }
+.trust-item .key-tag { margin-bottom: 18px; }
+.trust-item h4 { font-size: 1.05rem; margin-bottom: 8px; }
+.trust-item p { color: var(--text-muted); font-size: 0.9rem; }
+
+/* ---- CTA banner ---- */
+.cta-banner { background: linear-gradient(135deg, var(--teal) 0%, var(--ink) 100%); color: var(--ivory); text-align: center; padding: 90px 0; }
+.cta-banner h2 { color: var(--ivory); font-size: clamp(1.9rem, 3.5vw, 2.6rem); margin-bottom: 16px; }
+.cta-banner p { color: rgba(237,230,214,0.7); max-width: 46ch; margin: 0 auto 32px; font-size: 1.02rem; }
+
+.loading-state, .empty-state { padding: 48px 0; text-align: center; color: var(--text-muted); }
+
+/* ---- Subtle grain texture — used on dark/tonal sections for warmth
+   instead of relying on photography we don't have yet ---- */
+.grain { position: relative; }
+.grain::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* ---- Scroll reveal ---- */
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.reveal.is-visible { opacity: 1; transform: translateY(0); }
+
+/* ---- Signature Experiences ---- */
+.experience-grid { display: grid; grid-template-columns: 1.3fr 1fr; grid-template-rows: auto auto; gap: 24px; }
+.experience-card { position: relative; border-radius: 4px; overflow: hidden; color: var(--ivory); min-height: 280px; display: flex; flex-direction: column; justify-content: flex-end; padding: 32px; isolation: isolate; }
+.experience-card::before { content: ""; position: absolute; inset: 0; z-index: -1; transition: transform 0.6s ease; }
+.experience-card:hover::before { transform: scale(1.06); }
+.experience-card::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(20,24,31,0) 0%, rgba(20,24,31,0.75) 100%); }
+.experience-card.card-dining { grid-column: 1; grid-row: 1 / 3; min-height: 100%; }
+.experience-card.card-dining::before { background: linear-gradient(155deg, var(--teal) 0%, var(--teal-light) 55%, var(--brass) 145%); }
+.experience-card.card-spa::before { background: linear-gradient(155deg, #3a4a4a 0%, var(--teal) 100%); }
+.experience-card.card-events::before { background: linear-gradient(155deg, var(--ink-soft) 0%, #3a2f22 60%, var(--brass) 160%); }
+.experience-eyebrow { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-light); margin-bottom: 10px; }
+.experience-card h3 { font-size: 1.5rem; margin-bottom: 10px; }
+.experience-card.card-dining h3 { font-size: 1.9rem; }
+.experience-card p { color: rgba(237, 230, 214, 0.82); font-size: 0.94rem; max-width: 40ch; }
+.experience-note { font-size: 0.76rem; color: rgba(237, 230, 214, 0.5); margin-top: 14px; }
+@media (max-width: 860px) {
+  .experience-grid { grid-template-columns: 1fr; }
+  .experience-card.card-dining { grid-row: auto; }
+}
+
+/* ---- Footer ---- */
+footer { background: var(--ink); color: rgba(237, 230, 214, 0.55); padding: 64px 0 32px; }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr; gap: 40px; margin-bottom: 48px; }
+@media (max-width: 960px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+footer .brand { display: block; margin-bottom: 14px; }
+footer h5 { color: var(--ivory); font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 16px; font-family: var(--font-body); font-weight: 600; }
+footer ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+footer a { font-size: 0.9rem; transition: color 0.2s; }
+footer a:hover { color: var(--brass-light); }
+.footer-bottom { border-top: 1px solid rgba(237, 230, 214, 0.1); padding-top: 24px; font-size: 0.8rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+@media (max-width: 720px) { .footer-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="wrap">
+    <a href="index.html" class="brand" id="navBrand">Uyeh hotel</a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="blog.html">Blog</a>
+      <a href="index.html#locations">Locations</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+      <a href="index.html#locations" class="nav-cta">Book a room</a>
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </button>
+  </div>
+</nav>
+
+<header class="hero grain">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="wrap">
+    <div class="hero-content">
+      <p class="hero-intro-blur">Before anything else — a word on how<br>we like to welcome people.</p>
+
+      <p class="eyebrow" data-content="heroEyebrow">Every location, held to the same standard</p>
+      <h1 data-content="heroTitle" id="heroTitle">A stay arranged the way it should be.</h1>
+      <p class="lead" id="heroSubtitle" data-content="heroSubtitle">Rooms, dining, spa and events — reserved directly with us, at any branch, with real-time availability and nothing left to guesswork.</p>
+
+      <div class="hero-actions" id="heroActions">
+        <a href="#locations" class="pill pill-primary">Check availability</a>
+        <a href="#experiences" class="pill">Explore dining &amp; spa</a>
+        <a href="#standard" class="pill">See how it works</a>
+        <a href="about.html" class="pill">About us</a>
+        <button type="button" class="pill-outline" id="heroEmailPill" onclick="copyHeroEmail()">
+          Reach us: <u id="heroEmailText">hello@ourhotel.com</u>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <rect x="4" y="4" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1"/>
+            <rect x="1" y="1" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1"/>
+          </svg>
+          <span class="copy-flash" id="copyFlash">Copied</span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-cue"><span>Scroll</span><span class="line"></span></div>
+</header>
+<div class="tide-divider">
+  <svg viewBox="0 0 1200 48" preserveAspectRatio="none"><path d="M0,24 C150,44 300,4 450,24 C600,44 750,4 900,24 C1050,44 1150,10 1200,24 L1200,48 L0,48 Z" fill="#F6F1E7"/></svg>
+</div>
+
+<!-- ===== LOCATIONS — live from GET /api/branches ===== -->
+<section id="locations" class="reveal">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Our locations</p>
+      <h2 data-content="locationsTitle">Choose a branch to get started.</h2>
+      <p data-content="locationsSubtitle">Every location runs on the same platform — rooms, availability, and payment work the same way wherever you book.</p>
+    </div>
+    <div class="branch-grid" id="branchGrid">
+      <div class="loading-state">Loading our locations…</div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SIGNATURE EXPERIENCES ===== -->
+<!-- Art-directed with gradient/texture panels rather than stock photography —
+     swap the ::before backgrounds for real branch photography (dining room,
+     spa treatment room, event space) as it becomes available; the layout
+     and hover treatment don't need to change when that happens. -->
+<section id="experiences" class="reveal">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Signature experiences</p>
+      <h2>Beyond the room.</h2>
+      <p>What sets each stay apart isn't the booking — it's what's waiting once you arrive. Availability varies by location.</p>
+    </div>
+    <div class="experience-grid">
+      <div class="experience-card card-dining">
+        <p class="experience-eyebrow">Dining</p>
+        <h3>A table, held for you.</h3>
+        <p>From in-room service to the branch restaurant, order or reserve ahead — the kitchen knows you're coming before you arrive.</p>
+        <p class="experience-note">Available at select locations</p>
+      </div>
+      <div class="experience-card card-spa">
+        <p class="experience-eyebrow">Spa &amp; wellness</p>
+        <h3>Time set aside, properly.</h3>
+        <p>Treatments booked the same way as a room — real availability, no back-and-forth.</p>
+        <p class="experience-note">Available at select locations</p>
+      </div>
+      <div class="experience-card card-events">
+        <p class="experience-eyebrow">Events &amp; celebrations</p>
+        <h3>A space, kept ready.</h3>
+        <p>Browse upcoming events or reserve a space for your own — handled directly with the branch team.</p>
+        <p class="experience-note">Available at select locations</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== WHAT WE OFFER ===== -->
+<section class="amenities-band grain reveal">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">What we offer</p>
+      <h2 data-content="servicesTitle">One system, every service you'd expect.</h2>
+      <p data-content="servicesSubtitle">Not every location offers every service — each branch page shows exactly what's available there.</p>
+    </div>
+    <div class="amenity-grid">
+      <div class="amenity-item"><div class="key-tag">R</div><h4>Rooms &amp; direct booking</h4><p>Real-time availability, no double-bookings, book straight through us — no third-party markup.</p></div>
+      <div class="amenity-item"><div class="key-tag">D</div><h4>Restaurant &amp; room service</h4><p>Order from the branch menu, delivered to your room or reserve a table ahead of time.</p></div>
+      <div class="amenity-item"><div class="key-tag">E</div><h4>Events &amp; spaces</h4><p>Browse upcoming events at each branch and reserve your spot directly.</p></div>
+      <div class="amenity-item"><div class="key-tag">S</div><h4>Spa &amp; laundry</h4><p>Where offered, book spa treatments or laundry service the same way you book a room.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== THE STANDARD ===== -->
+<section id="standard" class="reveal">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">The standard</p>
+      <h2 data-content="trustTitle">Every detail, handled the same way, every time.</h2>
+    </div>
+    <div class="trust-grid">
+      <div class="trust-item"><div class="key-tag">1</div><h4>Real-time availability</h4><p>What you see is actually open — our system rejects any attempt at a double-booking at the database level, not just on the screen.</p></div>
+      <div class="trust-item"><div class="key-tag">2</div><h4>Pay your way</h4><p>Card, bank transfer, or USSD through Paystack — no card required if you'd rather transfer directly.</p></div>
+      <div class="trust-item"><div class="key-tag">3</div><h4>Book with or without an account</h4><p>Create an account for faster rebooking and saved preferences, or check out as a guest — your choice either way.</p></div>
+      <div class="trust-item"><div class="key-tag">4</div><h4>Direct support</h4><p>Questions go straight to the right branch's team — not a call center reading from a script.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CTA BANNER ===== -->
+<section class="cta-banner grain reveal">
+  <div class="wrap">
+    <h2 data-content="ctaTitle">Ready to book your stay?</h2>
+    <p data-content="ctaSubtitle">Choose a location, see what's actually available, and book directly with us — no account required to get started.</p>
+    <a href="#locations" class="btn btn-primary">See our locations</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a href="index.html" class="brand" id="footerBrand">Uyeh hotel</a>
+        <p style="max-width:34ch; margin-top:10px; font-size:0.9rem;" data-content="footerAbout">Multiple locations, one company, one booking system — built directly by the team that runs it.</p>
+      </div>
+      <div>
+        <h5>Explore</h5>
+        <ul>
+          <li><a href="index.html#locations">Locations</a></li>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Get in touch</h5>
+        <ul>
+          <li><a href="mailto:hello@ourhotel.com" id="footerEmail" data-content="footerEmail">hello@ourhotel.com</a></li>
+          <li><a href="tel:" id="footerPhone" data-content="footerPhone">Phone available on each branch page</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Newsletter</h5>
+        <p style="font-size:0.85rem; margin-bottom:14px; max-width:26ch;">Offers and news from every location.</p>
+        <form id="newsletterForm" style="display:flex; flex-direction:column; gap:8px;">
+          <input type="email" id="newsletterEmail" placeholder="you@email.com" required
+            style="padding:10px 12px; border-radius:3px; border:1px solid rgba(237,230,214,0.25); background:rgba(255,255,255,0.06); color:var(--ivory); font-family:var(--font-body); font-size:0.85rem;">
+          <button type="submit" id="newsletterSubmitBtn" class="btn btn-primary" style="padding:10px; font-size:0.82rem;">Subscribe</button>
+        </form>
+        <p id="newsletterNote" style="font-size:0.76rem; margin-top:8px; color:rgba(237,230,214,0.5);"></p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span id="year"></span> <span id="footerCopyrightName">Uyeh hotel</span>. All rights reserved.</span>
+      <span>A stay arranged directly with us, start to finish.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   All page logic lives here, inline. Nothing shared with any
+   other page — location.html has its own independent copy of
+   whatever it needs, not this file. That's deliberate: a shared
+   main.js meant editing one page could silently change another.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  async function apiRequest(path, options = {}) {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+    return data;
+  }
+
+  /**
+   * Everything the Director configures in Site Settings — name, logo, hero
+   * image, brand colors, homepage copy, footer contact info, SEO — comes
+   * from this one real, working GET /api/settings call. It's public and
+   * auto-creates a default row server-side if the Director hasn't set
+   * anything yet, so this never 404s — it just shows the fallbacks already
+   * hardcoded in this page's HTML until real values are saved.
+   */
+  async function hydrateSiteSettings() {
+    try {
+      const { settings } = await apiRequest("/settings");
+      const name = settings.platformName || "Uyeh hotel";
+
+      document.title = document.title.replace("Uyeh hotel", name);
+      document.getElementById("footerCopyrightName").textContent = name;
+
+      // Logo — image if the Director uploaded one, otherwise the text name
+      const navBrand = document.getElementById("navBrand");
+      const footerBrand = document.getElementById("footerBrand");
+      if (settings.logoUrl) {
+        const logoHtml = `<img class="brand-logo" src="${settings.logoUrl}" alt="${name}">`;
+        navBrand.innerHTML = logoHtml;
+        footerBrand.innerHTML = logoHtml;
+      } else {
+        navBrand.textContent = name;
+        footerBrand.textContent = name;
+      }
+
+      // Hero image
+      if (settings.heroImageUrl) {
+        document.documentElement.style.setProperty("--hero-image", `url("${settings.heroImageUrl}")`);
+      }
+
+      // Brand colors
+      if (settings.brand) {
+        if (settings.brand.primaryColor) document.documentElement.style.setProperty("--ink", settings.brand.primaryColor);
+        if (settings.brand.secondaryColor) document.documentElement.style.setProperty("--brass", settings.brand.secondaryColor);
+        if (settings.brand.accentColor) document.documentElement.style.setProperty("--teal", settings.brand.accentColor);
+      }
+
+      // SEO
+      if (settings.seo) {
+        if (settings.seo.metaTitle) document.title = settings.seo.metaTitle;
+        if (settings.seo.metaDescription) {
+          const metaDesc = document.getElementById("pageDescription");
+          if (metaDesc) metaDesc.setAttribute("content", settings.seo.metaDescription);
+        }
+        if (settings.seo.ogImageUrl) {
+          let ogTag = document.querySelector('meta[property="og:image"]');
+          if (!ogTag) {
+            ogTag = document.createElement("meta");
+            ogTag.setAttribute("property", "og:image");
+            document.head.appendChild(ogTag);
+          }
+          ogTag.setAttribute("content", settings.seo.ogImageUrl);
+        }
+      }
+
+      // Homepage copy — only the slots the Director actually has fields
+      // for. Everything else in [data-content] keeps its hardcoded
+      // fallback (locationsTitle, servicesTitle, trustTitle, etc. aren't
+      // exposed in Site Settings, so there's nothing live to load for them).
+      const heroTitleEl = document.getElementById("heroTitle");
+      if (heroTitleEl) heroTitleEl.textContent = settings.headline || `One booking system, every ${name} location.`;
+      const heroSubtitleEl = document.querySelector('[data-content="heroSubtitle"]');
+      if (heroSubtitleEl && settings.subheadline) heroSubtitleEl.textContent = settings.subheadline;
+
+      const ctaTitleEl = document.querySelector('[data-content="ctaTitle"]');
+      if (ctaTitleEl && settings.ctaTitle) ctaTitleEl.textContent = settings.ctaTitle;
+      const ctaSubtitleEl = document.querySelector('[data-content="ctaSubtitle"]');
+      if (ctaSubtitleEl && settings.ctaSubtitle) ctaSubtitleEl.textContent = settings.ctaSubtitle;
+
+      const footerAboutEl = document.querySelector('[data-content="footerAbout"]');
+      if (footerAboutEl && settings.footerAbout) footerAboutEl.textContent = settings.footerAbout;
+      const footerEmailEl = document.querySelector('[data-content="footerEmail"]');
+      const emailForPill = settings.footerEmail || "hello@ourhotel.com";
+      if (footerEmailEl && settings.footerEmail) {
+        footerEmailEl.textContent = settings.footerEmail;
+        footerEmailEl.setAttribute("href", `mailto:${settings.footerEmail}`);
+      }
+      // Hero "Reach us" pill mirrors the same footer email — one source
+      // of truth for the address, two places it's shown.
+      const heroEmailText = document.getElementById("heroEmailText");
+      if (heroEmailText) heroEmailText.textContent = emailForPill;
+
+      const footerPhoneEl = document.querySelector('[data-content="footerPhone"]');
+      if (footerPhoneEl && settings.footerPhone) {
+        footerPhoneEl.textContent = settings.footerPhone;
+        footerPhoneEl.setAttribute("href", `tel:${settings.footerPhone}`);
+      }
+    } catch (err) {
+      // /api/settings unreachable — page keeps every fallback already in
+      // the HTML, so nothing looks broken, just generic.
+      console.warn("Could not load site settings, using fallbacks:", err.message);
+    } finally {
+      // Runs whether settings loaded or not — the headline typewriter
+      // always types whatever ended up in #heroTitle (real copy or
+      // fallback), so the animation is never showing placeholder text.
+      startHeroTypewriter();
+    }
+  }
+
+  function copyHeroEmail() {
+    const email = document.getElementById("heroEmailText").textContent;
+    navigator.clipboard.writeText(email).then(() => {
+      const flash = document.getElementById("copyFlash");
+      flash.classList.add("show");
+      setTimeout(() => flash.classList.remove("show"), 1200);
+    });
+  }
+  window.copyHeroEmail = copyHeroEmail;
+
+  /** Types out #heroTitle's own text one character at a time. Reduced-
+   * motion visitors just see the final text immediately, no cursor. */
+  function startHeroTypewriter() {
+    const el = document.getElementById("heroTitle");
+    const leadEl = document.getElementById("heroSubtitle");
+    if (!el) return;
+    const fullText = el.textContent.trim();
+
+    if (prefersReducedMotion) {
+      el.textContent = fullText;
+      if (leadEl) leadEl.classList.add("in");
+      return;
+    }
+
+    const speed = 32;
+    const startDelay = 500;
+    el.textContent = "";
+    const cursor = document.createElement("span");
+    cursor.className = "type-cursor";
+    el.after(cursor);
+
+    setTimeout(() => {
+      let i = 0;
+      const interval = setInterval(() => {
+        i += 1;
+        el.textContent = fullText.slice(0, i);
+        if (i >= fullText.length) {
+          clearInterval(interval);
+          cursor.classList.add("hidden");
+          if (leadEl) leadEl.classList.add("in");
+        }
+      }, speed);
+    }, startDelay);
+  }
+
+  /** Pill actions fade in on their own fixed timer — never waits on
+   * the typewriter, so a slow typer doesn't delay the booking CTA. */
+  function revealHeroActions() {
+    setTimeout(() => {
+      const el = document.getElementById("heroActions");
+      if (el) el.classList.add("in");
+    }, prefersReducedMotion ? 0 : 400);
+  }
+
+  /** Slow ambient drift (always on) blended with mouse-reactive
+   * parallax (skipped entirely for reduced-motion visitors) on the
+   * hero background layer. One rAF loop drives both so they never
+   * fight each other or a CSS keyframe running in parallel. */
+  function initHeroMotion() {
+    const bg = document.getElementById("heroBg");
+    if (!bg) return;
+    if (prefersReducedMotion) return; // static background, no loop at all
+
+    let mouseX = 0, mouseY = 0; // -1..1
+    window.addEventListener("mousemove", (e) => {
+      mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+      mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+    });
+
+    function frame(t) {
+      const driftX = Math.sin(t / 9000) * 10;
+      const driftY = Math.cos(t / 12000) * 6;
+      const px = driftX + mouseX * 14;
+      const py = driftY + mouseY * 10;
+      bg.style.transform = `translate3d(${px}px, ${py}px, 0) scale(1.08)`;
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function initNav() {
+    const toggle = document.getElementById("navToggle");
+    const links = document.getElementById("navLinks");
+    if (toggle && links) {
+      toggle.addEventListener("click", () => {
+        const isOpen = links.classList.toggle("open");
+        toggle.classList.toggle("active", isOpen);
+        toggle.setAttribute("aria-expanded", String(isOpen));
+      });
+    }
+  }
+
+  /** Scroll-triggered reveal for .reveal sections. Skips straight to
+   * visible (no observer needed) if the visitor has reduced motion set —
+   * the global CSS already collapses transition durations for them, this
+   * just avoids leaving content invisible if a browser doesn't honor that. */
+  function initReveal() {
+    const targets = document.querySelectorAll(".reveal");
+    if (!targets.length) return;
+
+    if (prefersReducedMotion || !("IntersectionObserver" in window)) {
+      targets.forEach((el) => el.classList.add("is-visible"));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -60px 0px" }
+    );
+    targets.forEach((el) => observer.observe(el));
+  }
+
+  /** Live "Our Locations" section, fed by the real GET /api/branches. */
+  async function loadBranches() {
+    const grid = document.getElementById("branchGrid");
+    if (!grid) return;
+
+    try {
+      const { branches } = await apiRequest("/branches");
+
+      if (!branches.length) {
+        grid.innerHTML = `<div class="empty-state">No locations published yet — check back soon.</div>`;
+        return;
+      }
+
+      grid.innerHTML = branches.map((b) => `
+        <div class="branch-card">
+          <div class="branch-card-top"><span class="city-tag">${b.city}${b.state ? `, ${b.state}` : ""}</span></div>
+          <div class="branch-card-body">
+            <h3>${b.name}</h3>
+            <p class="addr">${b.address || ""}</p>
+            <div class="branch-services">${(b.services || []).map((s) => `<span>${s}</span>`).join("")}</div>
+            <a href="location.html?branch=${b.slug || b.id}" class="btn btn-dark" style="width:100%;">View rooms &amp; book</a>
+          </div>
+        </div>
+      `).join("");
+    } catch (err) {
+      grid.innerHTML = `<div class="empty-state">Couldn't load our locations right now — please try again shortly.</div>`;
+    }
+  }
+
+  async function submitNewsletterSignup(e) {
+    e.preventDefault();
+    const btn = document.getElementById("newsletterSubmitBtn");
+    const note = document.getElementById("newsletterNote");
+    const email = document.getElementById("newsletterEmail").value;
+    btn.disabled = true;
+    try {
+      const { message } = await apiRequest("/newsletter/subscribe", { method: "POST", body: JSON.stringify({ email }) });
+      note.textContent = message;
+      document.getElementById("newsletterEmail").value = "";
+    } catch (err) {
+      note.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    initNav();
+    initReveal();
+    initHeroMotion();
+    revealHeroActions();
+    hydrateSiteSettings(); // also kicks off the headline typewriter when it resolves
+    loadBranches();
+    document.getElementById("newsletterForm").addEventListener("submit", submitNewsletterSignup);
+    document.getElementById("year").textContent = new Date().getFullYear();
+  });
+})();
+</script>
+ <script src="/chat-widget.js"></script>
+</body>
+</html>
