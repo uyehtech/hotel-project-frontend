@@ -7,6 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500,600,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.0/socket.io.min.js"></script>
 <style>
 /* ============================================================
    Uyeh HOTEL — STAFF PANEL
@@ -214,6 +215,7 @@ tr:last-child td { border-bottom: none; }
       <div class="search-bar"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search…" disabled></div>
       <div class="topbar-actions">
         <div class="topbar-btn" id="ticketsBellBtn"><i class="fas fa-bell"></i><span class="nav-badge" id="ticketsBellBadge" style="position:absolute; top:2px; right:2px;">0</span></div>
+        <div class="topbar-btn" id="pushToggleBtn" title="Push notifications" onclick="handlePushToggle()"><i class="fas fa-bell-slash" id="pushToggleIcon"></i></div>
       </div>
     </div>
     <div class="page-content" id="pageContent"></div>
@@ -240,6 +242,99 @@ function hasPermission(perm) { const s = getStaff(); return s && (s.permissions 
    STAFF-role token, regardless of what this file does or doesn't
    render.
    ============================================================ */
+/* Floating toast — showNotice() only targets a container already
+ * on-screen, which doesn't help for something that arrives on any page. */
+function toast(message, type = "info") {
+  let stack = document.getElementById("toastStack");
+  if (!stack) {
+    stack = document.createElement("div");
+    stack.id = "toastStack";
+    stack.style.cssText = "position:fixed; top:16px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:8px;";
+    document.body.appendChild(stack);
+  }
+  const el = document.createElement("div");
+  const bg = type === "error" ? "#B3261E" : type === "success" ? "#2E5339" : "#1F2937";
+  el.style.cssText = `background:${bg}; color:#fff; padding:12px 16px; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.2); max-width:320px; font-size:0.9rem; cursor:pointer;`;
+  el.textContent = message;
+  el.onclick = () => el.remove();
+  stack.appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
+/* Socket.IO — one personal room per account (user:staff:{id}), joined
+ * automatically server-side on connect. */
+let _staffSocket = null;
+function connectStaffSocket() {
+  if (_staffSocket) return;
+  _staffSocket = io(API_BASE.replace(/\/api$/, ""), { auth: { token: getToken() } });
+  _staffSocket.on("notification", (n) => toast(`${n.title}${n.body ? " — " + n.body : ""}`, "info"));
+  _staffSocket.on("ticket_message", (n) => {
+    toast(`${n.title}${n.body ? " — " + n.body : ""}`, "info");
+    if (typeof refreshTicketsBadgeSilently === "function") refreshTicketsBadgeSilently();
+  });
+}
+
+/* Push — separate from the socket above. Socket only fires while a tab
+ * is open; this is what reaches you when the panel is closed. */
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+
+async function isPushSubscribed() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  const reg = await navigator.serviceWorker.getRegistration("sw-staff.js").catch(() => null);
+  if (!reg) return false;
+  const sub = await reg.pushManager.getSubscription();
+  return !!sub;
+}
+
+async function subscribeToPush() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    throw new Error("Push notifications aren't supported on this browser");
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") throw new Error("Notification permission was not granted");
+
+  const reg = await navigator.serviceWorker.register("sw-staff.js");
+  const { publicKey } = await staffApi.getPushVapidKey();
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey),
+  });
+  await staffApi.subscribeToPush(sub.toJSON());
+  return true;
+}
+
+async function unsubscribeFromPush() {
+  const reg = await navigator.serviceWorker.getRegistration("sw-staff.js").catch(() => null);
+  if (!reg) return;
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub) return;
+  await staffApi.unsubscribeFromPush(sub.endpoint).catch(() => {});
+  await sub.unsubscribe();
+}
+
+async function refreshPushToggleIcon() {
+  const icon = document.getElementById("pushToggleIcon");
+  if (!icon) return;
+  const on = await isPushSubscribed();
+  icon.className = on ? "fas fa-bell" : "fas fa-bell-slash";
+}
+
+async function handlePushToggle() {
+  try {
+    const on = await isPushSubscribed();
+    if (on) { await unsubscribeFromPush(); toast("Push notifications turned off.", "success"); }
+    else { await subscribeToPush(); toast("Push notifications enabled.", "success"); }
+  } catch (err) {
+    toast(err.message, "error");
+  }
+  refreshPushToggleIcon();
+}
+
 async function adminRequest(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -257,6 +352,9 @@ async function adminRequest(path, options = {}) {
 }
 
 const staffApi = {
+  getPushVapidKey: () => adminRequest("/push/vapid-public-key"),
+  subscribeToPush: (subscription) => adminRequest("/push/subscribe", { method: "POST", body: JSON.stringify(subscription) }),
+  unsubscribeFromPush: (endpoint) => adminRequest("/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
   setupTwoFactor: () => adminRequest("/auth/2fa/setup", { method: "POST" }),
   enableTwoFactor: (code) => adminRequest("/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) }),
   disableTwoFactor: (password) => adminRequest("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password }) }),
@@ -2229,6 +2327,8 @@ function showLogin() { document.getElementById("loginScreen").style.display = "f
 function showApp() {
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("appShell").style.display = "block";
+  connectStaffSocket();
+  refreshPushToggleIcon();
   renderSidebar(); switchPage("dashboard"); refreshTicketsBadgeSilently();
 }
 async function refreshTicketsBadgeSilently() {

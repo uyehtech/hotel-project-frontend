@@ -7,6 +7,7 @@
 <meta name="robots" content="noindex, nofollow">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500,600,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.0/socket.io.min.js"></script>
 <style>
 /* ============================================================
    Uyeh HOTEL — MANAGER PANEL
@@ -226,6 +227,7 @@ tr:last-child td { border-bottom: none; }
       <div class="search-bar"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search…" disabled></div>
       <div class="topbar-actions">
         <div class="topbar-btn" id="ticketsBellBtn"><i class="fas fa-bell"></i><span class="nav-badge" id="ticketsBellBadge" style="position:absolute; top:2px; right:2px;">0</span></div>
+        <div class="topbar-btn" id="pushToggleBtn" title="Push notifications" onclick="handlePushToggle()"><i class="fas fa-bell-slash" id="pushToggleIcon"></i></div>
       </div>
     </div>
     <div class="page-content" id="pageContent"></div>
@@ -250,6 +252,99 @@ function hasPermission(perm) {
 /* ============================================================
    API
    ============================================================ */
+/* Floating toast — showNotice() only targets a container already
+ * on-screen, which doesn't help for something that arrives on any page. */
+function toast(message, type = "info") {
+  let stack = document.getElementById("toastStack");
+  if (!stack) {
+    stack = document.createElement("div");
+    stack.id = "toastStack";
+    stack.style.cssText = "position:fixed; top:16px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:8px;";
+    document.body.appendChild(stack);
+  }
+  const el = document.createElement("div");
+  const bg = type === "error" ? "#B3261E" : type === "success" ? "#2E5339" : "#1F2937";
+  el.style.cssText = `background:${bg}; color:#fff; padding:12px 16px; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.2); max-width:320px; font-size:0.9rem; cursor:pointer;`;
+  el.textContent = message;
+  el.onclick = () => el.remove();
+  stack.appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
+/* Socket.IO — one personal room per account (user:manager:{id}), joined
+ * automatically server-side on connect. */
+let _managerSocket = null;
+function connectManagerSocket() {
+  if (_managerSocket) return;
+  _managerSocket = io(API_BASE.replace(/\/api$/, ""), { auth: { token: getToken() } });
+  _managerSocket.on("notification", (n) => toast(`${n.title}${n.body ? " — " + n.body : ""}`, "info"));
+  _managerSocket.on("ticket_message", (n) => {
+    toast(`${n.title}${n.body ? " — " + n.body : ""}`, "info");
+    if (typeof refreshTicketsBadgeSilently === "function") refreshTicketsBadgeSilently();
+  });
+}
+
+/* Push — separate from the socket above. Socket only fires while a tab
+ * is open; this is what reaches you when the panel is closed. */
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+}
+
+async function isPushSubscribed() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+  const reg = await navigator.serviceWorker.getRegistration("/sw-staff.js").catch(() => null);
+  if (!reg) return false;
+  const sub = await reg.pushManager.getSubscription();
+  return !!sub;
+}
+
+async function subscribeToPush() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    throw new Error("Push notifications aren't supported on this browser");
+  }
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") throw new Error("Notification permission was not granted");
+
+  const reg = await navigator.serviceWorker.register("/sw-staff.js");
+  const { publicKey } = await managerApi.getPushVapidKey();
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(publicKey),
+  });
+  await managerApi.subscribeToPush(sub.toJSON());
+  return true;
+}
+
+async function unsubscribeFromPush() {
+  const reg = await navigator.serviceWorker.getRegistration("/sw-staff.js").catch(() => null);
+  if (!reg) return;
+  const sub = await reg.pushManager.getSubscription();
+  if (!sub) return;
+  await managerApi.unsubscribeFromPush(sub.endpoint).catch(() => {});
+  await sub.unsubscribe();
+}
+
+async function refreshPushToggleIcon() {
+  const icon = document.getElementById("pushToggleIcon");
+  if (!icon) return;
+  const on = await isPushSubscribed();
+  icon.className = on ? "fas fa-bell" : "fas fa-bell-slash";
+}
+
+async function handlePushToggle() {
+  try {
+    const on = await isPushSubscribed();
+    if (on) { await unsubscribeFromPush(); toast("Push notifications turned off.", "success"); }
+    else { await subscribeToPush(); toast("Push notifications enabled.", "success"); }
+  } catch (err) {
+    toast(err.message, "error");
+  }
+  refreshPushToggleIcon();
+}
+
 async function adminRequest(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -265,9 +360,12 @@ async function adminRequest(path, options = {}) {
 // branchId — this panel never sends a branchId, and the backend must ignore one
 // if it's ever present in a payload from this client.
 const managerApi = {
-  setupTwoFactor: () => adminRequest("/2fa/setup", { method: "POST" }),
-  enableTwoFactor: (code) => adminRequest("/2fa/enable", { method: "POST", body: JSON.stringify({ code }) }),
-  disableTwoFactor: (password) => adminRequest("/2fa/disable", { method: "POST", body: JSON.stringify({ password }) }),
+  getPushVapidKey: () => adminRequest("/push/vapid-public-key"),
+  subscribeToPush: (subscription) => adminRequest("/push/subscribe", { method: "POST", body: JSON.stringify(subscription) }),
+  unsubscribeFromPush: (endpoint) => adminRequest("/push/unsubscribe", { method: "POST", body: JSON.stringify({ endpoint }) }),
+  setupTwoFactor: () => adminRequest("/auth/2fa/setup", { method: "POST" }),
+  enableTwoFactor: (code) => adminRequest("/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) }),
+  disableTwoFactor: (password) => adminRequest("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password }) }),
   login: async (email, password) => {
     const res = await fetch(`${API_BASE}/auth/manager/login`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }),
@@ -364,7 +462,12 @@ const managerApi = {
     const formData = new FormData(); formData.append("image", file);
     return fetch(`${API_BASE}/manager/events/${id}/images`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: formData }).then((r) => r.json());
   },
-  deleteEventImage: (id, imageUrl) => adminRequest(`/manager/events/${id}/images`, { method: "DELETE", body: JSON.stringify({ imageUrl }) }),
+  deleteEventImage: (id, imageUrl) => adminRequest(`/manager/events/${id}/images`, { method: "DELETE", body: JSON.stringify({ url: imageUrl }) }),
+  uploadUpcomingEventImage: (id, file) => {
+    const formData = new FormData(); formData.append("image", file);
+    return fetch(`${API_BASE}/manager/upcoming-events/${id}/images`, { method: "POST", headers: { Authorization: `Bearer ${getToken()}` }, body: formData }).then((r) => r.json());
+  },
+  deleteUpcomingEventImage: (id, imageUrl) => adminRequest(`/manager/upcoming-events/${id}/images`, { method: "DELETE", body: JSON.stringify({ url: imageUrl }) }),
 
   // Laundry & Spa
   listLaundryItems: () => adminRequest("/manager/laundry-items"),
@@ -1861,6 +1964,12 @@ async function loadUpcomingEventsPage() {
             <div class="form-field"><label>Capacity <span style="color:var(--text-muted); font-weight:400;">(blank = unlimited)</span></label><input type="number" id="ueCapacity" min="1" step="1"></div>
             <div class="form-field"><label>Ticket price (&#8358;) <span style="color:var(--text-muted); font-weight:400;">(blank = free)</span></label><input type="number" id="ueTicketPrice" min="0" step="1"></div>
           </div>
+          <div class="form-field" id="ueImageField" style="display:none;">
+            <label>Cover image</label>
+            <input type="file" id="ueImageFile" accept="image/*">
+            <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="uploadUpcomingEventImageNow()">Upload</button>
+            <div id="ueImagePreview" style="margin-top:10px;"></div>
+          </div>
           <div class="form-field">
             <label>Tags <span style="color:var(--text-muted); font-weight:400;">(manage the list from the Tags page)</span></label>
             <div id="ueTagsOptions" class="checkbox-grid"><span style="color:var(--text-muted); font-size:0.82rem;">Loading…</span></div>
@@ -1904,6 +2013,8 @@ function openUpcomingEventModal(ue) {
   document.getElementById("ueModalTitle").textContent = ue ? "Edit event" : "New event";
   document.getElementById("upcomingEventForm").reset();
   document.getElementById("ueId").value = ue ? ue.id : "";
+  document.getElementById("ueImageField").style.display = ue ? "" : "none";
+  document.getElementById("ueImagePreview").innerHTML = "";
   if (ue) {
     document.getElementById("ueTitle").value = ue.title;
     document.getElementById("ueDescription").value = ue.description || "";
@@ -1911,6 +2022,11 @@ function openUpcomingEventModal(ue) {
     document.getElementById("ueEndsAt").value = ue.endsAt ? ue.endsAt.slice(0, 16) : "";
     document.getElementById("ueCapacity").value = ue.capacity ?? "";
     document.getElementById("ueTicketPrice").value = ue.ticketPrice ?? "";
+    if (ue.images && ue.images.length) {
+      document.getElementById("ueImagePreview").innerHTML = ue.images.map((url) =>
+        `<div style="display:inline-block; margin-right:8px;"><img src="${url}" style="width:70px; height:70px; object-fit:cover; border-radius:6px;"><br><button type="button" class="btn btn-sm btn-danger" style="margin-top:4px;" onclick="deleteUpcomingEventImageNow('${url}')">Remove</button></div>`
+      ).join("");
+    }
   }
   refreshUpcomingEventTagOptions(ue ? (ue.tags || []) : []);
   document.getElementById("upcomingEventModal").style.display = "flex";
@@ -1945,7 +2061,7 @@ async function submitUpcomingEventForm(e) {
       tags: Array.from(document.getElementById("ueTagsOptions").querySelectorAll("input:checked")).map((el) => el.value),
     };
     if (id) { await managerApi.updateUpcomingEvent(id, payload); showNotice("upcomingEventsNotice", "Draft updated.", "success"); }
-    else { await managerApi.createUpcomingEvent(payload); showNotice("upcomingEventsNotice", "Draft created.", "success"); }
+    else { await managerApi.createUpcomingEvent(payload); showNotice("upcomingEventsNotice", "Draft created — you can now attach a cover image by editing it.", "success"); }
     closeUpcomingEventModal();
     refreshUpcomingEvents();
   } catch (err) {
@@ -1953,6 +2069,27 @@ async function submitUpcomingEventForm(e) {
   } finally {
     btn.disabled = false;
   }
+}
+
+async function uploadUpcomingEventImageNow() {
+  const id = document.getElementById("ueId").value;
+  const file = document.getElementById("ueImageFile").files[0];
+  if (!id || !file) return;
+  try {
+    await managerApi.uploadUpcomingEventImage(id, file);
+    showNotice("upcomingEventsNotice", "Image uploaded.", "success");
+    const { upcomingEvents } = await managerApi.listUpcomingEvents();
+    openUpcomingEventModal(upcomingEvents.find((ue) => ue.id === id));
+  } catch (err) { showNotice("upcomingEventsNotice", err.message); }
+}
+
+async function deleteUpcomingEventImageNow(imageUrl) {
+  const id = document.getElementById("ueId").value;
+  try {
+    await managerApi.deleteUpcomingEventImage(id, imageUrl);
+    const { upcomingEvents } = await managerApi.listUpcomingEvents();
+    openUpcomingEventModal(upcomingEvents.find((ue) => ue.id === id));
+  } catch (err) { showNotice("upcomingEventsNotice", err.message); }
 }
 
 async function submitUpcomingEventConfirm(id) {
@@ -2948,6 +3085,8 @@ function showLogin() { document.getElementById("loginScreen").style.display = "f
 function showApp() {
   document.getElementById("loginScreen").style.display = "none";
   document.getElementById("appShell").style.display = "block";
+  connectManagerSocket();
+  refreshPushToggleIcon();
   renderSidebar(); switchPage("dashboard"); refreshTicketsBadgeSilently();
 }
 async function refreshTicketsBadgeSilently() {
