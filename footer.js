@@ -61,7 +61,7 @@
   <div class="ft-wrap">
     <div class="ft-grid">
       <div>
-        <a href="index.html" class="ft-brand" id="ftBrand">Our Hotel</a>
+        <a href="index.html" class="ft-brand" id="ftBrand">Uyeh Hotel</a>
         <p class="ft-about" id="ftAbout">Multiple locations, one company, one booking system — built directly by the team that runs it.</p>
       </div>
       <div>
@@ -93,7 +93,7 @@
       </div>
     </div>
     <div class="ft-bottom">
-      <span>&copy; <span id="ftYear"></span> <span id="ftCopyrightName">Our Hotel</span>. All rights reserved.</span>
+      <span>&copy; <span id="ftYear"></span> <span id="ftCopyrightName">Uyeh Hotel</span>. All rights reserved.</span>
       <span class="ft-legal"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a></span>
     </div>
   </div>
@@ -113,7 +113,7 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
       const settings = data.settings || {};
-      const name = settings.platformName || "Our Hotel";
+      const name = settings.platformName || "Uyeh Hotel";
       $("ftCopyrightName").textContent = name;
 
       const brandEl = $("ftBrand");

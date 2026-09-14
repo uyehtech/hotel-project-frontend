@@ -3,166 +3,259 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="pageTitle">Blog — uyeh Hotel</title>
-<meta name="description" id="pageDescription" content="News, offers, and stories from uyeh Hotel.">
+<title id="pageTitle">Blog — Uyeh Hotel</title>
+<meta name="description" id="pageDescription" content="News, offers, and stories from Our Hotel — every location.">
+<meta name="theme-color" content="#14181f">
+<meta name="robots" content="index, follow">
+<meta property="og:image" content="/assets/og-default.jpg">
+<meta name="twitter:image" content="/assets/og-default.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
-
-:root {
-  --ink: #14181f; --ink-soft: #1c222b; --ivory: #f6f1e7; --ivory-dim: #ede5d4;
-  --brass: #b98d45; --brass-light: #d9b876; --teal: #2f5d5a; --teal-light: #3f7a76;
-  --text-muted: #6b6355; --text-on-ink: #ede6d6; --radius: 3px;
-  --font-display: 'Fraunces', serif; --font-body: 'Inter', -apple-system, sans-serif;
+/* Self-contained, same pattern as index(s).html/location.html — no
+   shared CSS/JS with any other page except footer.js. */
+:root{
+  --ink:#14181f; --ink-soft:#1c222b; --ink-deep:#0d1015;
+  --ivory:#f6f1e7; --ivory-dim:#ede5d4;
+  --brass:#b98d45; --brass-light:#d9b876;
+  --teal:#2f5d5a; --teal-light:#3f7a76;
+  --text-muted:#6b6355; --text-on-ink:#ede6d6;
+  --line-on-ink:rgba(237,230,214,0.16);
+  --radius:3px;
+  --font-display:'Fraunces',Georgia,serif;
+  --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --ease-in-out:cubic-bezier(0.87,0,0.13,1);
 }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { font-family: var(--font-body); background: var(--ivory); color: var(--ink); line-height: 1.55; -webkit-font-smoothing: antialiased; }
-h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
-a { color: inherit; text-decoration: none; }
-img { max-width: 100%; display: block; }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{font-family:var(--font-body);background:var(--ivory);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}#preloader{display:none!important}}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;line-height:1.1;letter-spacing:-0.01em}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+.skip-link{position:absolute;left:-999px;top:0;z-index:1000;background:var(--brass);color:var(--ink);padding:10px 16px}
+.skip-link:focus{left:12px;top:12px}
+:focus-visible{outline:2px solid var(--brass-light);outline-offset:3px}
 
-.site-nav { position: sticky; top: 0; z-index: 50; background: rgba(20, 24, 31, 0.92); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(217, 184, 118, 0.15); }
-.site-nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
-.brand { font-family: var(--font-display); font-size: 1.3rem; color: var(--ivory); letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 10px; }
-.brand span { color: var(--brass-light); }
-.brand-logo { height: 32px; width: auto; display: block; }
-.nav-links { display: flex; gap: 36px; align-items: center; }
-.nav-links a { color: var(--text-on-ink); font-size: 0.92rem; letter-spacing: 0.02em; transition: color 0.2s; }
-.nav-links a:hover, .nav-links a.active { color: var(--brass-light); }
-.nav-cta { border: 1px solid var(--brass); color: var(--brass-light) !important; padding: 9px 20px; border-radius: var(--radius); font-size: 0.85rem !important; }
-.nav-cta:hover { background: var(--brass); color: var(--ink) !important; }
-.nav-toggle { display: none; background: none; border: none; color: var(--ivory); font-size: 1.5rem; cursor: pointer; }
-@media (max-width: 860px) {
-  .nav-links { position: fixed; top: 76px; left: 0; right: 0; background: var(--ink); flex-direction: column; padding: 24px 32px; gap: 20px; transform: translateY(-8px); opacity: 0; pointer-events: none; transition: all 0.25s; }
-  .nav-links.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
-  .nav-toggle { display: block; }
+/* preloader */
+#preloader{position:fixed;inset:0;z-index:999;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:transform .9s var(--ease-in-out)}
+#preloader.lifted{transform:translateY(-101%)}
+.preloader-mark{font-family:var(--font-display);font-size:1.5rem;letter-spacing:.04em;color:var(--ivory)}
+.preloader-mark span{color:var(--brass)}
+.preloader-bar{width:150px;height:1px;background:var(--line-on-ink);position:relative;overflow:hidden}
+.preloader-bar::after{content:"";position:absolute;inset:0;background:var(--brass);transform:translateX(-100%);animation:slide 1.3s var(--ease-in-out) infinite}
+@keyframes slide{to{transform:translateX(100%)}}
+#scrollProgress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--brass);z-index:120}
+
+/* nav */
+.site-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(20,24,31,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line-on-ink);transition:transform .45s var(--ease-out)}
+.site-nav.nav-hidden{transform:translateY(-100%)}
+.site-nav .wrap{display:flex;align-items:center;justify-content:space-between;height:72px;gap:20px}
+.brand{font-family:var(--font-display);font-size:1.22rem;letter-spacing:.02em;color:var(--ivory)}
+.brand-logo{height:30px;width:auto}
+.nav-links{display:flex;align-items:center;gap:26px;font-size:.9rem}
+.nav-links a{color:rgba(237,230,214,.78);transition:color .2s}
+.nav-links a:hover,.nav-links a.active{color:var(--ivory)}
+.nav-cta{border:1px solid var(--brass);color:var(--brass-light)!important;padding:9px 18px;border-radius:999px}
+.nav-cta:hover{background:var(--brass);color:var(--ink)!important}
+.nav-toggle{display:none;background:none;border:0;cursor:pointer;padding:8px;flex-direction:column;gap:5px}
+.nav-toggle .bar{display:block;width:22px;height:1.5px;background:var(--ivory);transition:.3s var(--ease-out)}
+.nav-toggle.active .bar:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.nav-toggle.active .bar:nth-child(2){opacity:0}
+.nav-toggle.active .bar:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+@media(max-width:900px){
+  .nav-toggle{display:flex}
+  .nav-links{position:absolute;top:72px;left:0;right:0;flex-direction:column;align-items:flex-start;gap:0;background:var(--ink-soft);border-bottom:1px solid var(--line-on-ink);max-height:0;overflow:hidden;transition:max-height .4s var(--ease-out)}
+  .nav-links.open{max-height:420px}
+  .nav-links a{padding:15px 28px;width:100%;border-bottom:1px solid rgba(237,230,214,.07)}
+  .nav-cta{border:0;border-radius:0;color:var(--brass-light)!important}
 }
 
-.page-header { background: var(--ink); color: var(--text-on-ink); padding: 80px 0 64px; position: relative; overflow: hidden; }
-.page-header::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(circle at 15% 20%, rgba(185, 141, 69, 0.14) 0, transparent 45%); pointer-events: none; }
-.page-header .wrap { position: relative; }
-.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-light); margin-bottom: 20px; }
-.eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--brass); }
-.page-header h1 { font-size: clamp(2.2rem, 4.5vw, 3.2rem); max-width: 18ch; }
+/* page header */
+.page-header{position:relative;background:var(--ink);color:var(--text-on-ink);padding:150px 0 80px;overflow:hidden}
+.page-header::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 12% 0%,rgba(47,93,90,.42),transparent 60%),linear-gradient(180deg,rgba(13,16,21,.3),rgba(13,16,21,.92))}
+.page-header .wrap{position:relative;z-index:2}
+.eyebrow{font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-light);margin-bottom:18px;display:inline-flex;align-items:center;gap:8px}
+.eyebrow::before{content:"";width:24px;height:1px;background:var(--brass)}
+.page-header h1{font-size:clamp(2.2rem,4.5vw,3.4rem);max-width:18ch}
+.fade-up{opacity:0;transform:translateY(18px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
+.fade-up.in{opacity:1;transform:none}
 
-section { padding: 72px 0; }
+section{padding:88px 0}
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
+.reveal.is-visible{opacity:1;transform:none}
 
-.filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 40px; }
-.filter-chip { font-size: 0.82rem; letter-spacing: 0.02em; color: var(--teal); background: rgba(47, 93, 90, 0.08); padding: 7px 16px; border-radius: 20px; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
-.filter-chip:hover, .filter-chip.active { background: var(--teal); color: var(--ivory); }
+/* filters */
+.filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:40px}
+.filter-chip{font-size:.82rem;letter-spacing:.02em;color:var(--teal);background:rgba(47,93,90,.08);padding:7px 16px;border-radius:20px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.filter-chip:hover,.filter-chip.active{background:var(--teal);color:var(--ivory)}
 
-.post-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; }
-.post-card { background: #fff; border: 1px solid rgba(107, 99, 85, 0.12); border-radius: 4px; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; display: flex; flex-direction: column; }
-.post-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -20px rgba(20, 24, 31, 0.25); }
-.post-card-image { height: 180px; background: linear-gradient(135deg, var(--teal) 0%, var(--teal-light) 60%, var(--brass) 140%); background-size: cover; background-position: center; }
-.post-card-body { padding: 24px 26px 28px; flex: 1; display: flex; flex-direction: column; }
-.post-card-body .post-meta { font-size: 0.76rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--brass); margin-bottom: 10px; }
-.post-card-body h3 { font-size: 1.25rem; margin-bottom: 10px; }
-.post-card-body p { color: var(--text-muted); font-size: 0.92rem; flex: 1; }
-.post-card-body .read-more { margin-top: 16px; font-size: 0.85rem; color: var(--teal); font-weight: 600; }
-.post-card-body .engagement-row { margin-top: 10px; display: flex; gap: 14px; font-size: 0.78rem; color: var(--text-muted); }
+/* post cards */
+.post-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:32px}
+.post-card{background:#fff;border:1px solid rgba(107,99,85,.14);border-radius:var(--radius);overflow:hidden;transition:transform .25s,box-shadow .25s;display:flex;flex-direction:column;opacity:0;transform:translateY(18px);animation:cardIn .7s var(--ease-out) forwards;animation-delay:var(--d,0ms)}
+@keyframes cardIn{to{opacity:1;transform:none}}
+.post-card:hover{transform:translateY(-4px);box-shadow:0 20px 40px -20px rgba(20,24,31,.25)}
+.post-card-image{height:180px;background:linear-gradient(135deg,var(--teal) 0%,var(--teal-light) 60%,var(--brass) 140%);background-size:cover;background-position:center}
+.post-card-body{padding:24px 26px 28px;flex:1;display:flex;flex-direction:column}
+.post-card-body .post-meta{font-size:.76rem;letter-spacing:.05em;text-transform:uppercase;color:var(--brass);margin-bottom:10px}
+.post-card-body h3{font-size:1.25rem;margin-bottom:10px}
+.post-card-body p{color:var(--text-muted);font-size:.92rem;flex:1}
+.post-card-body .read-more{margin-top:16px;font-size:.85rem;color:var(--teal);font-weight:600}
+.post-card-body .engagement-row{margin-top:10px;display:flex;gap:14px;font-size:.78rem;color:var(--text-muted)}
 
-.loading-state, .empty-state { padding: 48px 0; text-align: center; color: var(--text-muted); }
+.loading-state,.empty-state{padding:48px 0;text-align:center;color:var(--text-muted)}
+.skeleton-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:32px}
+.skeleton-card{height:340px;border-radius:var(--radius);background:linear-gradient(100deg,var(--ivory-dim) 30%,rgba(255,255,255,.7) 50%,var(--ivory-dim) 70%);background-size:220% 100%;animation:shimmer 1.5s infinite}
+@keyframes shimmer{to{background-position:-220% 0}}
 
-/* ---- Newsletter block ---- */
-.newsletter-band { background: linear-gradient(135deg, var(--teal) 0%, var(--ink) 100%); color: var(--ivory); text-align: center; padding: 80px 0; }
-.newsletter-band h2 { color: var(--ivory); font-size: clamp(1.7rem, 3vw, 2.3rem); margin-bottom: 14px; }
-.newsletter-band p { color: rgba(237,230,214,0.7); max-width: 44ch; margin: 0 auto 28px; font-size: 0.98rem; }
-.newsletter-form { display: flex; gap: 10px; max-width: 440px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
-.newsletter-form input { flex: 1; min-width: 220px; padding: 13px 16px; border-radius: var(--radius); border: 1px solid rgba(237,230,214,0.25); background: rgba(255,255,255,0.06); color: var(--ivory); font-family: var(--font-body); font-size: 0.92rem; }
-.newsletter-form input::placeholder { color: rgba(237,230,214,0.45); }
-.newsletter-form input:focus { outline: none; border-color: var(--brass-light); }
-.btn { display: inline-flex; align-items: center; justify-content: center; padding: 13px 26px; border-radius: var(--radius); font-size: 0.9rem; letter-spacing: 0.02em; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
-.btn-primary { background: var(--brass); color: var(--ink); }
-.btn-primary:hover { background: var(--brass-light); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.newsletter-note { font-size: 0.78rem; color: rgba(237,230,214,0.5); margin-top: 14px; }
-
-footer { background: var(--ink); color: rgba(237, 230, 214, 0.55); padding: 48px 0 32px; }
-.footer-bottom { border-top: 1px solid rgba(237, 230, 214, 0.1); padding-top: 24px; font-size: 0.8rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+/* newsletter band */
+.newsletter-band{position:relative;text-align:center;background:linear-gradient(140deg,var(--teal),var(--ink-deep));color:var(--ivory)}
+.newsletter-band h2{color:var(--ivory);font-size:clamp(1.7rem,3vw,2.3rem);margin-bottom:14px}
+.newsletter-band p{color:rgba(237,230,214,.72);max-width:44ch;margin:0 auto 28px;font-size:.98rem}
+.newsletter-form{display:flex;gap:10px;max-width:440px;margin:0 auto;flex-wrap:wrap;justify-content:center}
+.newsletter-form input{flex:1;min-width:220px;padding:13px 16px;border-radius:var(--radius);border:1px solid var(--line-on-ink);background:rgba(255,255,255,.06);color:var(--ivory);font-family:var(--font-body);font-size:.92rem}
+.newsletter-form input::placeholder{color:rgba(237,230,214,.45)}
+.newsletter-form input:focus{outline:none;border-color:var(--brass-light)}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 26px;border-radius:var(--radius);font-size:.9rem;letter-spacing:.02em;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.btn-primary{background:var(--brass);color:var(--ink)}
+.btn-primary:hover{background:var(--brass-light)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.newsletter-note{font-size:.78rem;color:rgba(237,230,214,.6);margin-top:14px;min-height:1em}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 
-<nav class="site-nav">
+<div id="preloader" aria-hidden="true">
+  <div class="preloader-mark">Uyeh Hotel<span>.</span></div>
+  <div class="preloader-bar"></div>
+</div>
+<div id="scrollProgress"></div>
+
+<nav class="site-nav" id="siteNav">
   <div class="wrap">
-    <a href="index.html" class="brand" id="navBrand">uyeh Hotel</a>
+    <a href="index.html" class="brand" id="navBrand">Uyeh Hotel</a>
     <div class="nav-links" id="navLinks">
       <a href="index.html">Home</a>
       <a href="index.html#locations">Locations</a>
+      <a href="index.html#experiences">Experiences</a>
       <a href="blog.html" class="active">Blog</a>
+      <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
-      <a href="location.html" class="nav-cta">Book now</a>
+      <a href="index.html#book" class="nav-cta">Check availability</a>
     </div>
-    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">&#9776;</button>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </button>
   </div>
 </nav>
 
+<main id="main">
 <header class="page-header">
   <div class="wrap">
-    <span class="eyebrow">From the team</span>
-    <h1>News, offers, and stories</h1>
+    <span class="eyebrow fade-up" id="pageEyebrow">From the team</span>
+    <h1 class="fade-up" id="pageHeading">News, offers, and stories</h1>
   </div>
 </header>
 
-<section>
+<section class="reveal">
   <div class="wrap">
     <div class="filter-row" id="tagFilters"></div>
-    <div class="post-grid" id="postGrid"><div class="loading-state">Loading posts…</div></div>
+    <div class="post-grid" id="postGrid">
+      <div class="skeleton-grid"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+    </div>
   </div>
 </section>
 
-<section class="newsletter-band">
+<section class="newsletter-band reveal">
   <div class="wrap">
     <h2>Don't miss the next one</h2>
     <p>Offers, new openings, and stories from every location — straight to your inbox, no spam.</p>
     <form class="newsletter-form" id="newsletterForm">
+      <label for="newsletterEmail" style="position:absolute;left:-9999px;">Email address</label>
       <input type="email" id="newsletterEmail" placeholder="you@email.com" required>
       <button type="submit" class="btn btn-primary" id="newsletterSubmitBtn">Subscribe</button>
     </form>
-    <p class="newsletter-note" id="newsletterNote">We'll send a confirmation link — you're only added once you click it.</p>
+    <p class="newsletter-note" id="newsletterNote" role="status" aria-live="polite">We'll send a confirmation link — you're only added once you click it.</p>
   </div>
 </section>
+</main>
 
-<footer>
-  <div class="wrap">
-    <div class="footer-bottom">
-      <span>&copy; <span id="year"></span> <span id="footerCopyrightName">Uyeh Hotel</span>. All rights reserved.</span>
-      <a href="index.html">&larr; Back to home</a>
-    </div>
-  </div>
-</footer>
+<div id="siteFooter"></div>
+<script src="footer.js"></script>
 
 <script>
 (function () {
   "use strict";
   const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = (id) => document.getElementById(id);
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  async function apiRequest(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    });
+  async function api(path, options = {}) {
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
     return data;
   }
 
+  /* ---------- preloader ---------- */
+  function initPreloader() {
+    const el = $("preloader");
+    if (!el || reduced) { if (el) el.style.display = "none"; return; }
+    const min = new Promise((r) => setTimeout(r, 700));
+    const load = new Promise((r) => (document.readyState === "complete" ? r() : window.addEventListener("load", r, { once: true })));
+    Promise.race([Promise.all([min, load]), new Promise((r) => setTimeout(r, 2400))]).then(() => {
+      el.classList.add("lifted");
+      setTimeout(() => { el.style.display = "none"; }, 950);
+    });
+  }
+
+  /* ---------- nav ---------- */
   function initNav() {
-    const toggle = document.getElementById("navToggle");
-    const links = document.getElementById("navLinks");
-    if (toggle && links) toggle.addEventListener("click", () => links.classList.toggle("open"));
+    const toggle = $("navToggle"), links = $("navLinks"), nav = $("siteNav"), progress = $("scrollProgress");
+    toggle.addEventListener("click", () => {
+      const open = links.classList.toggle("open");
+      toggle.classList.toggle("active", open);
+      toggle.setAttribute("aria-expanded", String(open));
+    });
+    links.addEventListener("click", (e) => { if (e.target.tagName === "A") { links.classList.remove("open"); toggle.classList.remove("active"); } });
+    let lastY = window.scrollY, ticking = false;
+    function onScroll() {
+      const y = window.scrollY;
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      progress.style.width = `${h > 0 ? (y / h) * 100 : 0}%`;
+      if (!links.classList.contains("open")) nav.classList.toggle("nav-hidden", y > lastY && y > 160);
+      lastY = y; ticking = false;
+    }
+    window.addEventListener("scroll", () => { if (!ticking) { requestAnimationFrame(onScroll); ticking = true; } }, { passive: true });
+  }
+
+  function observe(nodes) {
+    if (reduced || !("IntersectionObserver" in window)) { nodes.forEach((n) => n.classList.add("is-visible")); return; }
+    const io = new IntersectionObserver((entries) => entries.forEach((en) => {
+      if (en.isIntersecting) { en.target.classList.add("is-visible"); io.unobserve(en.target); }
+    }), { threshold: 0.15, rootMargin: "0px 0px -60px 0px" });
+    nodes.forEach((n) => io.observe(n));
+  }
+
+  function revealHeader() {
+    ["pageEyebrow", "pageHeading"].forEach((id, i) => setTimeout(() => $(id).classList.add("in"), reduced ? 0 : 220 + i * 130));
   }
 
   async function hydrateBrand() {
     try {
-      const { settings } = await apiRequest("/settings");
-      const name = settings.platformName || "uyeh Hotel";
-      document.title = document.title.replace("uyeh Hotel", name);
-      document.getElementById("footerCopyrightName").textContent = name;
-      const navBrand = document.getElementById("navBrand");
-      if (settings.logoUrl) navBrand.innerHTML = `<img class="brand-logo" src="${settings.logoUrl}" alt="${name}">`;
+      const { settings } = await api("/settings");
+      const name = settings.platformName || "Uyeh Hotel";
+      document.title = document.title.replace("Uyeh Hotel", name);
+      const navBrand = $("navBrand");
+      if (settings.logoUrl) navBrand.innerHTML = `<img class="brand-logo" src="${esc(settings.logoUrl)}" alt="${esc(name)}">`;
       else navBrand.textContent = name;
     } catch (err) {
       console.warn("Could not load platform name, using fallback:", err.message);
@@ -171,18 +264,18 @@ footer { background: var(--ink); color: rgba(237, 230, 214, 0.55); padding: 48px
 
   let allPosts = [];
   function renderPosts(posts) {
-    const grid = document.getElementById("postGrid");
+    const grid = $("postGrid");
     if (!posts.length) {
       grid.innerHTML = `<div class="empty-state">No posts published yet — check back soon.</div>`;
       return;
     }
-    grid.innerHTML = posts.map((p) => `
-      <a href="blog-post.html?slug=${encodeURIComponent(p.slug)}" class="post-card">
-        <div class="post-card-image" style="${p.coverImageUrl ? `background-image:url('${p.coverImageUrl}')` : ""}"></div>
+    grid.innerHTML = posts.map((p, i) => `
+      <a href="blog-post.html?slug=${encodeURIComponent(p.slug)}" class="post-card" style="--d:${i * 60}ms">
+        <div class="post-card-image"${p.coverImageUrl ? ` style="background-image:url('${esc(p.coverImageUrl)}')"` : ""}></div>
         <div class="post-card-body">
-          <div class="post-meta">${p.branch ? p.branch.name : "Company news"} &middot; ${new Date(p.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>
-          <h3>${p.title}</h3>
-          <p>${p.excerpt || ""}</p>
+          <div class="post-meta">${esc(p.branch ? p.branch.name : "Company news")} &middot; ${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : ""}</div>
+          <h3>${esc(p.title)}</h3>
+          <p>${esc(p.excerpt || "")}</p>
           <span class="read-more">Read more &rarr;</span>
           <div class="engagement-row">
             <span>&#9825; ${p._count ? p._count.likes : 0}</span>
@@ -195,10 +288,10 @@ footer { background: var(--ink); color: rgba(237, 230, 214, 0.55); padding: 48px
 
   function renderTagFilters(posts) {
     const tags = [...new Set(posts.flatMap((p) => p.tags || []))];
-    const container = document.getElementById("tagFilters");
+    const container = $("tagFilters");
     if (!tags.length) { container.innerHTML = ""; return; }
     container.innerHTML = `<span class="filter-chip active" data-tag="">All posts</span>` +
-      tags.map((t) => `<span class="filter-chip" data-tag="${t}">${t}</span>`).join("");
+      tags.map((t) => `<span class="filter-chip" data-tag="${esc(t)}">${esc(t)}</span>`).join("");
     container.querySelectorAll(".filter-chip").forEach((chip) => {
       chip.addEventListener("click", () => {
         container.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("active"));
@@ -211,25 +304,23 @@ footer { background: var(--ink); color: rgba(237, 230, 214, 0.55); padding: 48px
 
   async function loadPosts() {
     try {
-      const { posts } = await apiRequest("/blog");
-      allPosts = posts;
-      renderTagFilters(posts);
-      renderPosts(posts);
+      const { posts } = await api("/blog");
+      allPosts = posts || [];
+      renderTagFilters(allPosts);
+      renderPosts(allPosts);
     } catch (err) {
-      document.getElementById("postGrid").innerHTML = `<div class="empty-state">Couldn't load posts right now — please try again shortly.</div>`;
+      $("postGrid").innerHTML = `<div class="empty-state">Couldn't load posts right now — please try again shortly.</div>`;
     }
   }
 
   async function submitNewsletterSignup(e) {
     e.preventDefault();
-    const btn = document.getElementById("newsletterSubmitBtn");
-    const note = document.getElementById("newsletterNote");
-    const email = document.getElementById("newsletterEmail").value;
+    const btn = $("newsletterSubmitBtn"), note = $("newsletterNote"), input = $("newsletterEmail");
     btn.disabled = true;
     try {
-      const { message } = await apiRequest("/newsletter/subscribe", { method: "POST", body: JSON.stringify({ email }) });
-      note.textContent = message;
-      document.getElementById("newsletterEmail").value = "";
+      const { message } = await api("/newsletter/subscribe", { method: "POST", body: JSON.stringify({ email: input.value }) });
+      note.textContent = message || "You're subscribed.";
+      input.value = "";
     } catch (err) {
       note.textContent = err.message;
     } finally {
@@ -238,13 +329,16 @@ footer { background: var(--ink); color: rgba(237, 230, 214, 0.55); padding: 48px
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    initPreloader();
     initNav();
+    revealHeader();
+    observe([...document.querySelectorAll("section.reveal")]);
     hydrateBrand();
     loadPosts();
-    document.getElementById("newsletterForm").addEventListener("submit", submitNewsletterSignup);
-    document.getElementById("year").textContent = new Date().getFullYear();
+    $("newsletterForm").addEventListener("submit", submitNewsletterSignup);
   });
 })();
 </script>
+<script src="/chat-widget.js"></script>
 </body>
 </html>

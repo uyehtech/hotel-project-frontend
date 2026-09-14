@@ -3,248 +3,280 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="pageTitle">Uyeh hotel — Book direct, no OTA fees, real-time availability</title>
-<meta name="description" id="pageDescription" content="Book rooms, restaurant, spa and events directly with real-time availability and Paystack payment.">
+<title id="pageTitle">Uyeh Hotel — Book direct, no OTA fees, real-time availability</title>
+<meta name="description" id="pageDescription" content="Book rooms, dining, spa and events directly with real-time availability and instant confirmation. Every branch, one standard, worldwide.">
+<meta name="theme-color" content="#14181f">
+<link rel="canonical" href="/index.html">
+<meta property="og:type" content="website">
+<meta property="og:title" id="ogTitle" content="Uyeh Hotel — Book direct, real-time availability">
+<meta property="og:description" id="ogDesc" content="Rooms, dining, spa and events reserved directly with us at any branch — real-time availability, no third-party markup.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" id="twTitle" content="Uyeh Hotel — Book direct, real-time availability">
+<meta name="twitter:description" id="twDesc" content="Rooms, dining, spa and events reserved directly with us at any branch.">
+<meta name="robots" content="index, follow">
+<meta property="og:image" content="/assets/og-default.jpg">
+<meta name="twitter:image" content="/assets/og-default.jpg">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
 <style>
 /* ============================================================
-   This page is fully self-contained — all CSS and JS live in
-   this one file. No external .css or .js files. The only
-   external resource is the Google Fonts stylesheet below (a
-   font, not application logic, so it stays linked).
+   Self-contained homepage. All CSS and JS live in this file.
+   Only external resources: the Google Fonts stylesheet and the
+   chat widget script at the bottom.
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
+:root{
+  --ink:#14181f; --ink-soft:#1c222b; --ink-deep:#0d1015;
+  --ivory:#f6f1e7; --ivory-dim:#ede5d4;
+  --brass:#b98d45; --brass-light:#d9b876;
+  --teal:#2f5d5a; --teal-light:#3f7a76;
+  --text-muted:#6b6355; --text-on-ink:#ede6d6;
+  --line-on-ink:rgba(237,230,214,0.16);
+  --radius:3px;
+  --font-display:'Fraunces',Georgia,serif;
+  --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --ease-in-out:cubic-bezier(0.87,0,0.13,1);
+  --hero-image:none;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{font-family:var(--font-body);background:var(--ink);color:var(--ivory);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}#preloader{display:none!important}}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;line-height:1.08;letter-spacing:-0.015em}
+h1{font-size:clamp(2.4rem,6vw,4.6rem)}
+h2{font-size:clamp(1.8rem,3.6vw,2.9rem)}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+button,input,select{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+.grain::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.05;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+.skip-link{position:absolute;left:-999px;top:0;z-index:1000;background:var(--brass);color:var(--ink);padding:10px 16px}
+.skip-link:focus{left:12px;top:12px}
+:focus-visible{outline:2px solid var(--brass-light);outline-offset:3px}
 
-:root {
-  --ink: #14181f;
-  --ink-soft: #1c222b;
-  --ivory: #f6f1e7;
-  --ivory-dim: #ede5d4;
-  --brass: #b98d45;
-  --brass-light: #d9b876;
-  --teal: #2f5d5a;
-  --teal-light: #3f7a76;
-  --text-muted: #6b6355;
-  --text-on-ink: #ede6d6;
-  --radius: 3px;
-  --font-display: 'Fraunces', serif;
-  --font-body: 'Inter', -apple-system, sans-serif;
+/* preloader */
+#preloader{position:fixed;inset:0;z-index:999;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:transform .9s var(--ease-in-out)}
+#preloader.lifted{transform:translateY(-101%)}
+.preloader-mark{font-family:var(--font-display);font-size:1.5rem;letter-spacing:.04em}
+.preloader-mark span{color:var(--brass)}
+.preloader-bar{width:150px;height:1px;background:var(--line-on-ink);position:relative;overflow:hidden}
+.preloader-bar::after{content:"";position:absolute;inset:0;background:var(--brass);transform:translateX(-100%);animation:slide 1.3s var(--ease-in-out) infinite}
+@keyframes slide{to{transform:translateX(100%)}}
+#scrollProgress{position:fixed;top:0;left:0;height:2px;width:0;background:var(--brass);z-index:120}
+
+/* nav */
+.site-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(20,24,31,.78);backdrop-filter:blur(14px);border-bottom:1px solid var(--line-on-ink);transition:transform .45s var(--ease-out)}
+.site-nav.nav-hidden{transform:translateY(-100%)}
+.site-nav .wrap{display:flex;align-items:center;justify-content:space-between;height:72px;gap:20px}
+.brand{font-family:var(--font-display);font-size:1.22rem;letter-spacing:.02em}
+.brand-logo{height:30px;width:auto}
+.nav-links{display:flex;align-items:center;gap:26px;font-size:.9rem}
+.nav-links a{color:rgba(237,230,214,.78);transition:color .2s}
+.nav-links a:hover{color:var(--ivory)}
+.nav-cta{border:1px solid var(--brass);color:var(--brass-light)!important;padding:9px 18px;border-radius:999px}
+.nav-cta:hover{background:var(--brass);color:var(--ink)!important}
+.nav-toggle{display:none;background:none;border:0;cursor:pointer;padding:8px;flex-direction:column;gap:5px}
+.nav-toggle .bar{display:block;width:22px;height:1.5px;background:var(--ivory);transition:.3s var(--ease-out)}
+.nav-toggle.active .bar:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.nav-toggle.active .bar:nth-child(2){opacity:0}
+.nav-toggle.active .bar:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+@media(max-width:900px){
+  .nav-toggle{display:flex}
+  .nav-links{position:absolute;top:72px;left:0;right:0;flex-direction:column;align-items:flex-start;gap:0;background:var(--ink-soft);border-bottom:1px solid var(--line-on-ink);max-height:0;overflow:hidden;transition:max-height .4s var(--ease-out)}
+  .nav-links.open{max-height:420px}
+  .nav-links a{padding:15px 28px;width:100%;border-bottom:1px solid rgba(237,230,214,.07)}
+  .nav-cta{border:0;border-radius:0;color:var(--brass-light)!important}
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { font-family: var(--font-body); background: var(--ivory); color: var(--ink); line-height: 1.55; -webkit-font-smoothing: antialiased; }
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-}
-h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 500; line-height: 1.1; letter-spacing: -0.01em; }
-a { color: inherit; text-decoration: none; }
-img { max-width: 100%; display: block; }
-.wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px; }
+/* hero */
+.hero{position:relative;min-height:92vh;display:flex;align-items:center;padding:140px 0 70px;overflow:hidden}
+.hero-bg{position:absolute;inset:-6%;background-image:var(--hero-image);background-size:cover;background-position:center;opacity:.34;will-change:transform}
+.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 12% 0%,rgba(47,93,90,.42),transparent 60%),linear-gradient(180deg,rgba(13,16,21,.5),rgba(13,16,21,.94))}
+.hero .wrap{position:relative;z-index:2}
+.eyebrow{font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-light);margin-bottom:18px}
+.hero-content h1{max-width:16ch}
+.hero .lead{max-width:56ch;margin-top:20px;font-size:clamp(1rem,1.5vw,1.16rem);color:rgba(237,230,214,.76)}
+.fade-up{opacity:0;transform:translateY(18px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
+.fade-up.in{opacity:1;transform:none}
+.type-cursor{display:inline-block;width:2px;height:.9em;background:var(--brass);margin-left:4px;animation:blink .9s steps(2) infinite;vertical-align:-2px}
+.type-cursor.hidden{display:none}
+@keyframes blink{50%{opacity:0}}
+.hero-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px}
+.pill,.pill-outline{position:relative;display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:999px;border:1px solid var(--line-on-ink);font-size:.88rem;background:rgba(255,255,255,.04);cursor:pointer;transform:translate(var(--mx,0),var(--my,0));transition:background .25s,border-color .25s,transform .3s var(--ease-out)}
+.pill:hover,.pill-outline:hover{border-color:var(--brass);background:rgba(185,141,69,.14)}
+.pill-primary{background:var(--brass);border-color:var(--brass);color:var(--ink);font-weight:600}
+.pill-primary:hover{background:var(--brass-light);border-color:var(--brass-light)}
+.copy-flash{position:absolute;top:-26px;left:50%;transform:translateX(-50%);font-size:.7rem;background:var(--ivory);color:var(--ink);padding:3px 8px;border-radius:2px;opacity:0;transition:opacity .25s}
+.copy-flash.show{opacity:1}
 
-/* ---- Nav ---- */
-.site-nav { position: sticky; top: 0; z-index: 50; background: rgba(20, 24, 31, 0.92); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(217, 184, 118, 0.15); }
-.site-nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; }
-.brand { font-family: var(--font-display); font-size: 1.3rem; color: var(--ivory); letter-spacing: 0.01em; display: inline-flex; align-items: center; gap: 10px; }
-.brand span { color: var(--brass-light); }
-.brand-logo { height: 32px; width: auto; display: block; }
-.nav-links { display: flex; gap: 36px; align-items: center; }
-.nav-links a { color: var(--text-on-ink); font-size: 0.92rem; letter-spacing: 0.02em; }
-.nav-links a:not(.nav-cta) { position: relative; padding-bottom: 2px; }
-.nav-links a:not(.nav-cta)::after { content: ""; position: absolute; left: 0; right: 100%; bottom: 0; height: 1px; background: var(--brass-light); transition: right 0.3s ease; }
-.nav-links a:not(.nav-cta):hover::after { right: 0; }
-.nav-cta { border: 1px solid var(--brass); color: var(--brass-light) !important; padding: 9px 20px; border-radius: var(--radius); font-size: 0.85rem !important; transition: background 0.2s, color 0.2s; }
-.nav-cta:hover { background: var(--brass); color: var(--ink) !important; }
+/* booking bar */
+.booking-bar{position:relative;z-index:3;margin-top:44px;background:rgba(246,241,231,.97);color:var(--ink);border-radius:var(--radius);padding:18px;display:grid;grid-template-columns:1.4fr 1fr 1fr .8fr auto;gap:14px;align-items:end;box-shadow:0 24px 60px rgba(0,0,0,.42)}
+.booking-bar label{display:block;font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px}
+.booking-bar select,.booking-bar input{width:100%;padding:11px 12px;border:1px solid rgba(20,24,31,.18);border-radius:2px;background:#fff;color:var(--ink);font-size:.9rem}
+.booking-bar .btn-search{padding:12px 26px;background:var(--ink);color:var(--ivory);border:0;border-radius:2px;font-weight:600;font-size:.9rem;cursor:pointer;transition:background .25s}
+.booking-bar .btn-search:hover{background:var(--teal)}
+.booking-note{grid-column:1/-1;font-size:.76rem;color:var(--text-muted)}
+@media(max-width:900px){.booking-bar{grid-template-columns:1fr 1fr}.booking-bar .btn-search{grid-column:1/-1;width:100%}}
+@media(max-width:560px){.booking-bar{grid-template-columns:1fr}}
 
-/* Animated hamburger — three bars morphing into an X, ivory on the
-   dark nav bar (unlike a light-background version, so bars are
-   --ivory, not black). */
-.nav-toggle { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 28px; height: 28px; background: none; border: none; cursor: pointer; padding: 0; }
-.nav-toggle .bar { display: block; width: 100%; height: 2px; background: var(--ivory); transition: transform 0.3s ease, opacity 0.3s ease; }
-.nav-toggle.active .bar:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-.nav-toggle.active .bar:nth-child(2) { opacity: 0; }
-.nav-toggle.active .bar:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-@media (max-width: 860px) {
-  .nav-links { position: fixed; top: 76px; left: 0; right: 0; background: var(--ink); flex-direction: column; align-items: flex-start; padding: 24px 32px; gap: 20px; transform: translateY(-8px); opacity: 0; pointer-events: none; transition: all 0.25s; }
-  .nav-links.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
-  .nav-toggle { display: flex; }
-}
+/* inline availability results (rendered inside the booking bar) */
+.avail-results{grid-column:1/-1;margin-top:6px}
+.avail-results[hidden]{display:none}
+.avail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.avail-skel{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.avail-skel .skeleton-card{height:190px}
+.avail-card{border:1px solid rgba(20,24,31,.14);border-radius:var(--radius);overflow:hidden;background:#fff;display:flex;flex-direction:column;text-align:left}
+.avail-card-img{height:110px;background-size:cover;background-position:center;background-color:var(--ivory-dim)}
+.avail-card-body{padding:16px;display:flex;flex-direction:column;gap:6px}
+.avail-card-body h4{font-size:1rem;color:var(--ink)}
+.avail-card-body .room-price{color:var(--teal);font-family:var(--font-display);font-size:1.15rem}
+.avail-card-body .room-meta{color:var(--text-muted);font-size:.82rem}
+.avail-card-body .btn{margin-top:6px;width:100%}
+.avail-sold-out{opacity:.7}
 
-/* ---- Hero ---- */
-.hero { min-height: 100svh; background: var(--ink); color: var(--text-on-ink); position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; padding: 140px 0 88px; isolation: isolate; }
-@media (min-width: 861px) { .hero { justify-content: center; padding: 0; } }
+/* trust strip under the booking bar */
+.trust-strip{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding-top:10px;border-top:1px dashed rgba(20,24,31,.14);margin-top:4px;font-size:.76rem;color:var(--text-muted)}
 
-/* Background photo layer — separate from .hero itself so the slow
-   drift + mouse-parallax transform never fights the grain/gradient
-   overlays below. Renders nothing but the solid ink color when the
-   Director hasn't set a hero image yet (no stock photography
-   standing in for real branch photography). */
-.hero-bg { position: absolute; inset: -8%; z-index: -2; background-image: var(--hero-image, none); background-size: cover; background-position: 70% center; transform: translate3d(0, 0, 0) scale(1.08); will-change: transform; }
-.hero::before { content: ""; position: absolute; inset: 0; z-index: -1; background-image: radial-gradient(circle at 15% 20%, rgba(185, 141, 69, 0.16) 0, transparent 45%), radial-gradient(circle at 85% 75%, rgba(47, 93, 90, 0.4) 0, transparent 50%), linear-gradient(180deg, rgba(20,24,31,0.15) 0%, rgba(20,24,31,0.55) 100%); pointer-events: none; }
-.hero .wrap { position: relative; }
-.hero-content { max-width: 620px; }
+/* sticky mobile CTA */
+.sticky-cta{position:fixed;left:0;right:0;bottom:0;z-index:150;background:var(--ink-deep);border-top:1px solid var(--line-on-ink);padding:12px 16px;display:none;transform:translateY(100%);transition:transform .35s var(--ease-out)}
+.sticky-cta.show{transform:none}
+.sticky-cta a{display:block;text-align:center;background:var(--brass);color:var(--ink);padding:13px;border-radius:2px;font-weight:600;font-size:.9rem}
+@media(max-width:640px){.sticky-cta{display:block}}
 
-/* 1 — blurred whisper-line: a quiet aside before the real headline
-   arrives, not meant to be fully readable — decorative, not motion. */
-.hero-intro-blur { pointer-events: none; user-select: none; margin-bottom: 22px; font-size: clamp(15px, 2.6vw, 18px); line-height: 1.5; font-weight: 400; color: rgba(237, 230, 214, 0.55); filter: blur(3px); opacity: 0; animation: heroFadeIn 0.9s ease 0.15s forwards; }
+/* cookie notice */
+.cookie-banner{position:fixed;left:16px;right:16px;bottom:16px;z-index:400;max-width:520px;margin-inline:auto;background:var(--ink-soft);border:1px solid var(--line-on-ink);border-radius:var(--radius);padding:18px 20px;box-shadow:0 20px 50px rgba(0,0,0,.4);display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;transform:translateY(140%);transition:transform .5s var(--ease-out)}
+.cookie-banner.show{transform:none}
+.cookie-banner p{font-size:.82rem;color:rgba(237,230,214,.72);flex:1 1 240px;margin:0}
+.cookie-banner .btn{padding:9px 18px;font-size:.82rem}
 
-/* 2 — the real headline, typed out on load. The typing target and
-   the live-settings target are the SAME element (#heroTitle) — the
-   headline you see typed is always the actual configured copy, not
-   a stand-in that gets swapped out later. */
-.eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-light); margin-bottom: 20px; opacity: 0; animation: heroFadeIn 0.7s ease 0.4s forwards; }
-.eyebrow::before { content: ""; width: 24px; height: 1px; background: var(--brass); }
-.hero h1 { font-size: clamp(2.4rem, 5vw, 4rem); max-width: 15ch; margin-bottom: 24px; min-height: 1.1em; }
-.type-cursor { display: inline-block; width: 2px; height: 0.9em; background: var(--ivory); vertical-align: -0.1em; margin-left: 2px; animation: blink 1s step-end infinite; }
-.type-cursor.hidden { display: none; }
-.hero p.lead { font-size: 1.1rem; color: rgba(237, 230, 214, 0.75); max-width: 46ch; margin-bottom: 38px; opacity: 0; transform: translateY(6px); transition: opacity 0.6s ease, transform 0.6s ease; }
-.hero p.lead.in { opacity: 1; transform: translateY(0); }
+/* guest reviews */
+.review-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.review-card{border:1px solid var(--line-on-ink);border-radius:var(--radius);padding:22px;background:var(--ink-soft);display:flex;flex-direction:column;gap:10px}
+.review-stars{color:var(--brass-light);font-size:.9rem;letter-spacing:2px}
+.review-body{font-size:.9rem;color:rgba(237,230,214,.78)}
+.review-meta{font-size:.78rem;color:rgba(237,230,214,.5)}
+.rating-summary{display:flex;align-items:center;gap:14px;margin-bottom:28px}
+.rating-summary .rating-num{font-family:var(--font-display);font-size:2.4rem;color:var(--brass-light)}
+.rating-summary .review-stars{font-size:1.1rem}
+.avail-results .empty-state{color:var(--ink);border-color:rgba(20,24,31,.22);background:rgba(255,255,255,.5)}
 
-/* 3 — pill actions. Fade in on a fixed timer, independent of the
-   typewriter — a slow typer shouldn't make someone wait to book. */
-.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; opacity: 0; transform: translateY(8px); transition: opacity 0.4s ease, transform 0.4s ease; }
-.hero-actions.in { opacity: 1; transform: translateY(0); }
-.pill { display: inline-flex; align-items: center; justify-content: center; background: rgba(246, 241, 231, 0.94); color: var(--ink); border: 1px solid transparent; border-radius: 999px; font-size: 0.86rem; font-weight: 500; letter-spacing: 0.01em; padding: 11px 20px; white-space: nowrap; transition: background 0.2s, color 0.2s, transform 0.2s; }
-.pill:hover { background: var(--brass); transform: translateY(-1px); }
-.pill.pill-primary { background: var(--brass); }
-.pill.pill-primary:hover { background: var(--brass-light); }
-.pill-outline { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: var(--ivory); border: 1px solid rgba(237, 230, 214, 0.4); border-radius: 999px; font-size: 0.86rem; padding: 11px 20px; white-space: nowrap; cursor: pointer; transition: background 0.2s, color 0.2s; font-family: var(--font-body); }
-.pill-outline:hover { background: var(--ivory); color: var(--ink); }
-.pill-outline u { text-underline-offset: 2px; }
-.pill-outline .copy-flash { position: absolute; margin-top: -34px; font-size: 0.72rem; background: var(--ink); color: var(--ivory); padding: 4px 10px; border-radius: 3px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
-.pill-outline .copy-flash.show { opacity: 1; }
+.scroll-cue{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,230,214,.5);opacity:0;transition:opacity .8s var(--ease-out)}
+.scroll-cue.in{opacity:1}
+.scroll-cue .line{width:1px;height:34px;background:linear-gradient(var(--brass),transparent)}
 
-/* Scroll cue — bottom-center, tells you there's more below now that
-   the hero is a full viewport tall. Static line if reduced motion. */
-.scroll-cue { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; color: rgba(237, 230, 214, 0.5); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0; animation: heroFadeIn 0.8s ease 1s forwards; }
-.scroll-cue .line { width: 1px; height: 26px; background: rgba(237, 230, 214, 0.35); position: relative; overflow: hidden; }
-.scroll-cue .line::after { content: ""; position: absolute; top: -100%; left: 0; width: 100%; height: 100%; background: var(--brass-light); animation: scrollDrip 1.8s ease-in-out infinite; }
-@keyframes scrollDrip { 0% { top: -100%; } 60%, 100% { top: 100%; } }
-@keyframes heroFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+/* marquee */
+.marquee{overflow:hidden;border-top:1px solid var(--line-on-ink);border-bottom:1px solid var(--line-on-ink);background:var(--ink-soft);padding:13px 0}
+.marquee-track{display:flex;gap:50px;white-space:nowrap;animation:march 34s linear infinite;font-size:.76rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(237,230,214,.52)}
+@keyframes march{to{transform:translateX(-50%)}}
 
-.tide-divider { display: block; width: 100%; height: 48px; background: var(--ink); }
-.tide-divider svg { display: block; width: 100%; height: 48px; }
+/* sections */
+section{position:relative;padding:96px 0}
+.section-head{max-width:60ch;margin-bottom:44px}
+.section-head p:not(.eyebrow){color:rgba(237,230,214,.66);margin-top:14px}
+.section-head.center{margin-inline:auto;text-align:center}
+.reveal,.reveal-stagger{opacity:0;transform:translateY(26px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
+.reveal.is-visible,.reveal-stagger.is-visible{opacity:1;transform:none}
+.mask-word{display:inline-block;overflow:hidden;vertical-align:bottom}
+.mask-word-inner{display:inline-block;transform:translateY(105%);transition:transform .8s var(--ease-out);transition-delay:calc(var(--i)*55ms)}
+.is-visible .mask-word-inner{transform:none}
 
-/* ---- Buttons (used outside the hero — CTA banner, branch cards, etc.) ---- */
-.btn { display: inline-flex; align-items: center; justify-content: center; padding: 14px 28px; border-radius: var(--radius); font-size: 0.9rem; letter-spacing: 0.02em; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; }
-.btn-primary { background: var(--brass); color: var(--ink); }
-.btn-primary:hover { background: var(--brass-light); }
-.btn-ghost { border-color: rgba(237, 230, 214, 0.3); color: var(--text-on-ink); }
-.btn-ghost:hover { border-color: var(--brass-light); color: var(--brass-light); }
-.btn-dark { background: var(--ink); color: var(--ivory); }
-.btn-dark:hover { background: var(--teal); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+/* branch cards */
+.branch-toolbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px;align-items:center}
+.branch-toolbar input{flex:1 1 240px;padding:11px 14px;border-radius:2px;border:1px solid var(--line-on-ink);background:rgba(255,255,255,.05);color:var(--ivory);font-size:.88rem}
+.chip{padding:8px 15px;border-radius:999px;border:1px solid var(--line-on-ink);background:transparent;font-size:.8rem;cursor:pointer;color:rgba(237,230,214,.75);transition:.2s}
+.chip.active,.chip:hover{border-color:var(--brass);color:var(--ink);background:var(--brass-light)}
+.branch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px}
+.branch-card{background:var(--ink-soft);border:1px solid var(--line-on-ink);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;opacity:0;transform:translateY(18px);animation:cardIn .7s var(--ease-out) forwards;animation-delay:var(--d,0ms);transition:border-color .3s,transform .3s var(--ease-out)}
+.branch-card:hover{border-color:var(--brass);transform:translateY(-4px)}
+@keyframes cardIn{to{opacity:1;transform:none}}
+.branch-card-top{height:120px;background:linear-gradient(135deg,var(--teal),var(--ink-deep));display:flex;align-items:flex-end;padding:14px}
+.city-tag{font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;background:rgba(20,24,31,.6);padding:5px 10px;border-radius:2px}
+.branch-card-body{padding:20px;display:flex;flex-direction:column;gap:10px;flex:1}
+.branch-card-body h3{font-size:1.24rem}
+.addr{font-size:.86rem;color:rgba(237,230,214,.6)}
+.branch-services{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.branch-services span{font-size:.7rem;padding:4px 9px;border:1px solid var(--line-on-ink);border-radius:999px;color:rgba(237,230,214,.7);text-transform:capitalize}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 24px;border-radius:2px;font-size:.88rem;font-weight:600;border:1px solid transparent;cursor:pointer;transition:.25s}
+.btn-primary{background:var(--brass);color:var(--ink)}
+.btn-primary:hover{background:var(--brass-light)}
+.btn-dark{background:transparent;border-color:var(--brass);color:var(--brass-light);margin-top:auto}
+.btn-dark:hover{background:var(--brass);color:var(--ink)}
+.skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px}
+.skeleton-card{height:300px;border-radius:var(--radius);background:linear-gradient(100deg,var(--ink-soft) 30%,rgba(255,255,255,.06) 50%,var(--ink-soft) 70%);background-size:220% 100%;animation:shimmer 1.5s infinite}
+@keyframes shimmer{to{background-position:-220% 0}}
+.empty-state{padding:38px;text-align:center;color:rgba(237,230,214,.6);border:1px dashed var(--line-on-ink);border-radius:var(--radius)}
 
-/* ---- Section scaffolding ---- */
-section { padding: 96px 0; }
-.section-head { max-width: 640px; margin-bottom: 56px; }
-.section-head .eyebrow { color: var(--teal); opacity: 1; animation: none; }
-.section-head .eyebrow::before { background: var(--teal); }
-.section-head h2 { font-size: clamp(1.9rem, 3.5vw, 2.6rem); color: var(--ink); }
-.section-head p { color: var(--text-muted); margin-top: 14px; font-size: 1.02rem; }
+/* experiences */
+.experience-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.experience-card{position:relative;overflow:hidden;padding:30px;min-height:290px;border:1px solid var(--line-on-ink);border-radius:var(--radius);display:flex;flex-direction:column;gap:10px;justify-content:flex-end;transition:transform .4s var(--ease-out)}
+.experience-card::before{content:"";position:absolute;inset:0;z-index:-1;transition:transform .8s var(--ease-out)}
+.experience-card:hover{transform:translateY(-5px)}
+.experience-card:hover::before{transform:scale(1.07)}
+.card-dining::before{background:linear-gradient(160deg,#43301c,#12161c)}
+.card-spa::before{background:linear-gradient(160deg,var(--teal),#101418)}
+.card-events::before{background:linear-gradient(160deg,#3c2b3f,#101418)}
+.experience-eyebrow{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brass-light)}
+.experience-card p{font-size:.9rem;color:rgba(237,230,214,.72)}
+.experience-note{font-size:.74rem!important;color:rgba(237,230,214,.45)!important}
 
-/* ---- Key-tag signature element ---- */
-.key-tag { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; background: var(--brass); border-radius: 6px; color: var(--ink); font-family: var(--font-display); font-weight: 600; font-size: 1rem; transform: rotate(-4deg); }
-.key-tag::after { content: ""; position: absolute; top: 8px; left: -7px; width: 8px; height: 8px; border-radius: 50%; background: var(--ivory); border: 2px solid var(--ink); }
+/* stats */
+.stats-band{background:var(--ink-soft);border-block:1px solid var(--line-on-ink)}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:26px;text-align:center}
+.stat-value{font-family:var(--font-display);font-size:clamp(2rem,4vw,3rem);color:var(--brass-light)}
+.stat-label{font-size:.76rem;letter-spacing:.16em;text-transform:uppercase;color:rgba(237,230,214,.55);margin-top:6px}
 
-/* ---- Branch cards (multi-location) ---- */
-.branch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 28px; }
-.branch-card { background: #fff; border: 1px solid rgba(107, 99, 85, 0.12); border-radius: 4px; overflow: hidden; transition: transform 0.25s, box-shadow 0.25s; }
-.branch-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px -20px rgba(20, 24, 31, 0.25); }
-.branch-card-top { height: 130px; background: linear-gradient(135deg, var(--teal) 0%, var(--teal-light) 60%, var(--brass) 140%); display: flex; align-items: flex-end; padding: 18px 22px; }
-.branch-card-top .city-tag { font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ivory); background: rgba(20,24,31,0.35); padding: 5px 12px; border-radius: 20px; }
-.branch-card-body { padding: 22px 24px 26px; }
-.branch-card-body h3 { font-size: 1.2rem; margin-bottom: 6px; }
-.branch-card-body p.addr { color: var(--text-muted); font-size: 0.88rem; margin-bottom: 16px; }
-.branch-services { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
-.branch-services span { font-size: 0.72rem; letter-spacing: 0.02em; text-transform: capitalize; color: var(--teal); background: rgba(47, 93, 90, 0.08); padding: 4px 10px; border-radius: 20px; }
+/* amenities + trust */
+.amenity-grid,.trust-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:26px}
+.amenity-item,.trust-item{border-top:1px solid var(--line-on-ink);padding-top:18px}
+.key-tag{width:34px;height:34px;display:grid;place-items:center;border:1px solid var(--brass);color:var(--brass-light);border-radius:50%;font-size:.82rem;margin-bottom:12px}
+.amenity-item h4,.trust-item h4{font-size:1.05rem;margin-bottom:8px}
+.amenity-item p,.trust-item p{font-size:.88rem;color:rgba(237,230,214,.66)}
 
-/* ---- Amenities band ---- */
-.amenities-band { background: var(--ink); color: var(--text-on-ink); }
-.amenities-band .section-head h2 { color: var(--ivory); }
-.amenities-band .section-head p { color: rgba(237, 230, 214, 0.65); }
-.amenities-band .section-head .eyebrow { color: var(--brass-light); }
-.amenities-band .section-head .eyebrow::before { background: var(--brass); }
-.amenity-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 40px; }
-.amenity-item .key-tag { margin-bottom: 20px; }
-.amenity-item h4 { font-size: 1.15rem; margin-bottom: 10px; color: var(--ivory); }
-.amenity-item p { color: rgba(237, 230, 214, 0.6); font-size: 0.92rem; }
+/* rooms preview */
+.room-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.room-card{border:1px solid var(--line-on-ink);border-radius:var(--radius);padding:22px;background:var(--ink-soft);display:flex;flex-direction:column;gap:8px}
+.room-card h4{font-size:1.06rem}
+.room-price{font-family:var(--font-display);font-size:1.3rem;color:var(--brass-light)}
+.room-meta{font-size:.8rem;color:rgba(237,230,214,.58)}
 
-/* ---- Trust grid ---- */
-.trust-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 36px; }
-.trust-item .key-tag { margin-bottom: 18px; }
-.trust-item h4 { font-size: 1.05rem; margin-bottom: 8px; }
-.trust-item p { color: var(--text-muted); font-size: 0.9rem; }
+/* faq */
+.faq-item{border-bottom:1px solid var(--line-on-ink)}
+.faq-q{width:100%;background:none;border:0;text-align:left;padding:20px 0;font-size:1.02rem;font-family:var(--font-display);cursor:pointer;display:flex;justify-content:space-between;gap:16px;align-items:center}
+.faq-q span{color:var(--brass);transition:transform .3s}
+.faq-item.open .faq-q span{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .4s var(--ease-out)}
+.faq-a p{padding-bottom:20px;font-size:.9rem;color:rgba(237,230,214,.68);max-width:70ch}
 
-/* ---- CTA banner ---- */
-.cta-banner { background: linear-gradient(135deg, var(--teal) 0%, var(--ink) 100%); color: var(--ivory); text-align: center; padding: 90px 0; }
-.cta-banner h2 { color: var(--ivory); font-size: clamp(1.9rem, 3.5vw, 2.6rem); margin-bottom: 16px; }
-.cta-banner p { color: rgba(237,230,214,0.7); max-width: 46ch; margin: 0 auto 32px; font-size: 1.02rem; }
-
-.loading-state, .empty-state { padding: 48px 0; text-align: center; color: var(--text-muted); }
-
-/* ---- Subtle grain texture — used on dark/tonal sections for warmth
-   instead of relying on photography we don't have yet ---- */
-.grain { position: relative; }
-.grain::after {
-  content: "";
-  position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  opacity: 0.035;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-}
-
-/* ---- Scroll reveal ---- */
-.reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.7s ease, transform 0.7s ease; }
-.reveal.is-visible { opacity: 1; transform: translateY(0); }
-
-/* ---- Signature Experiences ---- */
-.experience-grid { display: grid; grid-template-columns: 1.3fr 1fr; grid-template-rows: auto auto; gap: 24px; }
-.experience-card { position: relative; border-radius: 4px; overflow: hidden; color: var(--ivory); min-height: 280px; display: flex; flex-direction: column; justify-content: flex-end; padding: 32px; isolation: isolate; }
-.experience-card::before { content: ""; position: absolute; inset: 0; z-index: -1; transition: transform 0.6s ease; }
-.experience-card:hover::before { transform: scale(1.06); }
-.experience-card::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(20,24,31,0) 0%, rgba(20,24,31,0.75) 100%); }
-.experience-card.card-dining { grid-column: 1; grid-row: 1 / 3; min-height: 100%; }
-.experience-card.card-dining::before { background: linear-gradient(155deg, var(--teal) 0%, var(--teal-light) 55%, var(--brass) 145%); }
-.experience-card.card-spa::before { background: linear-gradient(155deg, #3a4a4a 0%, var(--teal) 100%); }
-.experience-card.card-events::before { background: linear-gradient(155deg, var(--ink-soft) 0%, #3a2f22 60%, var(--brass) 160%); }
-.experience-eyebrow { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--brass-light); margin-bottom: 10px; }
-.experience-card h3 { font-size: 1.5rem; margin-bottom: 10px; }
-.experience-card.card-dining h3 { font-size: 1.9rem; }
-.experience-card p { color: rgba(237, 230, 214, 0.82); font-size: 0.94rem; max-width: 40ch; }
-.experience-note { font-size: 0.76rem; color: rgba(237, 230, 214, 0.5); margin-top: 14px; }
-@media (max-width: 860px) {
-  .experience-grid { grid-template-columns: 1fr; }
-  .experience-card.card-dining { grid-row: auto; }
-}
-
-/* ---- Footer ---- */
-footer { background: var(--ink); color: rgba(237, 230, 214, 0.55); padding: 64px 0 32px; }
-.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1.2fr; gap: 40px; margin-bottom: 48px; }
-@media (max-width: 960px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
-footer .brand { display: block; margin-bottom: 14px; }
-footer h5 { color: var(--ivory); font-size: 0.85rem; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 16px; font-family: var(--font-body); font-weight: 600; }
-footer ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-footer a { font-size: 0.9rem; transition: color 0.2s; }
-footer a:hover { color: var(--brass-light); }
-.footer-bottom { border-top: 1px solid rgba(237, 230, 214, 0.1); padding-top: 24px; font-size: 0.8rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-@media (max-width: 720px) { .footer-grid { grid-template-columns: 1fr; } }
+/* cta + footer */
+.cta-banner{position:relative;text-align:center;background:linear-gradient(140deg,var(--teal),var(--ink-deep))}
+.cta-banner p{max-width:56ch;margin:16px auto 28px;color:rgba(237,230,214,.78)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:var(--ivory);color:var(--ink);padding:12px 20px;border-radius:2px;font-size:.86rem;opacity:0;pointer-events:none;transition:.35s var(--ease-out);z-index:300}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main">Skip to content</a>
 
-<nav class="site-nav">
+<div id="preloader" aria-hidden="true">
+  <div class="preloader-mark">Uyeh Hotel<span>.</span></div>
+  <div class="preloader-bar"></div>
+</div>
+<div id="scrollProgress"></div>
+
+<nav class="site-nav" id="siteNav">
   <div class="wrap">
-    <a href="index.html" class="brand" id="navBrand">Uyeh hotel</a>
+    <a href="index.html" class="brand" id="navBrand">Uyeh Hotel</a>
     <div class="nav-links" id="navLinks">
       <a href="index.html">Home</a>
+      <a href="#locations">Locations</a>
+      <a href="#experiences">Experiences</a>
       <a href="blog.html">Blog</a>
-      <a href="index.html#locations">Locations</a>
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
-      <a href="index.html#locations" class="nav-cta">Book a room</a>
+      <a href="#book" class="nav-cta">Check availability</a>
     </div>
     <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
@@ -252,36 +284,69 @@ footer a:hover { color: var(--brass-light); }
   </div>
 </nav>
 
-<header class="hero grain">
+<main id="main">
+<header class="hero grain" id="book">
   <div class="hero-bg" id="heroBg"></div>
   <div class="wrap">
     <div class="hero-content">
-      <p class="hero-intro-blur">Before anything else — a word on how<br>we like to welcome people.</p>
+      <p class="eyebrow fade-up" id="heroEyebrow">Every location, held to the same standard</p>
+      <h1 id="heroTitle">A stay arranged the way it should be.</h1>
+      <p class="lead fade-up" id="heroSubtitle">Rooms, dining, spa and events — reserved directly with us, at any branch, with real-time availability and nothing left to guesswork.</p>
 
-      <p class="eyebrow" data-content="heroEyebrow">Every location, held to the same standard</p>
-      <h1 data-content="heroTitle" id="heroTitle">A stay arranged the way it should be.</h1>
-      <p class="lead" id="heroSubtitle" data-content="heroSubtitle">Rooms, dining, spa and events — reserved directly with us, at any branch, with real-time availability and nothing left to guesswork.</p>
-
-      <div class="hero-actions" id="heroActions">
-        <a href="#locations" class="pill pill-primary">Check availability</a>
-        <a href="#experiences" class="pill">Explore dining &amp; spa</a>
-        <a href="#standard" class="pill">See how it works</a>
-        <a href="about.html" class="pill">About us</a>
-        <button type="button" class="pill-outline" id="heroEmailPill" onclick="copyHeroEmail()">
+      <div class="hero-actions fade-up" id="heroActions">
+        <a href="#locations" class="pill pill-primary magnetic">Browse locations</a>
+        <a href="#experiences" class="pill magnetic">Dining &amp; spa</a>
+        <a href="#faq" class="pill magnetic">How it works</a>
+        <button type="button" class="pill-outline magnetic" id="heroEmailPill">
           Reach us: <u id="heroEmailText">hello@ourhotel.com</u>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <rect x="4" y="4" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1"/>
-            <rect x="1" y="1" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1"/>
-          </svg>
           <span class="copy-flash" id="copyFlash">Copied</span>
         </button>
       </div>
+
+      <!-- Availability search — hands off to location.html with the
+           chosen branch, dates and guest count already applied. -->
+      <form class="booking-bar fade-up" id="bookingForm" aria-label="Check availability">
+        <div>
+          <label for="bkBranch">Location</label>
+          <select id="bkBranch" required><option value="">Loading locations…</option></select>
+        </div>
+        <div>
+          <label for="bkIn">Check in</label>
+          <input type="date" id="bkIn" required>
+        </div>
+        <div>
+          <label for="bkOut">Check out</label>
+          <input type="date" id="bkOut" required>
+        </div>
+        <div>
+          <label for="bkGuests">Guests</label>
+          <select id="bkGuests">
+            <option value="1">1 guest</option>
+            <option value="2" selected>2 guests</option>
+            <option value="3">3 guests</option>
+            <option value="4">4 guests</option>
+            <option value="5">5+ guests</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-search">Search rooms</button>
+        <p class="booking-note" id="bookingNote">Real-time availability. No account needed, no OTA fees.</p>
+        <div id="availResults" class="avail-results" aria-live="polite" hidden></div>
+        <div class="trust-strip">
+          <span>Secure global payment processing</span>
+          <span>Booked directly with the branch — no third party</span>
+          <span>Cancellation terms shown before you pay</span>
+        </div>
+      </form>
     </div>
   </div>
-  <div class="scroll-cue"><span>Scroll</span><span class="line"></span></div>
+  <div class="scroll-cue" id="scrollCue"><span>Scroll</span><span class="line"></span></div>
 </header>
-<div class="tide-divider">
-  <svg viewBox="0 0 1200 48" preserveAspectRatio="none"><path d="M0,24 C150,44 300,4 450,24 C600,44 750,4 900,24 C1050,44 1150,10 1200,24 L1200,48 L0,48 Z" fill="#F6F1E7"/></svg>
+
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span>Direct booking, no OTA fees</span><span>Real-time availability</span><span>Secure payment worldwide</span><span>Every branch, one standard</span>
+    <span>Direct booking, no OTA fees</span><span>Real-time availability</span><span>Secure payment worldwide</span><span>Every branch, one standard</span>
+  </div>
 </div>
 
 <!-- ===== LOCATIONS — live from GET /api/branches ===== -->
@@ -289,20 +354,32 @@ footer a:hover { color: var(--brass-light); }
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Our locations</p>
-      <h2 data-content="locationsTitle">Choose a branch to get started.</h2>
-      <p data-content="locationsSubtitle">Every location runs on the same platform — rooms, availability, and payment work the same way wherever you book.</p>
+      <h2>Choose a branch to get started.</h2>
+      <p>Every location runs on the same platform — rooms, availability and payment work the same way wherever you book.</p>
+    </div>
+    <div class="branch-toolbar">
+      <input type="search" id="branchSearch" placeholder="Search by city, name or address" aria-label="Search locations">
+      <div id="serviceChips" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
     </div>
     <div class="branch-grid" id="branchGrid">
-      <div class="loading-state">Loading our locations…</div>
+      <div class="skeleton-grid"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== STATS ===== -->
+<section class="stats-band reveal" style="padding:56px 0;">
+  <div class="wrap">
+    <div class="stat-grid">
+      <div><div class="stat-value" id="statBranches">—</div><div class="stat-label">Locations</div></div>
+      <div><div class="stat-value" id="statCities">—</div><div class="stat-label">Cities</div></div>
+      <div><div class="stat-value">24/7</div><div class="stat-label">Front desk</div></div>
+      <div><div class="stat-value">0%</div><div class="stat-label">Booking fee</div></div>
     </div>
   </div>
 </section>
 
 <!-- ===== SIGNATURE EXPERIENCES ===== -->
-<!-- Art-directed with gradient/texture panels rather than stock photography —
-     swap the ::before backgrounds for real branch photography (dining room,
-     spa treatment room, event space) as it becomes available; the layout
-     and hover treatment don't need to change when that happens. -->
 <section id="experiences" class="reveal">
   <div class="wrap">
     <div class="section-head">
@@ -310,7 +387,7 @@ footer a:hover { color: var(--brass-light); }
       <h2>Beyond the room.</h2>
       <p>What sets each stay apart isn't the booking — it's what's waiting once you arrive. Availability varies by location.</p>
     </div>
-    <div class="experience-grid">
+    <div class="experience-grid reveal-stagger">
       <div class="experience-card card-dining">
         <p class="experience-eyebrow">Dining</p>
         <h3>A table, held for you.</h3>
@@ -333,19 +410,43 @@ footer a:hover { color: var(--brass-light); }
   </div>
 </section>
 
+<!-- ===== ROOMS PREVIEW — hidden unless the API returns rooms ===== -->
+<section id="rooms" class="reveal" style="display:none;">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Rooms</p>
+      <h2>A room for the way you travel.</h2>
+      <p>A sample of what's bookable right now. Prices and availability update live per branch.</p>
+    </div>
+    <div class="room-strip" id="roomStrip"></div>
+  </div>
+</section>
+
+<!-- ===== GUEST REVIEWS — aggregated live from GET /branches/:id/reviews ===== -->
+<section id="reviews" class="reveal" style="display:none;">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Guest reviews</p>
+      <h2>What it's actually like to stay with us.</h2>
+    </div>
+    <div class="rating-summary" id="ratingSummary"></div>
+    <div class="review-grid" id="reviewGrid"></div>
+  </div>
+</section>
+
 <!-- ===== WHAT WE OFFER ===== -->
-<section class="amenities-band grain reveal">
+<section class="amenities-band grain reveal" style="background:var(--ink-soft);border-block:1px solid var(--line-on-ink);">
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">What we offer</p>
-      <h2 data-content="servicesTitle">One system, every service you'd expect.</h2>
-      <p data-content="servicesSubtitle">Not every location offers every service — each branch page shows exactly what's available there.</p>
+      <h2>One system, every service you'd expect.</h2>
+      <p>Not every location offers every service — each branch page shows exactly what's available there.</p>
     </div>
-    <div class="amenity-grid">
-      <div class="amenity-item"><div class="key-tag">R</div><h4>Rooms &amp; direct booking</h4><p>Real-time availability, no double-bookings, book straight through us — no third-party markup.</p></div>
-      <div class="amenity-item"><div class="key-tag">D</div><h4>Restaurant &amp; room service</h4><p>Order from the branch menu, delivered to your room or reserve a table ahead of time.</p></div>
+    <div class="amenity-grid reveal-stagger">
+      <div class="amenity-item"><div class="key-tag">R</div><h4>Rooms &amp; direct booking</h4><p>Real-time availability, no double-bookings, booked straight through us — no third-party markup.</p></div>
+      <div class="amenity-item"><div class="key-tag">D</div><h4>Restaurant &amp; room service</h4><p>Order from the branch menu to your room, or reserve a table ahead of time.</p></div>
       <div class="amenity-item"><div class="key-tag">E</div><h4>Events &amp; spaces</h4><p>Browse upcoming events at each branch and reserve your spot directly.</p></div>
-      <div class="amenity-item"><div class="key-tag">S</div><h4>Spa &amp; laundry</h4><p>Where offered, book spa treatments or laundry service the same way you book a room.</p></div>
+      <div class="amenity-item"><div class="key-tag">S</div><h4>Spa &amp; laundry</h4><p>Where offered, book spa treatments or laundry the same way you book a room.</p></div>
     </div>
   </div>
 </section>
@@ -355,368 +456,530 @@ footer a:hover { color: var(--brass-light); }
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">The standard</p>
-      <h2 data-content="trustTitle">Every detail, handled the same way, every time.</h2>
+      <h2>Every detail, handled the same way, every time.</h2>
     </div>
-    <div class="trust-grid">
-      <div class="trust-item"><div class="key-tag">1</div><h4>Real-time availability</h4><p>What you see is actually open — our system rejects any attempt at a double-booking at the database level, not just on the screen.</p></div>
-      <div class="trust-item"><div class="key-tag">2</div><h4>Pay your way</h4><p>Card, bank transfer, or USSD through Paystack — no card required if you'd rather transfer directly.</p></div>
-      <div class="trust-item"><div class="key-tag">3</div><h4>Book with or without an account</h4><p>Create an account for faster rebooking and saved preferences, or check out as a guest — your choice either way.</p></div>
-      <div class="trust-item"><div class="key-tag">4</div><h4>Direct support</h4><p>Questions go straight to the right branch's team — not a call center reading from a script.</p></div>
+    <div class="trust-grid reveal-stagger">
+      <div class="trust-item"><div class="key-tag">1</div><h4>Real-time availability</h4><p>What you see is actually open — double-bookings are rejected at the database level, not just on screen.</p></div>
+      <div class="trust-item"><div class="key-tag">2</div><h4>Pay your way</h4><p>Card or bank transfer, whichever your bank and country support — checkout adapts automatically.</p></div>
+      <div class="trust-item"><div class="key-tag">3</div><h4>With or without an account</h4><p>Create an account for faster rebooking and saved preferences, or check out as a guest.</p></div>
+      <div class="trust-item"><div class="key-tag">4</div><h4>Direct support</h4><p>Questions go straight to the right branch's team — not a call centre reading a script.</p></div>
     </div>
   </div>
 </section>
 
-<!-- ===== CTA BANNER ===== -->
+<!-- ===== FAQ ===== -->
+<section id="faq" class="reveal">
+  <div class="wrap" style="max-width:860px;">
+    <div class="section-head">
+      <p class="eyebrow">Good to know</p>
+      <h2>Questions, answered plainly.</h2>
+    </div>
+    <div id="faqList"></div>
+  </div>
+</section>
+
+<!-- ===== CTA ===== -->
 <section class="cta-banner grain reveal">
   <div class="wrap">
     <h2 data-content="ctaTitle">Ready to book your stay?</h2>
     <p data-content="ctaSubtitle">Choose a location, see what's actually available, and book directly with us — no account required to get started.</p>
-    <a href="#locations" class="btn btn-primary">See our locations</a>
+    <a href="#book" class="btn btn-primary">Check availability</a>
   </div>
 </section>
+</main>
 
-<footer>
-  <div class="wrap">
-    <div class="footer-grid">
-      <div>
-        <a href="index.html" class="brand" id="footerBrand">Uyeh hotel</a>
-        <p style="max-width:34ch; margin-top:10px; font-size:0.9rem;" data-content="footerAbout">Multiple locations, one company, one booking system — built directly by the team that runs it.</p>
-      </div>
-      <div>
-        <h5>Explore</h5>
-        <ul>
-          <li><a href="index.html#locations">Locations</a></li>
-          <li><a href="about.html">About</a></li>
-          <li><a href="contact.html">Contact</a></li>
-        </ul>
-      </div>
-      <div>
-        <h5>Get in touch</h5>
-        <ul>
-          <li><a href="mailto:hello@ourhotel.com" id="footerEmail" data-content="footerEmail">hello@ourhotel.com</a></li>
-          <li><a href="tel:" id="footerPhone" data-content="footerPhone">Phone available on each branch page</a></li>
-        </ul>
-      </div>
-      <div>
-        <h5>Newsletter</h5>
-        <p style="font-size:0.85rem; margin-bottom:14px; max-width:26ch;">Offers and news from every location.</p>
-        <form id="newsletterForm" style="display:flex; flex-direction:column; gap:8px;">
-          <input type="email" id="newsletterEmail" placeholder="you@email.com" required
-            style="padding:10px 12px; border-radius:3px; border:1px solid rgba(237,230,214,0.25); background:rgba(255,255,255,0.06); color:var(--ivory); font-family:var(--font-body); font-size:0.85rem;">
-          <button type="submit" id="newsletterSubmitBtn" class="btn btn-primary" style="padding:10px; font-size:0.82rem;">Subscribe</button>
-        </form>
-        <p id="newsletterNote" style="font-size:0.76rem; margin-top:8px; color:rgba(237,230,214,0.5);"></p>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span>&copy; <span id="year"></span> <span id="footerCopyrightName">Uyeh hotel</span>. All rights reserved.</span>
-      <span>A stay arranged directly with us, start to finish.</span>
-    </div>
-  </div>
-</footer>
+<div id="siteFooter"></div>
+<script src="footer.js"></script>
+
+<div class="sticky-cta" id="stickyCta"><a href="#book">Check availability</a></div>
+
+<div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Cookie notice">
+  <p>We use minimal cookies to remember your session and improve the site. See our <a href="privacy.html" style="text-decoration:underline;">Privacy Policy</a>.</p>
+  <button type="button" class="btn btn-primary" id="cookieAccept">Got it</button>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script type="application/ld+json" id="ldJson">
+{"@context":"https://schema.org","@type":"Organization","name":"Uyeh Hotel","url":"/index.html","logo":"/assets/og-default.jpg","description":"A multi-location hospitality brand — rooms, dining, spa and events booked directly with real-time availability at every branch."}
+</script>
 
 <script>
-/* ============================================================
-   All page logic lives here, inline. Nothing shared with any
-   other page — location.html has its own independent copy of
-   whatever it needs, not this file. That's deliberate: a shared
-   main.js meant editing one page could silently change another.
-   ============================================================ */
 (function () {
   "use strict";
 
   const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
-  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const finePointer = window.matchMedia("(pointer: fine)").matches;
+  const $ = (id) => document.getElementById(id);
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // Every branch sets its own RoomType.currency — never assume Naira.
+  // Falls back to USD only when a room genuinely has no currency set.
+  const fmtMoney = (amount, currency) => {
+    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount); }
+    catch { return `${currency || ""} ${Number(amount).toLocaleString()}`.trim(); }
+  };
 
-  async function apiRequest(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    });
+  async function api(path, options = {}) {
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
     return data;
   }
 
-  /**
-   * Everything the Director configures in Site Settings — name, logo, hero
-   * image, brand colors, homepage copy, footer contact info, SEO — comes
-   * from this one real, working GET /api/settings call. It's public and
-   * auto-creates a default row server-side if the Director hasn't set
-   * anything yet, so this never 404s — it just shows the fallbacks already
-   * hardcoded in this page's HTML until real values are saved.
-   */
-  async function hydrateSiteSettings() {
-    try {
-      const { settings } = await apiRequest("/settings");
-      const name = settings.platformName || "Uyeh hotel";
-
-      document.title = document.title.replace("Uyeh hotel", name);
-      document.getElementById("footerCopyrightName").textContent = name;
-
-      // Logo — image if the Director uploaded one, otherwise the text name
-      const navBrand = document.getElementById("navBrand");
-      const footerBrand = document.getElementById("footerBrand");
-      if (settings.logoUrl) {
-        const logoHtml = `<img class="brand-logo" src="${settings.logoUrl}" alt="${name}">`;
-        navBrand.innerHTML = logoHtml;
-        footerBrand.innerHTML = logoHtml;
-      } else {
-        navBrand.textContent = name;
-        footerBrand.textContent = name;
-      }
-
-      // Hero image
-      if (settings.heroImageUrl) {
-        document.documentElement.style.setProperty("--hero-image", `url("${settings.heroImageUrl}")`);
-      }
-
-      // Brand colors
-      if (settings.brand) {
-        if (settings.brand.primaryColor) document.documentElement.style.setProperty("--ink", settings.brand.primaryColor);
-        if (settings.brand.secondaryColor) document.documentElement.style.setProperty("--brass", settings.brand.secondaryColor);
-        if (settings.brand.accentColor) document.documentElement.style.setProperty("--teal", settings.brand.accentColor);
-      }
-
-      // SEO
-      if (settings.seo) {
-        if (settings.seo.metaTitle) document.title = settings.seo.metaTitle;
-        if (settings.seo.metaDescription) {
-          const metaDesc = document.getElementById("pageDescription");
-          if (metaDesc) metaDesc.setAttribute("content", settings.seo.metaDescription);
-        }
-        if (settings.seo.ogImageUrl) {
-          let ogTag = document.querySelector('meta[property="og:image"]');
-          if (!ogTag) {
-            ogTag = document.createElement("meta");
-            ogTag.setAttribute("property", "og:image");
-            document.head.appendChild(ogTag);
-          }
-          ogTag.setAttribute("content", settings.seo.ogImageUrl);
-        }
-      }
-
-      // Homepage copy — only the slots the Director actually has fields
-      // for. Everything else in [data-content] keeps its hardcoded
-      // fallback (locationsTitle, servicesTitle, trustTitle, etc. aren't
-      // exposed in Site Settings, so there's nothing live to load for them).
-      const heroTitleEl = document.getElementById("heroTitle");
-      if (heroTitleEl) heroTitleEl.textContent = settings.headline || `One booking system, every ${name} location.`;
-      const heroSubtitleEl = document.querySelector('[data-content="heroSubtitle"]');
-      if (heroSubtitleEl && settings.subheadline) heroSubtitleEl.textContent = settings.subheadline;
-
-      const ctaTitleEl = document.querySelector('[data-content="ctaTitle"]');
-      if (ctaTitleEl && settings.ctaTitle) ctaTitleEl.textContent = settings.ctaTitle;
-      const ctaSubtitleEl = document.querySelector('[data-content="ctaSubtitle"]');
-      if (ctaSubtitleEl && settings.ctaSubtitle) ctaSubtitleEl.textContent = settings.ctaSubtitle;
-
-      const footerAboutEl = document.querySelector('[data-content="footerAbout"]');
-      if (footerAboutEl && settings.footerAbout) footerAboutEl.textContent = settings.footerAbout;
-      const footerEmailEl = document.querySelector('[data-content="footerEmail"]');
-      const emailForPill = settings.footerEmail || "hello@ourhotel.com";
-      if (footerEmailEl && settings.footerEmail) {
-        footerEmailEl.textContent = settings.footerEmail;
-        footerEmailEl.setAttribute("href", `mailto:${settings.footerEmail}`);
-      }
-      // Hero "Reach us" pill mirrors the same footer email — one source
-      // of truth for the address, two places it's shown.
-      const heroEmailText = document.getElementById("heroEmailText");
-      if (heroEmailText) heroEmailText.textContent = emailForPill;
-
-      const footerPhoneEl = document.querySelector('[data-content="footerPhone"]');
-      if (footerPhoneEl && settings.footerPhone) {
-        footerPhoneEl.textContent = settings.footerPhone;
-        footerPhoneEl.setAttribute("href", `tel:${settings.footerPhone}`);
-      }
-    } catch (err) {
-      // /api/settings unreachable — page keeps every fallback already in
-      // the HTML, so nothing looks broken, just generic.
-      console.warn("Could not load site settings, using fallbacks:", err.message);
-    } finally {
-      // Runs whether settings loaded or not — the headline typewriter
-      // always types whatever ended up in #heroTitle (real copy or
-      // fallback), so the animation is never showing placeholder text.
-      startHeroTypewriter();
-    }
+  function toast(msg) {
+    const el = $("toast");
+    el.textContent = msg;
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 2600);
   }
 
-  function copyHeroEmail() {
-    const email = document.getElementById("heroEmailText").textContent;
-    navigator.clipboard.writeText(email).then(() => {
-      const flash = document.getElementById("copyFlash");
-      flash.classList.add("show");
-      setTimeout(() => flash.classList.remove("show"), 1200);
+  /* ---------- preloader ---------- */
+  function initPreloader() {
+    const el = $("preloader");
+    if (!el || reduced) { if (el) el.style.display = "none"; return; }
+    const min = new Promise((r) => setTimeout(r, 800));
+    const load = new Promise((r) => (document.readyState === "complete" ? r() : window.addEventListener("load", r, { once: true })));
+    Promise.race([Promise.all([min, load]), new Promise((r) => setTimeout(r, 2400))]).then(() => {
+      el.classList.add("lifted");
+      setTimeout(() => { el.style.display = "none"; }, 950);
     });
   }
-  window.copyHeroEmail = copyHeroEmail;
 
-  /** Types out #heroTitle's own text one character at a time. Reduced-
-   * motion visitors just see the final text immediately, no cursor. */
-  function startHeroTypewriter() {
-    const el = document.getElementById("heroTitle");
-    const leadEl = document.getElementById("heroSubtitle");
-    if (!el) return;
-    const fullText = el.textContent.trim();
-
-    if (prefersReducedMotion) {
-      el.textContent = fullText;
-      if (leadEl) leadEl.classList.add("in");
-      return;
+  /* ---------- nav ---------- */
+  function initNav() {
+    const toggle = $("navToggle"), links = $("navLinks"), nav = $("siteNav"), progress = $("scrollProgress");
+    toggle.addEventListener("click", () => {
+      const open = links.classList.toggle("open");
+      toggle.classList.toggle("active", open);
+      toggle.setAttribute("aria-expanded", String(open));
+    });
+    links.addEventListener("click", (e) => {
+      if (e.target.tagName === "A") { links.classList.remove("open"); toggle.classList.remove("active"); }
+    });
+    let lastY = window.scrollY, ticking = false;
+    function onScroll() {
+      const y = window.scrollY;
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      progress.style.width = `${h > 0 ? (y / h) * 100 : 0}%`;
+      if (!links.classList.contains("open")) nav.classList.toggle("nav-hidden", y > lastY && y > 160);
+      lastY = y; ticking = false;
     }
+    window.addEventListener("scroll", () => { if (!ticking) { requestAnimationFrame(onScroll); ticking = true; } }, { passive: true });
+  }
 
-    const speed = 32;
-    const startDelay = 500;
+  function initMagnetic() {
+    if (reduced || !finePointer) return;
+    document.querySelectorAll(".magnetic").forEach((el) => {
+      el.addEventListener("mousemove", (e) => {
+        const r = el.getBoundingClientRect();
+        el.style.setProperty("--mx", `${(e.clientX - r.left - r.width / 2) * 0.22}px`);
+        el.style.setProperty("--my", `${(e.clientY - r.top - r.height / 2) * 0.3}px`);
+      });
+      el.addEventListener("mouseleave", () => { el.style.setProperty("--mx", "0px"); el.style.setProperty("--my", "0px"); });
+    });
+  }
+
+  function initHeroMotion() {
+    const bg = $("heroBg");
+    if (!bg || reduced) return;
+    let mx = 0, my = 0;
+    window.addEventListener("mousemove", (e) => { mx = e.clientX / innerWidth - 0.5; my = e.clientY / innerHeight - 0.5; });
+    (function frame(t) {
+      bg.style.transform = `translate3d(${Math.sin(t / 9000) * 10 + mx * 26}px, ${Math.cos(t / 12000) * 6 + my * 18}px, 0) scale(1.08)`;
+      requestAnimationFrame(frame);
+    })(0);
+  }
+
+  /* ---------- reveals ---------- */
+  function observe(nodes, cls = "is-visible", threshold = 0.15) {
+    if (reduced || !("IntersectionObserver" in window)) { nodes.forEach((n) => n.classList.add(cls)); return; }
+    const io = new IntersectionObserver((entries) => entries.forEach((en) => {
+      if (en.isIntersecting) { en.target.classList.add(cls); io.unobserve(en.target); }
+    }), { threshold, rootMargin: "0px 0px -60px 0px" });
+    nodes.forEach((n) => io.observe(n));
+  }
+  function initReveal() { observe([...document.querySelectorAll(".reveal, .reveal-stagger")]); }
+  function initHeadingMasks() {
+    const heads = [...document.querySelectorAll(".section-head h2, .cta-banner h2")];
+    heads.forEach((h) => {
+      h.innerHTML = h.textContent.trim().split(/\s+/)
+        .map((w, i) => `<span class="mask-word" style="--i:${i}"><span class="mask-word-inner">${esc(w)}</span></span>`).join(" ");
+    });
+    observe(heads, "is-visible", 0.4);
+  }
+
+  function revealHero() {
+    ["heroEyebrow", "heroSubtitle", "heroActions", "bookingForm"].forEach((id, i) => {
+      setTimeout(() => $(id).classList.add("in"), reduced ? 0 : 260 + i * 130);
+    });
+    setTimeout(() => $("scrollCue").classList.add("in"), reduced ? 0 : 900);
+  }
+
+  function typewriter() {
+    const el = $("heroTitle");
+    const text = el.textContent.trim();
+    if (reduced) { el.textContent = text; return; }
     el.textContent = "";
     const cursor = document.createElement("span");
     cursor.className = "type-cursor";
     el.after(cursor);
-
+    let i = 0;
     setTimeout(() => {
-      let i = 0;
-      const interval = setInterval(() => {
-        i += 1;
-        el.textContent = fullText.slice(0, i);
-        if (i >= fullText.length) {
-          clearInterval(interval);
-          cursor.classList.add("hidden");
-          if (leadEl) leadEl.classList.add("in");
-        }
-      }, speed);
-    }, startDelay);
+      const t = setInterval(() => {
+        el.textContent = text.slice(0, ++i);
+        if (i >= text.length) { clearInterval(t); cursor.classList.add("hidden"); }
+      }, 30);
+    }, 320);
   }
 
-  /** Pill actions fade in on their own fixed timer — never waits on
-   * the typewriter, so a slow typer doesn't delay the booking CTA. */
-  function revealHeroActions() {
-    setTimeout(() => {
-      const el = document.getElementById("heroActions");
-      if (el) el.classList.add("in");
-    }, prefersReducedMotion ? 0 : 400);
-  }
-
-  /** Slow ambient drift (always on) blended with mouse-reactive
-   * parallax (skipped entirely for reduced-motion visitors) on the
-   * hero background layer. One rAF loop drives both so they never
-   * fight each other or a CSS keyframe running in parallel. */
-  function initHeroMotion() {
-    const bg = document.getElementById("heroBg");
-    if (!bg) return;
-    if (prefersReducedMotion) return; // static background, no loop at all
-
-    let mouseX = 0, mouseY = 0; // -1..1
-    window.addEventListener("mousemove", (e) => {
-      mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
-      mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
-    });
-
-    function frame(t) {
-      const driftX = Math.sin(t / 9000) * 10;
-      const driftY = Math.cos(t / 12000) * 6;
-      const px = driftX + mouseX * 14;
-      const py = driftY + mouseY * 10;
-      bg.style.transform = `translate3d(${px}px, ${py}px, 0) scale(1.08)`;
-      requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-  }
-
-  function initNav() {
-    const toggle = document.getElementById("navToggle");
-    const links = document.getElementById("navLinks");
-    if (toggle && links) {
-      toggle.addEventListener("click", () => {
-        const isOpen = links.classList.toggle("open");
-        toggle.classList.toggle("active", isOpen);
-        toggle.setAttribute("aria-expanded", String(isOpen));
-      });
-    }
-  }
-
-  /** Scroll-triggered reveal for .reveal sections. Skips straight to
-   * visible (no observer needed) if the visitor has reduced motion set —
-   * the global CSS already collapses transition durations for them, this
-   * just avoids leaving content invisible if a browser doesn't honor that. */
-  function initReveal() {
-    const targets = document.querySelectorAll(".reveal");
-    if (!targets.length) return;
-
-    if (prefersReducedMotion || !("IntersectionObserver" in window)) {
-      targets.forEach((el) => el.classList.add("is-visible"));
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-visible");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.15, rootMargin: "0px 0px -60px 0px" }
-    );
-    targets.forEach((el) => observer.observe(el));
-  }
-
-  /** Live "Our Locations" section, fed by the real GET /api/branches. */
-  async function loadBranches() {
-    const grid = document.getElementById("branchGrid");
-    if (!grid) return;
-
+  /* ---------- site settings (Director-controlled) ---------- */
+  async function hydrateSettings() {
     try {
-      const { branches } = await apiRequest("/branches");
+      const { settings } = await api("/settings");
+      const name = settings.platformName || "Uyeh Hotel";
+      document.title = document.title.replace("Uyeh Hotel", name);
 
-      if (!branches.length) {
-        grid.innerHTML = `<div class="empty-state">No locations published yet — check back soon.</div>`;
-        return;
+      const logo = settings.logoUrl ? `<img class="brand-logo" src="${esc(settings.logoUrl)}" alt="${esc(name)}">` : null;
+      const navBrand = $("navBrand");
+      if (logo) navBrand.innerHTML = logo; else navBrand.textContent = name;
+
+      if (settings.heroImageUrl) document.documentElement.style.setProperty("--hero-image", `url("${settings.heroImageUrl}")`);
+      if (settings.brand) {
+        const b = settings.brand;
+        if (b.primaryColor) document.documentElement.style.setProperty("--ink", b.primaryColor);
+        if (b.secondaryColor) document.documentElement.style.setProperty("--brass", b.secondaryColor);
+        if (b.accentColor) document.documentElement.style.setProperty("--teal", b.accentColor);
       }
+      if (settings.seo) {
+        if (settings.seo.metaTitle) { document.title = settings.seo.metaTitle; $("ogTitle").content = settings.seo.metaTitle; $("twTitle").content = settings.seo.metaTitle; }
+        if (settings.seo.metaDescription) { $("pageDescription").content = settings.seo.metaDescription; $("ogDesc").content = settings.seo.metaDescription; $("twDesc").content = settings.seo.metaDescription; }
+        if (settings.seo.ogImageUrl) {
+          [["property", "og:image"], ["name", "twitter:image"]].forEach(([attr, val]) => {
+            let tag = document.querySelector(`meta[${attr}="${val}"]`);
+            if (!tag) { tag = document.createElement("meta"); tag.setAttribute(attr, val); document.head.appendChild(tag); }
+            tag.setAttribute("content", settings.seo.ogImageUrl);
+          });
+        }
+      }
+      if (settings.headline) $("heroTitle").textContent = settings.headline;
+      if (settings.subheadline) $("heroSubtitle").textContent = settings.subheadline;
+      const set = (sel, val) => { const el = document.querySelector(sel); if (el && val) el.textContent = val; };
+      set('[data-content="ctaTitle"]', settings.ctaTitle);
+      set('[data-content="ctaSubtitle"]', settings.ctaSubtitle);
 
-      grid.innerHTML = branches.map((b) => `
-        <div class="branch-card">
-          <div class="branch-card-top"><span class="city-tag">${b.city}${b.state ? `, ${b.state}` : ""}</span></div>
-          <div class="branch-card-body">
-            <h3>${b.name}</h3>
-            <p class="addr">${b.address || ""}</p>
-            <div class="branch-services">${(b.services || []).map((s) => `<span>${s}</span>`).join("")}</div>
-            <a href="location.html?branch=${b.slug || b.id}" class="btn btn-dark" style="width:100%;">View rooms &amp; book</a>
-          </div>
-        </div>
-      `).join("");
+      const email = settings.footerEmail || "hello@ourhotel.com";
+      $("heroEmailText").textContent = email;
+
+      const ld = JSON.parse($("ldJson").textContent);
+      ld.name = name; ld.email = email;
+      if (settings.footerPhone) ld.telephone = settings.footerPhone;
+      $("ldJson").textContent = JSON.stringify(ld);
+    } catch (err) {
+      console.warn("Site settings unavailable, using page defaults:", err.message);
+    } finally {
+      typewriter();
+      initHeadingMasks();
+    }
+  }
+
+  /* ---------- branches ---------- */
+  let BRANCHES = [];
+  let activeService = "";
+
+  function branchCard(b, i) {
+    const services = (b.services || []).map((s) => `<span>${esc(s)}</span>`).join("");
+    return `<article class="branch-card" style="--d:${i * 80}ms">
+      <div class="branch-card-top"${b.heroImageUrl ? ` style="background-image:linear-gradient(rgba(13,16,21,.35),rgba(13,16,21,.85)),url('${esc(b.heroImageUrl)}');background-size:cover;background-position:center;"` : ""}>
+        <span class="city-tag">${esc(b.city || "")}${b.state ? `, ${esc(b.state)}` : ""}</span>
+      </div>
+      <div class="branch-card-body">
+        <h3>${esc(b.name)}</h3>
+        <p class="addr">${esc(b.address || "")}</p>
+        <div class="branch-services">${services}</div>
+        <a href="location.html?branch=${esc(b.slug || b.id)}" class="btn btn-dark" style="width:100%;">View rooms &amp; book</a>
+      </div>
+    </article>`;
+  }
+
+  function renderBranches() {
+    const grid = $("branchGrid");
+    const term = ($("branchSearch").value || "").trim().toLowerCase();
+    const list = BRANCHES.filter((b) => {
+      const hay = `${b.name || ""} ${b.city || ""} ${b.state || ""} ${b.address || ""}`.toLowerCase();
+      const okTerm = !term || hay.includes(term);
+      const okSvc = !activeService || (b.services || []).some((s) => String(s).toLowerCase() === activeService);
+      return okTerm && okSvc;
+    });
+    grid.innerHTML = list.length
+      ? list.map(branchCard).join("")
+      : `<div class="empty-state">No location matches that search.</div>`;
+  }
+
+  function renderChips() {
+    const services = [...new Set(BRANCHES.flatMap((b) => (b.services || []).map((s) => String(s).toLowerCase())))].slice(0, 6);
+    $("serviceChips").innerHTML = [`<button type="button" class="chip active" data-svc="">All</button>`]
+      .concat(services.map((s) => `<button type="button" class="chip" data-svc="${esc(s)}">${esc(s)}</button>`)).join("");
+    $("serviceChips").querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => {
+      activeService = c.dataset.svc;
+      $("serviceChips").querySelectorAll(".chip").forEach((x) => x.classList.toggle("active", x === c));
+      renderBranches();
+    }));
+  }
+
+  async function loadBranches() {
+    const grid = $("branchGrid");
+    try {
+      const data = await api("/branches");
+      BRANCHES = data.branches || data || [];
+      if (!BRANCHES.length) { grid.innerHTML = `<div class="empty-state">No locations published yet — check back soon.</div>`; return; }
+      renderChips();
+      renderBranches();
+      $("statBranches").textContent = BRANCHES.length;
+      $("statCities").textContent = new Set(BRANCHES.map((b) => b.city).filter(Boolean)).size || "—";
+      $("bkBranch").innerHTML = `<option value="">Any location</option>` +
+        BRANCHES.map((b) => `<option value="${esc(b.slug || b.id)}">${esc(b.name)}${b.city ? ` — ${esc(b.city)}` : ""}</option>`).join("");
+      loadFeaturedRooms(BRANCHES[0]);
+      loadReviews(BRANCHES);
     } catch (err) {
       grid.innerHTML = `<div class="empty-state">Couldn't load our locations right now — please try again shortly.</div>`;
+      $("bkBranch").innerHTML = `<option value="">Locations unavailable</option>`;
     }
   }
 
-  async function submitNewsletterSignup(e) {
-    e.preventDefault();
-    const btn = document.getElementById("newsletterSubmitBtn");
-    const note = document.getElementById("newsletterNote");
-    const email = document.getElementById("newsletterEmail").value;
-    btn.disabled = true;
+  /* Optional: a few real rooms from the first branch. Section stays
+     hidden if the endpoint isn't available or returns nothing. */
+  async function loadFeaturedRooms(branch) {
+    if (!branch) return;
     try {
-      const { message } = await apiRequest("/newsletter/subscribe", { method: "POST", body: JSON.stringify({ email }) });
-      note.textContent = message;
-      document.getElementById("newsletterEmail").value = "";
+      const data = await api(`/branches/${encodeURIComponent(branch.slug || branch.id)}/rooms`);
+      const rooms = (data.rooms || data || []).slice(0, 4);
+      if (!rooms.length) return;
+      $("roomStrip").innerHTML = rooms.map((r) => `
+        <article class="room-card">
+          <h4>${esc(r.name || r.type || "Room")}</h4>
+          <div class="room-price">${r.price != null ? fmtMoney(r.price, r.currency) : "On request"}<span class="room-meta"> / night</span></div>
+          <p class="room-meta">${esc(branch.name)}${r.capacity ? ` · sleeps ${esc(r.capacity)}` : ""}</p>
+          <a class="btn btn-dark" href="location.html?branch=${esc(branch.slug || branch.id)}">Check dates</a>
+        </article>`).join("");
+      const sec = $("rooms");
+      sec.style.display = "";
+      observe([sec]);
+    } catch { /* endpoint not available — leave the section hidden */ }
+  }
+
+  /* ---------- guest reviews ---------- */
+  function starString(n) {
+    const full = Math.round(n);
+    return "★".repeat(full) + "☆".repeat(5 - full);
+  }
+
+  function reviewCard(r) {
+    const name = (r.guest && r.guest.name) ? r.guest.name.split(" ")[0] : "Guest";
+    return `<article class="review-card">
+      <div class="review-stars">${starString(r.ratingValue)}</div>
+      ${r.title ? `<h4>${esc(r.title)}</h4>` : ""}
+      ${r.body ? `<p class="review-body">${esc(r.body)}</p>` : ""}
+      <p class="review-meta">${esc(name)}${r.branchName ? ` · ${esc(r.branchName)}` : ""}</p>
+    </article>`;
+  }
+
+  /* Pulls published reviews from a handful of branches and merges them —
+     there's no site-wide reviews endpoint, only per-branch. Silently
+     leaves the section hidden if nothing comes back. */
+  async function loadReviews(branches) {
+    const sample = branches.slice(0, 4);
+    try {
+      const lists = await Promise.all(sample.map((b) =>
+        api(`/branches/${encodeURIComponent(b.slug || b.id)}/reviews`)
+          .then((d) => (d.reviews || []).map((r) => ({ ...r, branchName: b.name })))
+          .catch(() => [])
+      ));
+      const reviews = lists.flat();
+      if (!reviews.length) return;
+
+      const avg = reviews.reduce((s, r) => s + r.ratingValue, 0) / reviews.length;
+      $("ratingSummary").innerHTML = `
+        <div class="rating-num">${avg.toFixed(1)}</div>
+        <div>
+          <div class="review-stars">${starString(avg)}</div>
+          <div class="room-meta">${reviews.length} verified stay${reviews.length === 1 ? "" : "s"}</div>
+        </div>`;
+
+      reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      $("reviewGrid").innerHTML = reviews.slice(0, 6).map(reviewCard).join("");
+
+      const sec = $("reviews");
+      sec.style.display = "";
+      observe([sec]);
+
+      const ld = JSON.parse($("ldJson").textContent);
+      ld.aggregateRating = { "@type": "AggregateRating", ratingValue: avg.toFixed(1), reviewCount: String(reviews.length) };
+      $("ldJson").textContent = JSON.stringify(ld);
+    } catch { /* reviews unavailable — leave the section hidden */ }
+  }
+
+  /* ---------- inline availability check ---------- */
+  // Cards render from GET /branches/:branchId/type-availability, the one
+  // availability endpoint that isn't broken server-side right now — see
+  // server-availability-patch.md. "Book this room" still hands off to
+  // location.html to actually pay; only the *checking* happens inline now.
+  function availCard(t, checkInVal, checkOutVal, guestsVal, branchSlug) {
+    const sellable = Number(t.sellable) || 0;
+    const soldOut = sellable <= 0;
+    const img = Array.isArray(t.images) && t.images[0] ? t.images[0] : null;
+    const bookParams = new URLSearchParams({
+      branch: branchSlug, roomType: t.roomTypeId,
+      checkIn: checkInVal, checkOut: checkOutVal, guests: guestsVal,
+    });
+    const meta = [t.bedConfiguration, t.maxOccupancy ? `sleeps ${t.maxOccupancy}` : null].filter(Boolean).join(" · ");
+    return `<article class="avail-card${soldOut ? " avail-sold-out" : ""}">
+      <div class="avail-card-img"${img ? ` style="background-image:url('${esc(img)}');"` : ""}></div>
+      <div class="avail-card-body">
+        <h4>${esc(t.name)}</h4>
+        ${meta ? `<p class="room-meta">${esc(meta)}</p>` : ""}
+        <div class="room-price">${t.basePrice != null ? fmtMoney(t.basePrice, t.currency) : "On request"}<span class="room-meta"> / night</span></div>
+        <p class="room-meta">${soldOut ? "Fully booked for these dates" : `${sellable} room${sellable === 1 ? "" : "s"} left for these dates`}</p>
+        ${soldOut
+          ? `<button type="button" class="btn btn-dark" disabled>Sold out</button>`
+          : `<a class="btn btn-primary" href="location.html?${bookParams.toString()}">Book this room</a>`}
+      </div>
+    </article>`;
+  }
+
+  async function checkAvailabilityInline(branchSlug, checkInVal, checkOutVal, guestsVal) {
+    const box = $("availResults");
+    box.hidden = false;
+    box.innerHTML = `<div class="avail-skel"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>`;
+    box.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
+    try {
+      const data = await api(`/branches/${encodeURIComponent(branchSlug)}/type-availability?checkIn=${encodeURIComponent(checkInVal)}&checkOut=${encodeURIComponent(checkOutVal)}`);
+      const guestsNum = parseInt(guestsVal, 10) || 1;
+      const all = data.types || [];
+      const types = all.filter((t) => !t.maxOccupancy || t.maxOccupancy >= guestsNum);
+      if (!all.length) {
+        box.innerHTML = `<div class="empty-state">This location doesn't have any rooms set up yet — try another branch.</div>`;
+        return;
+      }
+      if (!types.length) {
+        box.innerHTML = `<div class="empty-state">No rooms here sleep ${esc(String(guestsNum))}+ guests for those dates. Try another location, fewer guests, or different dates.</div>`;
+        return;
+      }
+      types.sort((a, b) => (Number(b.sellable) > 0) - (Number(a.sellable) > 0) || Number(a.basePrice) - Number(b.basePrice));
+      box.innerHTML = `<div class="avail-grid">${types.map((t) => availCard(t, checkInVal, checkOutVal, guestsVal, branchSlug)).join("")}</div>`;
     } catch (err) {
-      note.textContent = err.message;
-    } finally {
-      btn.disabled = false;
+      console.error("Availability check failed:", err);
+      box.innerHTML = `<div class="empty-state">Couldn't check availability right now — ${esc(err.message)}. Please try again.</div>`;
     }
+  }
+
+  /* ---------- booking search ---------- */
+  function initBookingForm() {
+    const today = new Date();
+    const iso = (d) => d.toISOString().slice(0, 10);
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+    const inEl = $("bkIn"), outEl = $("bkOut");
+    inEl.min = iso(today); inEl.value = iso(today);
+    outEl.min = iso(tomorrow); outEl.value = iso(tomorrow);
+    inEl.addEventListener("change", () => {
+      const next = new Date(inEl.value); next.setDate(next.getDate() + 1);
+      outEl.min = iso(next);
+      if (outEl.value <= inEl.value) outEl.value = iso(next);
+    });
+
+    $("bookingForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const branch = $("bkBranch").value;
+      if (!branch) {
+        toast("Pick a location to continue — availability is checked per branch.");
+        document.getElementById("locations").scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
+        return;
+      }
+      checkAvailabilityInline(branch, inEl.value, outEl.value, $("bkGuests").value);
+    });
+  }
+
+  /* ---------- faq ---------- */
+  const FAQ = [
+    ["Do I need an account to book?", "No. You can check out as a guest with just your name, email and phone. Creating an account simply saves your details and past bookings for next time."],
+    ["How do I pay?", "By card or bank transfer, through a trusted global payment processor — checkout shows whichever methods work for your card and currency. Payment is confirmed before the room is held, so your booking is never in limbo."],
+    ["Is the availability I see real?", "Yes. Rooms are checked against live data and double-bookings are rejected at the database level, so what you see is genuinely open."],
+    ["Can I book dining, spa or an event without staying?", "Where a branch offers them, yes — each location page lists exactly what's bookable there."],
+    ["What if I need to change or cancel?", "Contact the branch directly from its location page. Their team handles the change; there's no third party in between."],
+  ];
+  function initFaq() {
+    $("faqList").innerHTML = FAQ.map(([q, a]) => `
+      <div class="faq-item">
+        <button type="button" class="faq-q" aria-expanded="false">${esc(q)}<span>+</span></button>
+        <div class="faq-a"><p>${esc(a)}</p></div>
+      </div>`).join("");
+    $("faqList").querySelectorAll(".faq-q").forEach((btn) => btn.addEventListener("click", () => {
+      const item = btn.parentElement;
+      const open = item.classList.toggle("open");
+      btn.setAttribute("aria-expanded", String(open));
+      const panel = item.querySelector(".faq-a");
+      panel.style.maxHeight = open ? `${panel.scrollHeight}px` : "0px";
+    }));
+    const ld = document.createElement("script");
+    ld.type = "application/ld+json";
+    ld.textContent = JSON.stringify({
+      "@context": "https://schema.org", "@type": "FAQPage",
+      mainEntity: FAQ.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+    });
+    document.head.appendChild(ld);
+  }
+
+  /* ---------- misc ---------- */
+  function initEmailCopy() {
+    $("heroEmailPill").addEventListener("click", () => {
+      const email = $("heroEmailText").textContent;
+      navigator.clipboard?.writeText(email).then(() => {
+        const flash = $("copyFlash");
+        flash.classList.add("show");
+        setTimeout(() => flash.classList.remove("show"), 1200);
+      }).catch(() => { window.location.href = `mailto:${email}`; });
+    });
+  }
+
+
+  /* ---------- sticky mobile CTA ---------- */
+  function initStickyCta() {
+    const bar = $("stickyCta"), bookEl = $("book");
+    if (!bar || !bookEl || !("IntersectionObserver" in window)) return;
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => bar.classList.toggle("show", !en.isIntersecting && window.scrollY > 200));
+    }, { threshold: 0 });
+    io.observe(bookEl);
+  }
+
+  /* ---------- cookie notice ---------- */
+  function initCookieConsent() {
+    const banner = $("cookieBanner");
+    if (!banner || localStorage.getItem("cookieConsent") === "1") return;
+    setTimeout(() => banner.classList.add("show"), 1200);
+    $("cookieAccept").addEventListener("click", () => {
+      localStorage.setItem("cookieConsent", "1");
+      banner.classList.remove("show");
+    });
   }
 
   document.addEventListener("DOMContentLoaded", () => {
+    initPreloader();
     initNav();
-    initReveal();
+    initMagnetic();
     initHeroMotion();
-    revealHeroActions();
-    hydrateSiteSettings(); // also kicks off the headline typewriter when it resolves
+    initReveal();
+    revealHero();
+    initBookingForm();
+    initFaq();
+    initEmailCopy();
+    initStickyCta();
+    initCookieConsent();
+    hydrateSettings();
     loadBranches();
-    document.getElementById("newsletterForm").addEventListener("submit", submitNewsletterSignup);
-    document.getElementById("year").textContent = new Date().getFullYear();
+    $("branchSearch").addEventListener("input", renderBranches);
   });
 })();
 </script>
- <script src="/chat-widget.js"></script>
+<script src="/chat-widget.js"></script>
 </body>
 </html>

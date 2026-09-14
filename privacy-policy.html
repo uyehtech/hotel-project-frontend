@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — Uyeh Hotel</title>
+<meta name="description" content="How Our Hotel collects, uses, and protects your personal information.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#14181f">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#14181f; --ink-soft:#1c222b; --ink-deep:#0d1015;
+  --ivory:#f6f1e7; --ivory-dim:#ede5d4;
+  --brass:#b98d45; --brass-light:#d9b876;
+  --teal:#2f5d5a; --teal-light:#3f7a76;
+  --text-muted:#6b6355; --text-on-ink:#ede6d6;
+  --line-on-ink:rgba(237,230,214,0.16);
+  --radius:3px;
+  --font-display:'Fraunces',Georgia,serif;
+  --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --ease-in-out:cubic-bezier(0.87,0,0.13,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{font-family:var(--font-body);background:var(--ivory);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}#preloader{display:none!important}}
+h1,h2,h3{font-family:var(--font-display);font-weight:500;line-height:1.15;letter-spacing:-0.01em}
+a{color:var(--teal);text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+button{font:inherit;color:inherit}
+
+#preloader{position:fixed;inset:0;z-index:999;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:transform .9s var(--ease-in-out)}
+#preloader.lifted{transform:translateY(-101%)}
+.preloader-mark{font-family:var(--font-display);font-size:1.5rem;letter-spacing:.04em;color:var(--ivory)}
+.preloader-mark span{color:var(--brass)}
+.preloader-bar{width:150px;height:1px;background:var(--line-on-ink);position:relative;overflow:hidden}
+.preloader-bar::after{content:"";position:absolute;inset:0;background:var(--brass);transform:translateX(-100%);animation:slide 1.3s var(--ease-in-out) infinite}
+@keyframes slide{to{transform:translateX(100%)}}
+.site-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(20,24,31,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line-on-ink)}
+.site-nav .wrap{display:flex;align-items:center;justify-content:space-between;height:72px;gap:20px}
+.brand{font-family:var(--font-display);font-size:1.22rem;letter-spacing:.02em;color:var(--ivory);text-decoration:none}
+.brand-logo{height:30px;width:auto}
+.nav-links{display:flex;align-items:center;gap:22px;font-size:.88rem}
+.nav-links a{color:rgba(237,230,214,.78);text-decoration:none}
+.nav-links a:hover{color:var(--ivory)}
+.nav-toggle{display:none;background:none;border:0;cursor:pointer;padding:8px;flex-direction:column;gap:5px}
+.nav-toggle .bar{display:block;width:22px;height:1.5px;background:var(--ivory)}
+@media(max-width:900px){
+  .nav-toggle{display:flex}
+  .nav-links{position:absolute;top:72px;left:0;right:0;flex-direction:column;align-items:flex-start;gap:0;background:var(--ink-soft);border-bottom:1px solid var(--line-on-ink);max-height:0;overflow:hidden;transition:max-height .4s var(--ease-out)}
+  .nav-links.open{max-height:420px}
+  .nav-links a{padding:15px 28px;width:100%;border-bottom:1px solid rgba(237,230,214,.07)}
+}
+
+.legal-header{background:var(--ink);color:var(--text-on-ink);padding:140px 0 60px}
+.legal-header .eyebrow{font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brass-light);margin-bottom:14px}
+.legal-header h1{font-size:clamp(1.9rem,3.8vw,2.8rem);margin-bottom:12px}
+.legal-header .updated{font-size:.86rem;color:rgba(237,230,214,.55)}
+
+.legal-layout{display:grid;grid-template-columns:240px 1fr;gap:60px;padding:56px 0 100px;align-items:start}
+@media(max-width:860px){.legal-layout{grid-template-columns:1fr}}
+.toc{position:sticky;top:96px;font-size:.86rem}
+.toc h4{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px}
+.toc a{display:block;padding:7px 0;color:var(--text-muted);text-decoration:none;border-left:2px solid transparent;padding-left:12px;margin-left:-13px}
+.toc a:hover,.toc a.active{color:var(--ink);border-left-color:var(--brass)}
+
+.legal-content{max-width:74ch}
+.legal-content h2{font-size:1.35rem;margin:44px 0 14px;scroll-margin-top:96px}
+.legal-content h2:first-child{margin-top:0}
+.legal-content h3{font-size:1.05rem;margin:24px 0 10px}
+.legal-content p{margin-bottom:14px;color:var(--ink-soft)}
+.legal-content ul,.legal-content ol{margin:0 0 14px 22px;color:var(--ink-soft)}
+.legal-content li{margin-bottom:6px}
+.legal-content table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.92rem}
+.legal-content th,.legal-content td{text-align:left;padding:10px 12px;border-bottom:1px solid rgba(107,99,85,.16)}
+.legal-content th{color:var(--text-muted);font-size:.76rem;letter-spacing:.06em;text-transform:uppercase}
+.callout{background:rgba(47,93,90,.06);border:1px solid rgba(47,93,90,.18);border-radius:var(--radius);padding:18px 20px;margin:20px 0;font-size:.92rem}
+.callout strong{color:var(--teal)}
+
+footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-align:center;font-size:.8rem}
+</style>
+</head>
+<body>
+
+<div id="preloader" aria-hidden="true">
+  <div class="preloader-mark">Uyeh Hotel<span>.</span></div>
+  <div class="preloader-bar"></div>
+</div>
+
+<nav class="site-nav" id="siteNav">
+  <div class="wrap">
+    <a href="index.html" class="brand" id="navBrand">Uyeh Hotel</a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="faqs.html">FAQs</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </button>
+  </div>
+</nav>
+
+<header class="legal-header">
+  <div class="wrap">
+    <p class="eyebrow">Legal</p>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last updated: <span id="lastUpdated">September 2026</span></p>
+  </div>
+</header>
+
+<div class="wrap legal-layout">
+  <nav class="toc" aria-label="On this page">
+    <h4>On this page</h4>
+    <a href="#overview">Overview</a>
+    <a href="#what-we-collect">What we collect</a>
+    <a href="#how-we-use-it">How we use it</a>
+    <a href="#who-we-share-it-with">Who we share it with</a>
+    <a href="#payments">Payments</a>
+    <a href="#cookies-and-storage">Cookies &amp; local storage</a>
+    <a href="#data-retention">Data retention</a>
+    <a href="#your-rights">Your rights</a>
+    <a href="#international-transfers">International transfers</a>
+    <a href="#childrens-privacy">Children's privacy</a>
+    <a href="#changes">Changes to this policy</a>
+    <a href="#contact">Contact us</a>
+  </nav>
+
+  <div class="legal-content">
+    <h2 id="overview">Overview</h2>
+    <p>This policy explains what personal information <strong id="companyName">Uyeh Hotel</strong> ("we," "us," "our") collects when you use our website, check availability, make a booking, contact us, or open a support ticket — across any of our locations, worldwide — and how that information is used, shared, and protected.</p>
+    <p>We are a hospitality booking platform operating multiple branches. Some data is collected and controlled centrally by us; some (like the details of your stay) is used directly by the specific branch you're booking with, since that branch fulfills your reservation.</p>
+
+    <h2 id="what-we-collect">What we collect</h2>
+    <table>
+      <tr><th>Category</th><th>Examples</th><th>When</th></tr>
+      <tr><td>Contact details</td><td>Name, email, phone number</td><td>Booking, contact form, support ticket, newsletter signup</td></tr>
+      <tr><td>Stay details</td><td>Check-in/out dates, room type, guest count, special requests</td><td>Making a booking</td></tr>
+      <tr><td>Account details</td><td>Email, password (hashed), booking history</td><td>If you create a guest account</td></tr>
+      <tr><td>Payment information</td><td>Amount charged, transaction reference, payment status</td><td>Completing a booking</td></tr>
+      <tr><td>Communications</td><td>Messages you send us, support ticket contents, blog comments</td><td>When you contact us or interact with our blog</td></tr>
+      <tr><td>Technical data</td><td>IP address, browser type, device type</td><td>Automatically, when you visit our site</td></tr>
+    </table>
+    <p>We do not collect government ID numbers, payment card numbers, or bank account details directly — those are handled entirely by our payment processors (see "Payments" below).</p>
+
+    <h2 id="how-we-use-it">How we use it</h2>
+    <ul>
+      <li>To create and manage your booking, and communicate with you about it (confirmations, changes, receipts)</li>
+      <li>To respond to contact form messages and support tickets</li>
+      <li>To send booking-related transactional emails (confirmations, payment receipts, newsletter confirmation)</li>
+      <li>To send marketing emails only if you've opted in (e.g. the newsletter), with an unsubscribe option in every email</li>
+      <li>To improve our website and services</li>
+      <li>To detect and prevent fraud or abuse</li>
+      <li>To comply with legal obligations (e.g. financial record-keeping)</li>
+    </ul>
+
+    <h2 id="who-we-share-it-with">Who we share it with</h2>
+    <p>We don't sell your personal information. We share it only where necessary:</p>
+    <ul>
+      <li><strong>The specific branch you book with</strong> — to prepare for and fulfill your stay</li>
+      <li><strong>Payment processors</strong> (Paystack, Stripe) — to process your payment; see below</li>
+      <li><strong>Email delivery providers</strong> — to send booking confirmations and other transactional emails</li>
+      <li><strong>Service providers</strong> who help us run the platform (hosting, database, and similar infrastructure providers), under confidentiality obligations</li>
+      <li><strong>Law enforcement or regulators</strong>, only where legally required</li>
+    </ul>
+
+    <h2 id="payments">Payments</h2>
+    <p>Payments are processed by Paystack and/or Stripe, depending on your currency and location. When you pay, your card or bank details go directly to the relevant processor — we never see or store your full card number. We do store the outcome of the transaction (amount, currency, status, and a reference number) so we can confirm and reconcile your booking.</p>
+    <div class="callout"><strong>Note:</strong> Paystack and Stripe are independent companies with their own privacy policies governing how they handle your payment details. We encourage you to review theirs as well.</div>
+
+    <h2 id="cookies-and-storage">Cookies &amp; local storage</h2>
+    <p>See our full <a href="cookie-policy.html">Cookie Policy</a> for details. In short: we currently rely mainly on your browser's local storage (not traditional tracking cookies) to keep you logged into a guest account and to remember that you've seen our cookie notice. If we introduce analytics or advertising cookies in future, we'll update this policy and that page accordingly.</p>
+
+    <h2 id="data-retention">Data retention</h2>
+    <p>We keep booking records for as long as reasonably necessary for accounting, legal, and dispute-resolution purposes, generally in line with applicable tax and financial record-keeping laws in the country where the relevant branch operates. Support tickets and blog comments are retained while your account or the related content remains active. You can ask us to delete your data at any time — see "Your rights" below; some information may still be retained where we have a legal obligation to keep it.</p>
+
+    <h2 id="your-rights">Your rights</h2>
+    <p>Depending on where you live, you may have rights to:</p>
+    <ul>
+      <li>Access the personal information we hold about you</li>
+      <li>Correct inaccurate information</li>
+      <li>Request deletion of your information</li>
+      <li>Object to or restrict certain processing</li>
+      <li>Request a copy of your data in a portable format</li>
+      <li>Withdraw consent for marketing communications at any time</li>
+    </ul>
+    <p>This includes rights under the EU/UK General Data Protection Regulation (GDPR), Nigeria's Data Protection Act/NDPR, and similar frameworks elsewhere. To exercise any of these, contact us using the details below.</p>
+
+    <h2 id="international-transfers">International transfers</h2>
+    <p>Because we operate across multiple countries, your information may be processed in a country other than the one you're booking from — including where our hosting and payment providers are based. Where required, we rely on appropriate legal safeguards (such as standard contractual clauses) for these transfers.</p>
+
+    <h2 id="childrens-privacy">Children's privacy</h2>
+    <p>Our services are not directed at children, and bookings must be made by an adult. We do not knowingly collect personal information from children. If you believe a child has provided us with personal information, please contact us and we'll remove it.</p>
+
+    <h2 id="changes">Changes to this policy</h2>
+    <p>We may update this policy from time to time. We'll change the "last updated" date above when we do, and for material changes we'll take reasonable steps to make that clear on this page.</p>
+
+    <h2 id="contact">Contact us</h2>
+    <p>For any privacy question or to exercise your rights, reach us via our <a href="contact.html">Contact page</a> or at the email address listed there.</p>
+  </div>
+</div>
+
+<footer>&copy; <span id="year"></span> <span id="footerName">Uyeh Hotel</span>. All rights reserved.</footer>
+
+<script>
+(function () {
+  "use strict";
+  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const $ = (id) => document.getElementById(id);
+
+  const el = $("preloader");
+  setTimeout(() => { el.classList.add("lifted"); setTimeout(() => { el.style.display = "none"; }, 950); }, 500);
+
+  $("navToggle").addEventListener("click", () => {
+    const open = $("navLinks").classList.toggle("open");
+    $("navToggle").setAttribute("aria-expanded", String(open));
+  });
+
+  $("year").textContent = new Date().getFullYear();
+
+  fetch(`${API_BASE}/settings`).then((r) => r.json()).then(({ settings }) => {
+    const name = settings.platformName || "Uyeh Hotel";
+    document.title = document.title.replace("Uyeh Hotel", name);
+    $("navBrand").textContent = name;
+    $("footerName").textContent = name;
+    $("companyName").textContent = name;
+  }).catch(() => {});
+
+  // Highlight the active section in the table of contents as you scroll.
+  const sections = [...document.querySelectorAll(".legal-content h2[id]")];
+  const links = [...document.querySelectorAll(".toc a")];
+  if ("IntersectionObserver" in window && sections.length) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting) {
+          links.forEach((l) => l.classList.toggle("active", l.getAttribute("href") === `#${en.target.id}`));
+        }
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    sections.forEach((s) => io.observe(s));
+  }
+})();
+</script>
+</body>
+</html>

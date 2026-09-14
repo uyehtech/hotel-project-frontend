@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service — Uyeh Hotel</title>
+<meta name="description" content="The terms that apply when you book a room or service with Our Hotel.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#14181f">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#14181f; --ink-soft:#1c222b; --ink-deep:#0d1015;
+  --ivory:#f6f1e7; --ivory-dim:#ede5d4;
+  --brass:#b98d45; --brass-light:#d9b876;
+  --teal:#2f5d5a; --teal-light:#3f7a76;
+  --text-muted:#6b6355; --text-on-ink:#ede6d6;
+  --line-on-ink:rgba(237,230,214,0.16);
+  --radius:3px;
+  --font-display:'Fraunces',Georgia,serif;
+  --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --ease-in-out:cubic-bezier(0.87,0,0.13,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{font-family:var(--font-body);background:var(--ivory);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}#preloader{display:none!important}}
+h1,h2,h3{font-family:var(--font-display);font-weight:500;line-height:1.15;letter-spacing:-0.01em}
+a{color:var(--teal);text-decoration:underline}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+button{font:inherit;color:inherit}
+
+#preloader{position:fixed;inset:0;z-index:999;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:transform .9s var(--ease-in-out)}
+#preloader.lifted{transform:translateY(-101%)}
+.preloader-mark{font-family:var(--font-display);font-size:1.5rem;letter-spacing:.04em;color:var(--ivory)}
+.preloader-mark span{color:var(--brass)}
+.preloader-bar{width:150px;height:1px;background:var(--line-on-ink);position:relative;overflow:hidden}
+.preloader-bar::after{content:"";position:absolute;inset:0;background:var(--brass);transform:translateX(-100%);animation:slide 1.3s var(--ease-in-out) infinite}
+@keyframes slide{to{transform:translateX(100%)}}
+.site-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(20,24,31,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line-on-ink)}
+.site-nav .wrap{display:flex;align-items:center;justify-content:space-between;height:72px;gap:20px}
+.brand{font-family:var(--font-display);font-size:1.22rem;letter-spacing:.02em;color:var(--ivory);text-decoration:none}
+.brand-logo{height:30px;width:auto}
+.nav-links{display:flex;align-items:center;gap:22px;font-size:.88rem}
+.nav-links a{color:rgba(237,230,214,.78);text-decoration:none}
+.nav-links a:hover{color:var(--ivory)}
+.nav-toggle{display:none;background:none;border:0;cursor:pointer;padding:8px;flex-direction:column;gap:5px}
+.nav-toggle .bar{display:block;width:22px;height:1.5px;background:var(--ivory)}
+@media(max-width:900px){
+  .nav-toggle{display:flex}
+  .nav-links{position:absolute;top:72px;left:0;right:0;flex-direction:column;align-items:flex-start;gap:0;background:var(--ink-soft);border-bottom:1px solid var(--line-on-ink);max-height:0;overflow:hidden;transition:max-height .4s var(--ease-out)}
+  .nav-links.open{max-height:420px}
+  .nav-links a{padding:15px 28px;width:100%;border-bottom:1px solid rgba(237,230,214,.07)}
+}
+
+.legal-header{background:var(--ink);color:var(--text-on-ink);padding:140px 0 60px}
+.legal-header .eyebrow{font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brass-light);margin-bottom:14px}
+.legal-header h1{font-size:clamp(1.9rem,3.8vw,2.8rem);margin-bottom:12px}
+.legal-header .updated{font-size:.86rem;color:rgba(237,230,214,.55)}
+.legal-header p.dek{max-width:60ch;color:rgba(237,230,214,.7);margin-top:10px}
+
+.legal-layout{display:grid;grid-template-columns:240px 1fr;gap:60px;padding:56px 0 100px;align-items:start}
+@media(max-width:860px){.legal-layout{grid-template-columns:1fr}}
+.toc{position:sticky;top:96px;font-size:.86rem}
+.toc h4{font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:14px}
+.toc a{display:block;padding:7px 0;color:var(--text-muted);text-decoration:none;border-left:2px solid transparent;padding-left:12px;margin-left:-13px}
+.toc a:hover,.toc a.active{color:var(--ink);border-left-color:var(--brass)}
+
+.legal-content{max-width:74ch}
+.legal-content h2{font-size:1.35rem;margin:44px 0 14px;scroll-margin-top:96px}
+.legal-content h2:first-child{margin-top:0}
+.legal-content h3{font-size:1.05rem;margin:24px 0 10px}
+.legal-content p{margin-bottom:14px;color:var(--ink-soft)}
+.legal-content ul,.legal-content ol{margin:0 0 14px 22px;color:var(--ink-soft)}
+.legal-content li{margin-bottom:6px}
+.callout{background:rgba(47,93,90,.06);border:1px solid rgba(47,93,90,.18);border-radius:var(--radius);padding:18px 20px;margin:20px 0;font-size:.92rem}
+.callout strong{color:var(--teal)}
+.callout.warn{background:rgba(185,60,45,.06);border-color:rgba(185,60,45,.2)}
+.callout.warn strong{color:#a3392a}
+
+footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-align:center;font-size:.8rem}
+</style>
+</head>
+<body>
+
+<div id="preloader" aria-hidden="true">
+  <div class="preloader-mark">Uyeh Hotel<span>.</span></div>
+  <div class="preloader-bar"></div>
+</div>
+
+<nav class="site-nav" id="siteNav">
+  <div class="wrap">
+    <a href="index.html" class="brand" id="navBrand">Uyeh Hotel</a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="faqs.html">FAQs</a>
+      <a href="contact.html">Contact</a>
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </button>
+  </div>
+</nav>
+
+<header class="legal-header">
+  <div class="wrap">
+    <p class="eyebrow">Legal</p>
+    <h1>Terms of Service</h1>
+    <p class="updated">Last updated: <span id="lastUpdated">September 2026</span></p>
+    <p class="dek">These are the terms that apply specifically to booking and paying for a stay or service with us. For rules about using this website itself, see our <a href="terms-of-use.html">Terms of Use</a>.</p>
+  </div>
+</header>
+
+<div class="wrap legal-layout">
+  <nav class="toc" aria-label="On this page">
+    <h4>On this page</h4>
+    <a href="#agreement">The agreement</a>
+    <a href="#bookings">Making a booking</a>
+    <a href="#pricing">Pricing &amp; currency</a>
+    <a href="#payment">Payment</a>
+    <a href="#cancellations">Cancellations &amp; refunds</a>
+    <a href="#promo-codes">Promo codes</a>
+    <a href="#check-in-out">Check-in &amp; check-out</a>
+    <a href="#guest-conduct">Guest conduct</a>
+    <a href="#liability">Liability</a>
+    <a href="#force-majeure">Force majeure</a>
+    <a href="#disputes">Governing law &amp; disputes</a>
+    <a href="#changes">Changes to these terms</a>
+    <a href="#contact">Contact us</a>
+  </nav>
+
+  <div class="legal-content">
+    <h2 id="agreement">The agreement</h2>
+    <p>These Terms of Service govern any booking you make with <strong id="companyName">Uyeh Hotel</strong> ("we," "us," "our") at any of our locations, whether directly on this website or through a link we've provided. By completing a booking, you agree to these terms on behalf of yourself and everyone in your party.</p>
+    <p>Each location ("branch") you book is operated under the same platform and standard, but fulfills your stay directly — your contract for the stay itself is with the branch you're booking, while this platform facilitates the booking and payment.</p>
+
+    <h2 id="bookings">Making a booking</h2>
+    <ul>
+      <li>You must be at least 18 years old to make a booking.</li>
+      <li>You're responsible for the accuracy of the details you provide — name, contact information, dates, and number of guests.</li>
+      <li>A booking is only confirmed once payment has been successfully processed (or, where offered, a deposit or guarantee has been accepted by the branch).</li>
+      <li>We reserve the right to decline or cancel a booking in cases of suspected fraud, abuse, or where a branch is genuinely unable to honor it — in which case any payment already made will be refunded in full.</li>
+    </ul>
+
+    <h2 id="pricing">Pricing &amp; currency</h2>
+    <p>Room rates are set per branch and displayed in that branch's own currency. Prices shown at the time you complete payment are final for that booking, inclusive of any taxes or service charges disclosed at checkout. Rates may change at any time for bookings not yet completed.</p>
+
+    <h2 id="payment">Payment</h2>
+    <p>Payments are processed securely through Paystack or Stripe, depending on the currency of your booking. We do not store your full card details. Full payment is generally required to confirm a booking unless a branch has explicitly offered an alternative arrangement (such as pay-on-arrival).</p>
+    <div class="callout"><strong>Promo codes:</strong> discounts are applied automatically at checkout when a valid code is entered and are subject to each code's own terms (validity dates, minimum stay, etc.), set by the branch or platform issuing it.</div>
+
+    <h2 id="cancellations">Cancellations &amp; refunds</h2>
+    <p>Cancellation policies are set per branch and per room type, and are shown before you complete payment. In general:</p>
+    <ul>
+      <li>Cancellations made within the free-cancellation window shown at booking are refunded in full.</li>
+      <li>Cancellations made after that window may be subject to a partial or full charge, as disclosed at the time of booking.</li>
+      <li>No-shows are typically charged in full unless the branch's policy states otherwise.</li>
+      <li>Refunds are returned to the original payment method and may take several business days to appear, depending on your bank or card issuer.</li>
+    </ul>
+    <p>To cancel or amend a booking, contact the branch directly or reach us through our <a href="contact.html">Contact page</a>.</p>
+
+    <h2 id="promo-codes">Promo codes</h2>
+    <p>Promotional codes are single-use unless stated otherwise, cannot be combined unless explicitly allowed, have no cash value, and may be withdrawn or modified at any time before they're applied to a completed booking.</p>
+
+    <h2 id="check-in-out">Check-in &amp; check-out</h2>
+    <p>Standard check-in and check-out times are set by each branch and shown on that branch's page. Early check-in or late check-out may be available on request, subject to availability and possible additional charges.</p>
+
+    <h2 id="guest-conduct">Guest conduct</h2>
+    <p>You agree to comply with the branch's house rules during your stay, to treat staff and other guests respectfully, and to be responsible for any damage caused by you or members of your party beyond normal wear and tear. Branches reserve the right to end a stay without refund in cases of serious misconduct, illegal activity, or safety violations.</p>
+
+    <h2 id="liability">Liability</h2>
+    <p>To the maximum extent permitted by law, we and the branches on this platform are not liable for indirect, incidental, or consequential damages arising from your booking or stay, except where such liability cannot be excluded under applicable law (for example, liability for death or personal injury caused by negligence). Nothing in these terms limits any statutory rights you have as a consumer that cannot lawfully be limited.</p>
+
+    <h2 id="force-majeure">Force majeure</h2>
+    <p>Neither we nor a branch will be liable for a failure to perform caused by circumstances beyond reasonable control — including natural disasters, government action, civil unrest, or infrastructure failures. Where possible, affected bookings will be rescheduled or refunded.</p>
+
+    <h2 id="disputes">Governing law &amp; disputes</h2>
+    <p>These terms are governed by the laws of the Federal Republic of Nigeria, without regard to conflict-of-law principles, unless a mandatory local consumer-protection law in your country provides otherwise. We encourage resolving any dispute directly with us first via our <a href="contact.html">Contact page</a> or the support ticket system before pursuing other remedies.</p>
+
+    <h2 id="changes">Changes to these terms</h2>
+    <p>We may update these terms from time to time; the "last updated" date above will reflect the most recent revision. Continuing to use our booking services after an update means you accept the revised terms.</p>
+
+    <h2 id="contact">Contact us</h2>
+    <p>Questions about a booking or these terms can be sent through our <a href="contact.html">Contact page</a>, including the ticket system for anything tied to a specific stay.</p>
+  </div>
+</div>
+
+<footer>&copy; <span id="year"></span> <span id="footerName">Uyeh Hotel</span>. All rights reserved.</footer>
+
+<script>
+(function () {
+  "use strict";
+  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const $ = (id) => document.getElementById(id);
+
+  const el = $("preloader");
+  setTimeout(() => { el.classList.add("lifted"); setTimeout(() => { el.style.display = "none"; }, 950); }, 500);
+
+  $("navToggle").addEventListener("click", () => {
+    const open = $("navLinks").classList.toggle("open");
+    $("navToggle").setAttribute("aria-expanded", String(open));
+  });
+
+  $("year").textContent = new Date().getFullYear();
+
+  fetch(`${API_BASE}/settings`).then((r) => r.json()).then(({ settings }) => {
+    const name = settings.platformName || "Uyeh Hotel";
+    document.title = document.title.replace("Uyeh Hotel", name);
+    $("navBrand").textContent = name;
+    $("footerName").textContent = name;
+    $("companyName").textContent = name;
+  }).catch(() => {});
+
+  const sections = [...document.querySelectorAll(".legal-content h2[id]")];
+  const links = [...document.querySelectorAll(".toc a")];
+  if ("IntersectionObserver" in window && sections.length) {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting) {
+          links.forEach((l) => l.classList.toggle("active", l.getAttribute("href") === `#${en.target.id}`));
+        }
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    sections.forEach((s) => io.observe(s));
+  }
+})();
+</script>
+</body>
+</html>
