@@ -229,6 +229,20 @@ section{padding:96px 0}
     </div>
   </section>
 
+  <!-- ===== ROOM TYPES AT THIS LOCATION — browse first, no dates needed ===== -->
+  <section id="roomTypesCatalog" class="reveal" style="background:#fff;">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Room types here</p>
+        <h2>What you can book at this location.</h2>
+        <p>Starting prices shown — pick your dates below to see exactly what's free.</p>
+      </div>
+      <div class="room-grid" id="roomTypesGrid">
+        <div class="loading-state">Loading room types…</div>
+      </div>
+    </div>
+  </section>
+
   <!-- ===== AVAILABILITY CHECK ===== -->
   <section id="rooms" class="reveal" style="background:#fff;">
     <div class="wrap">
@@ -433,9 +447,42 @@ section{padding:96px 0}
 
       revealHero();
       observe([...document.querySelectorAll("section.reveal")]);
+      loadRoomTypesCatalog();
       loadEvents();
     } catch (err) {
       showNotFound();
+    }
+  }
+
+  /** Browse-first catalog — every room type this branch offers, no
+   * dates required. Separate from checkAvailability() below, which
+   * needs dates and tells you what's actually free right now. This one
+   * just answers "what do you even have here?" */
+  async function loadRoomTypesCatalog() {
+    const grid = $("roomTypesGrid");
+    if (!grid) return;
+    try {
+      const { roomTypes } = await api(`/branches/${encodeURIComponent(currentBranch.id)}/room-types`);
+      if (!roomTypes || !roomTypes.length) {
+        grid.innerHTML = `<div class="empty-state">Room types for this location are being added — check back shortly.</div>`;
+        return;
+      }
+      grid.innerHTML = roomTypes.map((t) => `
+        <div class="room-card">
+          <div class="room-card-image"${t.images && t.images[0] ? ` style="background-image:url('${esc(t.images[0])}')"` : ""}><div class="key-tag">R</div></div>
+          <div class="room-card-body">
+            <h3>${esc(t.name)}</h3>
+            <p class="desc">${esc(t.description || "")}</p>
+            <div class="room-meta">
+              <div class="price">From ${fmtMoney(t.basePrice, t.currency)}<small> / night</small></div>
+              ${t.maxOccupancy ? `<span style="color:var(--text-muted);font-size:.85rem;">Sleeps ${esc(t.maxOccupancy)}</span>` : ""}
+            </div>
+            <a href="room-details.html?branch=${esc(currentBranch.slug || currentBranch.id)}&roomType=${esc(t.id)}" class="btn btn-dark" style="width:100%;">View details &amp; check dates</a>
+          </div>
+        </div>`).join("");
+    } catch (err) {
+      grid.innerHTML = `<div class="empty-state">Couldn't load room types right now — please try again shortly.</div>`;
+      console.error("Room types catalog failed:", err.message);
     }
   }
 
