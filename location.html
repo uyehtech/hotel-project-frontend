@@ -475,39 +475,35 @@ section{padding:96px 0}
     try {
       const checkIn = $("checkIn").value;
       const checkOut = $("checkOut").value;
-      const { availableRooms } = await api(`/branches/${encodeURIComponent(currentBranch.id)}/availability?checkIn=${checkIn}&checkOut=${checkOut}`);
+      // Switched from /availability (per-room, requires every Room to have
+      // a linked RoomType or it crashes here) to /type-availability
+      // (already grouped server-side, always returns a real roomTypeId —
+      // see backfill-room-types.js / checkAvailability hardening patch).
+      const { types } = await api(`/branches/${encodeURIComponent(currentBranch.id)}/type-availability?checkIn=${checkIn}&checkOut=${checkOut}`);
+      const available = (types || []).filter((t) => Number(t.sellable) > 0);
 
-      if (!availableRooms || !availableRooms.length) {
+      if (!available.length) {
         grid.innerHTML = `<div class="empty-state">No rooms available for those dates at this location — try different dates.</div>`;
         return;
       }
 
-      // Group by room type so we show one card per type with a live
-      // count, not one card per physical room.
-      const byType = {};
-      availableRooms.forEach((r) => {
-        const key = r.roomType.id;
-        if (!byType[key]) byType[key] = { roomType: r.roomType, count: 0 };
-        byType[key].count += 1;
-      });
-
-      grid.innerHTML = Object.values(byType).map(({ roomType, count }) => `
+      grid.innerHTML = available.map((t) => `
         <div class="room-card">
-          <div class="room-card-image"${roomType.images && roomType.images[0] ? ` style="background-image:url('${esc(roomType.images[0])}')"` : ""}><div class="key-tag">R</div></div>
+          <div class="room-card-image"${t.images && t.images[0] ? ` style="background-image:url('${esc(t.images[0])}')"` : ""}><div class="key-tag">R</div></div>
           <div class="room-card-body">
-            <h3>${esc(roomType.name)}</h3>
-            <p class="desc">${esc(roomType.description || "")}</p>
-            <div class="amenity-tags">${(roomType.amenities || []).map((a) => `<span>${esc(a)}</span>`).join("")}</div>
+            <h3>${esc(t.name)}</h3>
+            <p class="desc">${esc(t.description || "")}</p>
             <div class="room-meta">
-              <div class="price">${fmtMoney(roomType.basePrice, roomType.currency)}<small> / night</small></div>
-              <span style="color:var(--text-muted);font-size:.85rem;">${count} available</span>
+              <div class="price">${fmtMoney(t.basePrice, t.currency)}<small> / night</small></div>
+              <span style="color:var(--text-muted);font-size:.85rem;">${t.sellable} available</span>
             </div>
-            <a href="booking.html?branch=${esc(currentBranch.slug || currentBranch.id)}&roomType=${esc(roomType.id)}&checkIn=${checkIn}&checkOut=${checkOut}" class="btn btn-dark" style="width:100%;">Book this room</a>
+            <a href="booking.html?branch=${esc(currentBranch.slug || currentBranch.id)}&roomType=${esc(t.roomTypeId)}&checkIn=${checkIn}&checkOut=${checkOut}" class="btn btn-dark" style="width:100%;">Book this room</a>
           </div>
         </div>`).join("");
     } catch (err) {
       grid.innerHTML = "";
-      notice.innerHTML = `<div class="notice error">${esc(err.message)}</div>`;
+      notice.innerHTML = `<div class="notice error">Something went wrong checking availability — please try again.</div>`;
+      console.error("Availability check failed:", err.message);
     } finally {
       btn.disabled = false;
       btn.textContent = "Check availability";

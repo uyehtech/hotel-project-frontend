@@ -746,20 +746,22 @@ section{position:relative;padding:96px 0}
     }
   }
 
-  /* Optional: a few real rooms from the first branch. Section stays
-     hidden if the endpoint isn't available or returns nothing. */
+  /* A few real room TYPES from the first branch — not physical rooms,
+     which is what this was reading before. Section stays hidden if the
+     endpoint isn't available or returns nothing. */
   async function loadFeaturedRooms(branch) {
     if (!branch) return;
     try {
-      const data = await api(`/branches/${encodeURIComponent(branch.slug || branch.id)}/rooms`);
-      const rooms = (data.rooms || data || []).slice(0, 4);
-      if (!rooms.length) return;
-      $("roomStrip").innerHTML = rooms.map((r) => `
+      const data = await api(`/branches/${encodeURIComponent(branch.slug || branch.id)}/room-types`);
+      const roomTypes = (data.roomTypes || data || []).slice(0, 4);
+      if (!roomTypes.length) return;
+      $("roomStrip").innerHTML = roomTypes.map((t) => `
         <article class="room-card">
-          <h4>${esc(r.name || r.type || "Room")}</h4>
-          <div class="room-price">${r.price != null ? fmtMoney(r.price, r.currency) : "On request"}<span class="room-meta"> / night</span></div>
-          <p class="room-meta">${esc(branch.name)}${r.capacity ? ` · sleeps ${esc(r.capacity)}` : ""}</p>
-          <a class="btn btn-dark" href="location.html?branch=${esc(branch.slug || branch.id)}">Check dates</a>
+          ${t.images && t.images[0] ? `<div class="room-card-image" style="background-image:url('${esc(t.images[0])}')"></div>` : ""}
+          <h4>${esc(t.name)}</h4>
+          <div class="room-price">${t.basePrice != null ? fmtMoney(t.basePrice, t.currency) : "On request"}<span class="room-meta"> / night</span></div>
+          <p class="room-meta">${esc(branch.name)}${t.maxOccupancy ? ` · sleeps ${esc(t.maxOccupancy)}` : ""}</p>
+          <a class="btn btn-dark" href="room-details.html?branch=${esc(branch.slug || branch.id)}&roomType=${esc(t.id)}">View room details</a>
         </article>`).join("");
       const sec = $("rooms");
       sec.style.display = "";
