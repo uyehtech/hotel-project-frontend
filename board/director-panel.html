@@ -654,6 +654,16 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-fam
 <!-- Modal / drawer mount points -->
 <div id="modalMount"></div>
 
+<style>
+  .rt-media-grid{display:flex;flex-wrap:wrap;gap:10px}
+  .rt-media-thumb{position:relative;width:86px;height:86px;border-radius:4px;overflow:hidden;border:1px solid var(--line,#e4e4e7)}
+  .rt-media-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .rt-media-remove{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;border:none;background:rgba(20,24,31,.75);color:#fff;font-size:.85rem;line-height:1;cursor:pointer}
+  .rt-media-add{width:86px;height:86px;border-radius:4px;border:1px dashed var(--line,#c9c4b8);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:.68rem;color:var(--text-muted,#6b6355);cursor:pointer;text-align:center}
+  .rt-media-add:hover{border-color:var(--brass,#b98d45);color:var(--brass,#b98d45)}
+  .rt-media-video{width:100%;max-width:320px;border-radius:4px;display:block}
+</style>
+
 <script>
 const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
 
@@ -1000,6 +1010,7 @@ const adminApi = {
   updateManager: (id, payload) => adminRequest(`/director/managers/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
 
   listTickets: (status) => adminRequest(branchPath(`/tickets${status ? `?status=${status}` : ""}`)),
+  createTicket: (payload) => adminRequest(branchPath("/tickets"), { method: "POST", body: JSON.stringify(payload) }),
   getTicket: (id) => adminRequest(branchPath(`/tickets/${id}`)),
   assignTicket: (id, staffId) => adminRequest(branchPath(`/tickets/${id}/assign`), { method: "PATCH", body: JSON.stringify({ staffId }) }),
   replyToTicket: (id, message) => adminRequest(branchPath(`/tickets/${id}/messages`), { method: "POST", body: JSON.stringify({ message }) }),
@@ -1190,6 +1201,8 @@ Object.assign(adminApi, {
   deleteRoomType: (id) => DEL(`/manager/room-types/${id}${bqs()}`),
   uploadRoomTypeImage: (id, file) => adminUpload(`/manager/room-types/${id}/images`, file),
   deleteRoomTypeImage: (id, url) => adminRequest(`/manager/room-types/${id}/images`, { method: "DELETE", body: JSON.stringify({ url }) }),
+  uploadRoomTypeVideo: (id, file) => adminUploadVideo(`/manager/room-types/${id}/video`, file),
+  deleteRoomTypeVideo: (id) => adminRequest(`/manager/room-types/${id}/video`, { method: "DELETE" }),
   getRates: (roomTypeId, from, to) => adminRequest(`/manager/room-types/${roomTypeId}/rates${bqs({ from, to })}`),
   setRates: (roomTypeId, payload) => PUT(`/manager/room-types/${roomTypeId}/rates`, payload),
   clearRates: (roomTypeId, from, to) => DEL(`/manager/room-types/${roomTypeId}/rates${bqs({ from, to })}`),
@@ -3688,8 +3701,8 @@ async function loadNewsletterPage() {
 
     <div class="panel">
       <h3 style="padding:16px 20px 0;">Campaigns</h3>
-      <table><thead><tr><th>Subject</th><th>Source</th><th>Status</th><th>Sent to</th><th>Sent</th></tr></thead>
-        <tbody id="campaignsBody"><tr><td colspan="5" class="loading-state">Loading…</td></tr></tbody>
+      <table><thead><tr><th>Subject</th><th>Source</th><th>Status</th><th>Sent to</th><th>Sent</th><th></th></tr></thead>
+        <tbody id="campaignsBody"><tr><td colspan="6" class="loading-state">Loading…</td></tr></tbody>
       </table>
     </div>
 
@@ -3738,17 +3751,40 @@ async function refreshCampaigns() {
   try {
     const { campaigns } = await adminApi.listCampaigns();
     document.getElementById("campaignsBody").innerHTML = campaigns.length ? campaigns.map((c) => `
-      <tr>
-        <td>${c.subject}</td>
-        <td>${c.blogPost ? `Blog post: ${c.blogPost.title}` : "Manual"}</td>
-        <td><span class="badge ${c.status === "SENT" ? "badge-success" : c.status === "FAILED" ? "badge-error" : "badge-warning"}">${c.status}</span></td>
+        <tr>
+        <td>${esc(c.subject)}</td>
+        <td>${c.blogPost ? `Blog post: ${esc(c.blogPost.title)}` : c.branch ? `Branch: ${esc(c.branch.name)}` : "Manual"}</td>
+        <td><span class="badge ${c.status === "SENT" ? "badge-success" : c.status === "FAILED" ? "badge-error" : "badge-warning"}">${esc(String(c.status).replace(/_/g, " "))}</span></td>
         <td>${c.sentCount}${c.failedCount ? ` (${c.failedCount} failed)` : ""}</td>
         <td>${c.sentAt ? new Date(c.sentAt).toLocaleString() : "—"}</td>
+        <td>${c.status === "PENDING_APPROVAL" ? `<div class="row-actions">
+          <button class="btn btn-sm btn-primary" onclick="approveCampaignClick('${c.id}')">Approve</button>
+          <button class="btn btn-sm btn-outline" onclick="rejectCampaignClick('${c.id}')">Reject</button>
+        </div>` : ""}</td>
       </tr>
-    `).join("") : `<tr><td colspan="5" class="empty-state">No campaigns sent yet.</td></tr>`;
+    `).join("") : `<tr><td colspan="6" class="empty-state">No campaigns sent yet.</td></tr>`;
   } catch (err) {
     showNotice("newsletterNotice", err.message);
   }
+}
+
+async function approveCampaignClick(id) {
+  if (!confirm("Approve and send this campaign to every confirmed subscriber now?")) return;
+  try {
+    const { message } = await adminApi.approveCampaign(id);
+    toast(message || "Approved — sending now");
+    refreshCampaigns();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+async function rejectCampaignClick(id) {
+  const reason = prompt("Reason for sending it back to the Manager (optional):");
+  if (reason === null) return;
+  try {
+    const { message } = await adminApi.rejectCampaign(id, reason.trim());
+    toast(message || "Sent back to draft");
+    refreshCampaigns();
+  } catch (err) { toast(err.message, "error"); }
 }
 
 function openCampaignModal() { document.getElementById("campaignModal").style.display = "flex"; }
@@ -3959,11 +3995,40 @@ async function loadTicketsPage() {
   const container = document.getElementById("pageContent");
   container.innerHTML = `
     ${pageHeader("Guest Tickets", "Support requests from guests.")}
+    <div style="margin-bottom:16px;">
+      <button class="btn btn-primary" onclick="openNewTicketModal()">New ticket</button>
+    </div>
     <div id="ticketsNotice"></div>
     <div class="panel">
       <table><thead><tr><th>Subject</th><th>Guest</th><th>Priority</th><th>Assigned</th><th>Status</th><th></th></tr></thead>
         <tbody id="ticketsBody"><tr><td colspan="6" class="loading-state">Loading…</td></tr></tbody>
       </table>
+    </div>
+    <div class="modal-overlay" id="newTicketModal" style="display:none;">
+      <div class="modal">
+        <h3>Log a new ticket</h3>
+        <p style="color:var(--text-muted); font-size:0.86rem; margin-bottom:14px;">For a call, walk-in, or anything reported in person rather than through the guest's own account.</p>
+        <div id="newTicketNotice"></div>
+        <div class="form-row">
+          <div class="form-field"><label>Guest name</label><input type="text" id="ntGuestName" required></div>
+          <div class="form-field"><label>Guest email</label><input type="email" id="ntGuestEmail" required></div>
+        </div>
+        <div class="form-field"><label>Guest phone (optional)</label><input type="tel" id="ntGuestPhone"></div>
+        <div class="form-field"><label>Subject</label><input type="text" id="ntSubject" required></div>
+        <div class="form-field"><label>Priority</label>
+          <select id="ntPriority">
+            <option value="LOW">Low</option>
+            <option value="NORMAL" selected>Normal</option>
+            <option value="HIGH">High</option>
+            <option value="URGENT">Urgent</option>
+          </select>
+        </div>
+        <div class="form-field"><label>Message</label><textarea id="ntMessage" rows="4" required></textarea></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeNewTicketModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" id="newTicketSubmitBtn" onclick="submitNewTicket()">Create ticket</button>
+        </div>
+      </div>
     </div>
     <div class="modal-overlay" id="assignTicketModal" style="display:none;">
       <div class="modal">
@@ -3983,6 +4048,44 @@ async function loadTicketsPage() {
   await refreshTicketsTable();
 }
 let _cachedTickets = [];
+
+function openNewTicketModal() {
+  document.getElementById("newTicketNotice").innerHTML = "";
+  ["ntGuestName", "ntGuestEmail", "ntGuestPhone", "ntSubject", "ntMessage"].forEach((id) => document.getElementById(id).value = "");
+  document.getElementById("ntPriority").value = "NORMAL";
+  document.getElementById("newTicketModal").style.display = "flex";
+}
+function closeNewTicketModal() {
+  document.getElementById("newTicketModal").style.display = "none";
+}
+async function submitNewTicket() {
+  const btn = document.getElementById("newTicketSubmitBtn");
+  const notice = document.getElementById("newTicketNotice");
+  const name = document.getElementById("ntGuestName").value.trim();
+  const email = document.getElementById("ntGuestEmail").value.trim();
+  const subject = document.getElementById("ntSubject").value.trim();
+  const message = document.getElementById("ntMessage").value.trim();
+  if (!name || !email || !subject || !message) {
+    notice.innerHTML = `<div class="notice error">Name, email, subject, and message are all required.</div>`;
+    return;
+  }
+  btn.disabled = true; btn.textContent = "Creating…";
+  try {
+    await adminApi.createTicket({
+      guest: { name, email, phone: document.getElementById("ntGuestPhone").value.trim() || undefined },
+      subject, message,
+      priority: document.getElementById("ntPriority").value,
+    });
+    closeNewTicketModal();
+    showNotice("ticketsNotice", "Ticket created.", "success");
+    refreshTicketsTable();
+  } catch (err) {
+    notice.innerHTML = `<div class="notice error">${err.message}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = "Create ticket";
+  }
+}
+
 async function refreshTicketsTable() {
   try {
     const { tickets } = await adminApi.listTickets();
@@ -4996,7 +5099,9 @@ async function replyToReviewRow(id) {
 /* ============================================================
    ORDERS — food / drink / spa / laundry orders placed by guests
    ============================================================ */
-const ORDER_STATUS_FLOW = ["PENDING", "CONFIRMED", "PREPARING", "READY", "DELIVERED", "CANCELLED"];
+// Must match server VALID_ORDER_STATUSES / enum OrderStatus.
+const ORDER_STATUS_FLOW = ["PENDING", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
+
 
 async function loadOrdersPage() {
   const container = document.getElementById("pageContent");
@@ -5396,8 +5501,20 @@ async function loadMyAccountPage() {
   `;
   document.getElementById("profileForm").addEventListener("submit", submitProfileForm);
   document.getElementById("passwordForm").addEventListener("submit", submitPasswordForm);
-  renderTwoFactorStatus(!!staff.twoFactorEnabled);
   renderPushToggleSection();
+
+  // The actual fix: ask the server what's really true instead of trusting
+  // whatever the local cache happened to say. Falls back to the cached
+  // value only if this fetch itself fails (offline, token expired, etc.)
+  // — better to show something than leave "Loading…" stuck forever.
+  try {
+    const { account } = await adminApi.getMe();
+    staff.twoFactorEnabled = !!account.twoFactorEnabled;
+    setSession(getToken(), staff);
+    renderTwoFactorStatus(staff.twoFactorEnabled);
+  } catch (err) {
+    renderTwoFactorStatus(!!staff.twoFactorEnabled);
+  }
 }
 
 async function submitProfileForm(e) {
@@ -6460,6 +6577,9 @@ function openRoomTypeModal(t) {
     <div class="form-field"><label>Bed configuration</label><input type="text" id="rtBed" placeholder="1 King, 2 Twin…" value="${t ? esc(t.bedConfiguration || "") : ""}"></div>
     <div class="form-field"><label>Amenities <span class="faint">(comma-separated)</span></label><input type="text" id="rtAmenities" placeholder="Wi-Fi, mini bar, ocean view" value="${t ? (t.amenities || []).join(", ") : ""}"></div>
     <div class="checkbox-item"><input type="checkbox" id="rtFeatured" ${t && t.isFeatured ? "checked" : ""}><label for="rtFeatured">Signature Room — featured on the public site</label></div>
+    ${t ? `<div id="rtMediaSection">${renderRoomTypeMedia(t)}</div>` : `
+    <div class="notice" style="font-size:.85rem;color:var(--text-muted,#6b6355);">Save this room type first, then reopen it to add photos and a video.</div>
+    `}
     <div class="modal-actions">
       <button class="btn btn-primary" id="rtSaveBtn">${t ? "Save changes" : "Add room type"}</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
@@ -6492,6 +6612,84 @@ async function uploadRoomTypePhoto(id, inputEl) {
     refreshRoomTypesTable();
   } catch (err) {
     toast("Couldn't upload photo: " + err.message, "error");
+  }
+}
+
+function renderRoomTypeMedia(t) {
+  const imagesHtml = (t.images || []).map((url) => `
+    <div class="rt-media-thumb">
+      <img src="${esc(url)}" alt="">
+      <button type="button" class="rt-media-remove" onclick="removeRoomTypeImage('${t.id}', '${esc(url)}')" title="Remove photo">&times;</button>
+    </div>
+  `).join("");
+  return `
+    <div class="form-field">
+      <label>Photos</label>
+      <div class="rt-media-grid">
+        ${imagesHtml}
+        <label class="rt-media-add">
+          <input type="file" accept="image/*" style="display:none;" onchange="addRoomTypeImage('${t.id}', this)">
+          <i class="fa-solid fa-plus"></i><span>Add photo</span>
+        </label>
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Walkthrough video <span class="faint">(optional — uploading a new one replaces it)</span></label>
+      ${t.videoUrl ? `
+        <video src="${esc(t.videoUrl)}" controls class="rt-media-video"></video>
+        <button type="button" class="btn btn-outline" style="margin-top:8px;" onclick="removeRoomTypeVideo('${t.id}')">Remove video</button>
+      ` : `
+        <input type="file" accept="video/*" onchange="addRoomTypeVideo('${t.id}', this)">
+      `}
+    </div>
+  `;
+}
+
+function updateRoomTypeMediaInModal(t) {
+  const el = document.getElementById("rtMediaSection");
+  if (el) el.innerHTML = renderRoomTypeMedia(t);
+}
+
+async function addRoomTypeImage(id, inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  try {
+    const { roomType } = await adminApi.uploadRoomTypeImage(id, file);
+    updateRoomTypeMediaInModal(roomType);
+    refreshRoomTypesTable();
+  } catch (err) {
+    toast("Couldn't upload photo: " + err.message, "error");
+  }
+}
+
+async function removeRoomTypeImage(id, url) {
+  try {
+    const { roomType } = await adminApi.deleteRoomTypeImage(id, url);
+    updateRoomTypeMediaInModal(roomType);
+    refreshRoomTypesTable();
+  } catch (err) {
+    toast("Couldn't remove photo: " + err.message, "error");
+  }
+}
+
+async function addRoomTypeVideo(id, inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  try {
+    const { roomType } = await adminApi.uploadRoomTypeVideo(id, file);
+    updateRoomTypeMediaInModal(roomType);
+    toast("Video uploaded", "success");
+  } catch (err) {
+    toast("Couldn't upload video: " + err.message, "error");
+  }
+}
+
+async function removeRoomTypeVideo(id) {
+  try {
+    const { roomType } = await adminApi.deleteRoomTypeVideo(id);
+    updateRoomTypeMediaInModal(roomType);
+  } catch (err) {
+    toast("Couldn't remove video: " + err.message, "error");
   }
 }
 
