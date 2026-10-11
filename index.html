@@ -94,6 +94,8 @@ button,input,select{font:inherit;color:inherit}
 /* hero */
 .hero{position:relative;min-height:92vh;display:flex;align-items:center;padding:140px 0 70px;overflow:hidden}
 .hero-bg{position:absolute;inset:-6%;background-image:var(--hero-image);background-size:cover;background-position:center;opacity:.34;will-change:transform}
+#hero3d{position:absolute;inset:0;z-index:1;opacity:0;transition:opacity 1.8s var(--ease-out);pointer-events:none}
+#hero3d.ready{opacity:.96}
 .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 12% 0%,rgba(47,93,90,.42),transparent 60%),linear-gradient(180deg,rgba(13,16,21,.5),rgba(13,16,21,.94))}
 .hero .wrap{position:relative;z-index:2}
 .eyebrow{font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-light);margin-bottom:18px}
@@ -287,6 +289,7 @@ section{position:relative;padding:96px 0}
 <main id="main">
 <header class="hero grain" id="book">
   <div class="hero-bg" id="heroBg"></div>
+  <canvas id="hero3d" aria-hidden="true"></canvas>
   <div class="wrap">
     <div class="hero-content">
       <p class="eyebrow fade-up" id="heroEyebrow">Every location, held to the same standard</p>
@@ -503,6 +506,7 @@ section{position:relative;padding:96px 0}
 {"@context":"https://schema.org","@type":"Organization","name":"Uyeh Hotel","url":"/index.html","logo":"/assets/og-default.jpg","description":"A multi-location hospitality brand — rooms, dining, spa and events booked directly with real-time availability at every branch."}
 </script>
 
+<script src="three.min.js"></script>
 <script>
 (function () {
   "use strict";
@@ -736,7 +740,7 @@ section{position:relative;padding:96px 0}
       renderBranches();
       $("statBranches").textContent = BRANCHES.length;
       $("statCities").textContent = new Set(BRANCHES.map((b) => b.city).filter(Boolean)).size || "—";
-      $("bkBranch").innerHTML = `<option value="">Any location</option>` +
+      $("bkBranch").innerHTML = `<option value="">Any location — search everywhere</option>` +
         BRANCHES.map((b) => `<option value="${esc(b.slug || b.id)}">${esc(b.name)}${b.city ? ` — ${esc(b.city)}` : ""}</option>`).join("");
       loadFeaturedRooms(BRANCHES[0]);
       loadReviews(BRANCHES);
@@ -848,6 +852,44 @@ section{position:relative;padding:96px 0}
     </article>`;
   }
 
+  function branchAvailCard(r, checkInVal, checkOutVal, guestsVal) {
+    const b = r.branch;
+    const bookParams = new URLSearchParams({ branch: b.slug || b.id, checkIn: checkInVal, checkOut: checkOutVal, guests: guestsVal });
+    const location = [b.city, b.state].filter(Boolean).join(", ");
+    return `<article class="avail-card">
+      <div class="avail-card-img"${b.heroImageUrl ? ` style="background-image:url('${esc(b.heroImageUrl)}');"` : ""}></div>
+      <div class="avail-card-body">
+        <h4>${esc(b.name)}</h4>
+        ${location ? `<p class="room-meta">${esc(location)}</p>` : ""}
+        <div class="room-price">${r.fromPrice != null ? fmtMoney(r.fromPrice, r.currency) : "On request"}<span class="room-meta"> from / night</span></div>
+        <p class="room-meta">${r.availableCount} room${r.availableCount === 1 ? "" : "s"} available for these dates</p>
+        <a class="btn btn-primary" href="location.html?${bookParams.toString()}">View rooms</a>
+      </div>
+    </article>`;
+  }
+
+  // "Any location" — searches every branch at once via the cross-branch
+  // endpoint, one card per branch that actually has something available.
+  // Picking an actual room still happens on that branch's own page.
+  async function checkAvailabilityAnyLocation(checkInVal, checkOutVal, guestsVal) {
+    const box = $("availResults");
+    box.hidden = false;
+    box.innerHTML = `<div class="avail-skel"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>`;
+    box.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
+    try {
+      const data = await api(`/availability?checkIn=${encodeURIComponent(checkInVal)}&checkOut=${encodeURIComponent(checkOutVal)}&guests=${encodeURIComponent(guestsVal)}`);
+      const results = (data.results || []).filter((r) => (r.availableCount || 0) > 0);
+      if (!results.length) {
+        box.innerHTML = `<div class="empty-state">No rooms open across any location for those dates — try different dates.</div>`;
+        return;
+      }
+      box.innerHTML = `<div class="avail-grid">${results.map((r) => branchAvailCard(r, checkInVal, checkOutVal, guestsVal)).join("")}</div>`;
+    } catch (err) {
+      console.error("Cross-branch availability check failed:", err);
+      box.innerHTML = `<div class="empty-state">Couldn't check availability right now — ${esc(err.message)}. Please try again.</div>`;
+    }
+  }
+
   async function checkAvailabilityInline(branchSlug, checkInVal, checkOutVal, guestsVal) {
     const box = $("availResults");
     box.hidden = false;
@@ -892,8 +934,7 @@ section{position:relative;padding:96px 0}
       e.preventDefault();
       const branch = $("bkBranch").value;
       if (!branch) {
-        toast("Pick a location to continue — availability is checked per branch.");
-        document.getElementById("locations").scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
+        checkAvailabilityAnyLocation(inEl.value, outEl.value, $("bkGuests").value);
         return;
       }
       checkAvailabilityInline(branch, inEl.value, outEl.value, $("bkGuests").value);
@@ -964,11 +1005,148 @@ section{position:relative;padding:96px 0}
     });
   }
 
+  /* ---------- ambient hero 3D ---------- */
+  // Auto-rotating only — no drag, no interaction. The interactive
+  // version (drag-to-rotate, room-tier switching, day/night) lives on
+  // room-details.html, not here. This is atmosphere behind the booking
+  // form, low-opacity so it never competes with real content on top.
+  async function initHero3D() {
+    const canvas = $("hero3d");
+    if (!canvas || reduced || typeof THREE === "undefined") return; // no THREE = script failed to load; .hero-bg is the fallback
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 50);
+    camera.position.set(0, 0, 9);
+
+    function resize() {
+      const { clientWidth: w, clientHeight: h } = canvas;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+
+    // Brass rings now orbit the video frame as a framing device, rather
+    // than sitting off to one side as pure background atmosphere.
+    const ringGroup = new THREE.Group();
+    [2.9, 3.6, 4.4].forEach((r, i) => {
+      const geo = new THREE.TorusGeometry(r, 0.013, 8, 90);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xb98d45, transparent: true, opacity: 0.55 - i * 0.12, wireframe: true });
+      const ring = new THREE.Mesh(geo, mat);
+      ring.rotation.x = Math.PI / 2.3 + i * 0.3;
+      ring.rotation.y = i * 0.5;
+      ring.userData.speed = 0.025 + i * 0.012;
+      ringGroup.add(ring);
+    });
+    scene.add(ringGroup);
+
+    // Drifting gold dust, same visual language as the brand's brass accents.
+    const DUST_N = 110;
+    const dustGeo = new THREE.BufferGeometry();
+    const dustPos = new Float32Array(DUST_N * 3);
+    for (let i = 0; i < DUST_N; i++) {
+      dustPos[i * 3] = (Math.random() - 0.5) * 13;
+      dustPos[i * 3 + 1] = (Math.random() - 0.5) * 8;
+      dustPos[i * 3 + 2] = (Math.random() - 0.5) * 6;
+    }
+    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
+    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xd9b876, size: 0.03, transparent: true, opacity: 0.4, depthWrite: false }));
+    scene.add(dust);
+
+    // ---- the centerpiece: the real hero video (or image, or nothing),
+    // framed, inside the 3D scene — not invented content, the actual
+    // footage from /api/settings. ----
+    let frame = null;
+    let videoEl = null;
+
+    function buildFrame(texture, aspect) {
+      const h = 3.6, w = h * (aspect || 16 / 9);
+      const frameGroup = new THREE.Group();
+
+      const border = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 0.16, h + 0.16, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0xb98d45, roughness: 0.4, metalness: 0.3 })
+      );
+      border.position.z = -0.04;
+      frameGroup.add(border);
+
+      const panel = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ map: texture, toneMapped: false })
+      );
+      frameGroup.add(panel);
+
+      frameGroup.position.set(0, 0.2, -0.5);
+      frameGroup.rotation.y = -0.08;
+      return frameGroup;
+    }
+
+    try {
+      const { settings } = await api("/settings");
+      if (settings.heroVideoUrl) {
+        videoEl = document.createElement("video");
+        videoEl.src = settings.heroVideoUrl;
+        videoEl.muted = true;
+        videoEl.loop = true;
+        videoEl.playsInline = true;
+        videoEl.crossOrigin = "anonymous";
+        videoEl.autoplay = true;
+        await videoEl.play().catch(() => {}); // autoplay can reject before the canvas is visible — non-fatal, it still plays once allowed
+        const videoTexture = new THREE.VideoTexture(videoEl);
+        videoTexture.minFilter = THREE.LinearFilter;
+        videoTexture.magFilter = THREE.LinearFilter;
+        frame = buildFrame(videoTexture, 16 / 9);
+      } else if (settings.heroImageUrl) {
+        const tex = await new THREE.TextureLoader().loadAsync(settings.heroImageUrl);
+        frame = buildFrame(tex, tex.image ? tex.image.width / tex.image.height : 16 / 9);
+      }
+    } catch (err) {
+      console.warn("Hero 3D: couldn't load settings for video/image texture, continuing with rings only:", err.message);
+    }
+    if (frame) scene.add(frame);
+
+    const ro = new ResizeObserver(resize);
+    ro.observe(canvas);
+    resize();
+
+    const clock = new THREE.Clock();
+    let raf;
+    function tick() {
+      raf = requestAnimationFrame(tick);
+      const dt = clock.getDelta();
+      ringGroup.rotation.y += dt * 0.05;
+      ringGroup.children.forEach((ring) => { ring.rotation.z += dt * ring.userData.speed; });
+      dust.rotation.y += dt * 0.012;
+      if (frame) frame.rotation.y = -0.08 + Math.sin(clock.elapsedTime * 0.15) * 0.03; // gentle sway, never a full turn — a video needs to stay legible
+      renderer.render(scene, camera);
+    }
+    tick();
+    canvas.classList.add("ready");
+
+    // Stop rendering (and pause the video) when the hero scrolls off
+    // screen — no reason to spend GPU or decode video nobody's looking at.
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting) {
+          if (!raf) tick();
+          if (videoEl && videoEl.paused) videoEl.play().catch(() => {});
+        } else {
+          cancelAnimationFrame(raf); raf = null;
+          if (videoEl) videoEl.pause();
+        }
+      });
+    }, { threshold: 0 });
+    io.observe(canvas);
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     initPreloader();
     initNav();
     initMagnetic();
     initHeroMotion();
+    initHero3D();
     initReveal();
     revealHero();
     initBookingForm();
