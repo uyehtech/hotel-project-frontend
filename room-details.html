@@ -123,6 +123,9 @@ h3.section-title{font-size:1.2rem;margin-bottom:16px}
 
 .loading-state,.empty-state,.error-note{padding:60px 0;text-align:center;color:var(--text-muted)}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -221,21 +224,13 @@ h3.section-title{font-size:1.2rem;margin-bottom:16px}
 <script>
 (function () {
   "use strict";
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const fmtMoney = (amount, currency) => {
-    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount); }
-    catch { return `${currency || ""} ${Number(amount).toLocaleString()}`.trim(); }
-  };
+  const fmtMoney = window.Uyeh.fmtMoney, priceHtml = window.Uyeh.priceHtml, L = window.Uyeh.t;
 
-  async function api(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-    return data;
-  }
+  const api = window.Uyeh.api;
 
   function initPreloader() {
     const el = $("preloader");
@@ -319,7 +314,7 @@ h3.section-title{font-size:1.2rem;margin-bottom:16px}
       roomType.sizeSqm ? `${roomType.sizeSqm} m²` : null,
       roomType.bedConfiguration || null,
       `Sleeps ${roomType.maxOccupancy}`,
-      roomType.unitCount != null ? `${roomType.unitCount} room${roomType.unitCount === 1 ? "" : "s"} of this type` : null,
+      roomType.unitCount != null ? L(roomType.unitCount === 1 ? "{n} room of this type" : "{n} rooms of this type", { n: roomType.unitCount }) : null,
     ].filter(Boolean);
     $("metaRow").innerHTML = meta.map((m) => `<span>${esc(m)}</span>`).join("");
 
@@ -327,11 +322,11 @@ h3.section-title{font-size:1.2rem;margin-bottom:16px}
       ? roomType.amenities.map((a) => `<span>${esc(a)}</span>`).join("")
       : `<span style="color:var(--text-muted);background:none;padding:0;">Amenities listed at check-in for this room.</span>`;
 
-    $("cardPrice").innerHTML = `${fmtMoney(roomType.basePrice, roomType.currency)}<small> / night</small>`;
+    $("cardPrice").innerHTML = `${priceHtml(roomType.basePrice, roomType.currency)}<small> / night</small>`;
 
     const guestsSelect = $("guests");
     guestsSelect.innerHTML = Array.from({ length: roomType.maxOccupancy || 2 }, (_, i) => i + 1)
-      .map((n) => `<option value="${n}">${n} guest${n === 1 ? "" : "s"}</option>`).join("");
+      .map((n) => `<option value="${n}">${esc(L(n === 1 ? "{n} guest" : "{n} guests", { n }))}</option>`).join("");
 
     $("otherRooms").innerHTML = otherTypes.length
       ? otherTypes.map((t) => `
@@ -339,7 +334,7 @@ h3.section-title{font-size:1.2rem;margin-bottom:16px}
           <div class="room-card-image"${t.images && t.images[0] ? ` style="background-image:url('${esc(t.images[0])}')"` : ""}></div>
           <div class="room-card-body">
             <h4>${esc(t.name)}</h4>
-            <div class="price">${fmtMoney(t.basePrice, t.currency)}<span style="font-family:var(--font-body);font-size:.78rem;color:var(--text-muted);"> / night</span></div>
+            <div class="price">${priceHtml(t.basePrice, t.currency)}<span style="font-family:var(--font-body);font-size:.78rem;color:var(--text-muted);"> / night</span></div>
           </div>
         </a>`).join("")
       : `<p class="empty-state" style="padding:20px 0;">This is the only room type at this location right now.</p>`;
@@ -390,7 +385,7 @@ h3.section-title{font-size:1.2rem;margin-bottom:16px}
       const sellable = match ? Number(match.sellable) || 0 : 0;
       if (sellable > 0) {
         const bookParams = new URLSearchParams({ branch: branch.slug || branch.id, roomType: roomType.id, checkIn, checkOut, guests });
-        out.innerHTML = `<div class="avail-note ok">${sellable} room${sellable === 1 ? "" : "s"} available for those dates. <a href="booking.html?${bookParams.toString()}" style="text-decoration:underline;font-weight:600;">Continue to booking &rarr;</a></div>`;
+        out.innerHTML = `<div class="avail-note ok">${esc(L(sellable === 1 ? "{n} room available for those dates." : "{n} rooms available for those dates.", { n: sellable }))} <a href="booking.html?${bookParams.toString()}" style="text-decoration:underline;font-weight:600;">${esc(L("Continue to booking"))} &rarr;</a></div>`;
       } else {
         out.innerHTML = `<div class="avail-note no">Not available for those dates — try different dates or see other rooms below.</div>`;
       }

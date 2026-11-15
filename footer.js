@@ -18,7 +18,7 @@
 (function () {
   "use strict";
 
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = (window.Uyeh && window.Uyeh.API_BASE) || window.__API_BASE__ || "https://uyeh-hotel-backend.onrender.com/api";
 
   const mount = document.getElementById("siteFooter") || (function () {
     const d = document.createElement("div");
@@ -53,15 +53,19 @@
   #siteFooter .ft-btn:disabled{opacity:.6;cursor:default}
   #siteFooter .ft-newsletter-note{font-size:.76rem;margin-top:8px;color:var(--f-muted);min-height:1em}
   #siteFooter .ft-bottom{margin-top:44px;padding-top:20px;border-top:1px solid var(--f-line);display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;font-size:.78rem;color:var(--f-muted)}
-  #siteFooter .ft-legal a{margin-left:14px}
+  #siteFooter .ft-legal{display:flex;flex-wrap:wrap;gap:6px 14px}
   #siteFooter .ft-legal a:first-child{margin-left:0}
+  #siteFooter .ft-pickers{display:flex;gap:8px}
+  #siteFooter .ft-pickers select{background:transparent;color:var(--f-ivory);border:1px solid var(--f-line);border-radius:6px;padding:4px 8px;font:inherit;font-size:.78rem}
+  #siteFooter .ft-pickers select option{color:#14181f}
+  #siteFooter .ft-pickers select[hidden]{display:none}
   `;
 
   const HTML = `
   <div class="ft-wrap">
     <div class="ft-grid">
       <div>
-        <a href="index.html" class="ft-brand" id="ftBrand">Uyeh Hotel</a>
+        <a href="index.html" class="ft-brand" id="ftBrand">Our Hotel</a>
         <p class="ft-about" id="ftAbout">Multiple locations, one company, one booking system — built directly by the team that runs it.</p>
       </div>
       <div>
@@ -71,6 +75,7 @@
           <li><a href="index.html#experiences">Experiences</a></li>
           <li><a href="blog.html">Blog</a></li>
           <li><a href="about.html">About</a></li>
+          <li><a href="faqs.html">FAQs</a></li>
           <li><a href="contact.html">Contact</a></li>
         </ul>
       </div>
@@ -93,8 +98,9 @@
       </div>
     </div>
     <div class="ft-bottom">
-      <span>&copy; <span id="ftYear"></span> <span id="ftCopyrightName">Uyeh Hotel</span>. All rights reserved.</span>
-      <span class="ft-legal"><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a></span>
+      <span>&copy; <span id="ftYear"></span> <span id="ftCopyrightName">Our Hotel</span>. All rights reserved.</span>
+            <span class="ft-legal"><a href="privacy-policy.html">Privacy</a><a href="terms-of-service.html">Terms</a><a href="cookie-policy.html">Cookies</a></span>
+      <span class="ft-pickers"><select data-lang-select aria-label="Language" hidden></select><select data-currency-select aria-label="Currency" hidden></select></span>
     </div>
   </div>
   `;
@@ -113,7 +119,7 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
       const settings = data.settings || {};
-      const name = settings.platformName || "Uyeh Hotel";
+      const name = settings.platformName || "Our Hotel";
       $("ftCopyrightName").textContent = name;
 
       const brandEl = $("ftBrand");
@@ -133,7 +139,7 @@
       if (settings.footerPhone) {
         const phoneEl = $("ftPhone");
         phoneEl.textContent = settings.footerPhone;
-        phoneEl.href = `tel:${settings.footerPhone}`;
+        phoneEl.href = `tel:${String(settings.footerPhone).replace(/[^\d+]/g, "")}`;
       }
     } catch (err) {
       console.warn("Footer settings unavailable, using page defaults:", err.message);
@@ -147,8 +153,8 @@
     try {
       const res = await fetch(`${API_BASE}/newsletter/subscribe`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: input.value }),
+        headers: { "Content-Type": "application/json", "Accept-Language": (window.Uyeh ? window.Uyeh.acceptLanguage() : navigator.language || "en") },
+        body: JSON.stringify({ email: input.value, locale: (window.SiteController && window.SiteController.getLocale()) || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);

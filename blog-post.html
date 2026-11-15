@@ -162,6 +162,9 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .newsletter-note{font-size:.78rem;color:rgba(237,230,214,.6);margin-top:14px;min-height:1em}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -270,16 +273,11 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
 <script>
 (function () {
   "use strict";
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = (id) => document.getElementById(id);
 
-  async function api(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-    return data;
-  }
+  const api = window.Uyeh.api;
 
   // Same localStorage keys my-account.html uses — a guest logged in
   // there is automatically recognized here too.
@@ -339,7 +337,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
       const name = settings.platformName || "Uyeh Hotel";
       $("footerCopyrightName") && ($("footerCopyrightName").textContent = name);
       const navBrand = $("navBrand");
-      if (settings.logoUrl) navBrand.innerHTML = `<img class="brand-logo" src="${settings.logoUrl}" alt="${name}">`;
+      if (settings.logoUrl) navBrand.innerHTML = `<img class="brand-logo" src="${escapeHtml(settings.logoUrl)}" alt="${escapeHtml(name)}">`;
       else navBrand.textContent = name;
     } catch (err) {
       console.warn("Could not load platform name, using fallback:", err.message);
@@ -366,7 +364,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
   }
 
   function formatDate(iso) {
-    return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    return window.Uyeh.fmtDate(iso, { month: "long" });
   }
 
   function renderRelated(posts, currentSlug) {
@@ -375,12 +373,12 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
     $("relatedSection").style.display = "block";
     $("relatedGrid").innerHTML = others.map((p) => `
       <a href="blog-post.html?slug=${encodeURIComponent(p.slug)}" class="post-card">
-        <div class="post-card-image" style="${p.coverImageUrl ? `background-image:url('${p.coverImageUrl}')` : ""}"></div>
+        <div class="post-card-image" style="${p.coverImageUrl ? `background-image:url('${escapeHtml(p.coverImageUrl)}')` : ""}"></div>
         <div class="post-card-body">
-          <div class="post-meta">${p.branch ? p.branch.name : "Company news"} &middot; ${formatDate(p.publishedAt)}</div>
-          <h3>${p.title}</h3>
-          <p>${p.excerpt || ""}</p>
-          <span class="read-more">Read more &rarr;</span>
+          <div class="post-meta">${escapeHtml(p.branch ? p.branch.name : window.Uyeh.t("Company news"))} &middot; ${escapeHtml(formatDate(p.publishedAt))}</div>
+          <h3>${escapeHtml(p.title)}</h3>
+          <p>${escapeHtml(p.excerpt || "")}</p>
+          <span class="read-more">${escapeHtml(window.Uyeh.t("Read more"))} &rarr;</span>
         </div>
       </a>
     `).join("");
@@ -416,7 +414,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
   function renderCommentList(comments) {
     const me = getGuestUser();
     const list = $("commentList");
-    $("commentsHeading").textContent = `Comments (${comments.length})`;
+    $("commentsHeading").textContent = window.Uyeh.t("Comments ({n})", { n: comments.length });
     list.innerHTML = comments.length ? comments.map((c) => `
       <div class="comment-item" data-id="${c.id}">
         <div class="comment-head">
@@ -453,7 +451,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
     const me = getGuestUser();
     if (!getGuestToken() || !me) {
       formArea.innerHTML = `<div class="login-prompt">
-        <a href="my-account.html?returnTo=${encodeURIComponent(window.location.href)}">Log in</a> to leave a comment — same account you'd use to book a room.
+        <a href="${escapeHtml(window.__GUEST_PORTAL__ || "guest-panel.html")}?returnTo=${encodeURIComponent(window.location.href)}">Log in</a> to leave a comment — same account you'd use to book a room.
       </div>`;
     } else {
       formArea.innerHTML = `
@@ -491,7 +489,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
     render();
     btn.addEventListener("click", async () => {
       if (!getGuestToken()) {
-        window.location.href = `my-account.html?returnTo=${encodeURIComponent(window.location.href)}`;
+        window.location.href = `${window.__GUEST_PORTAL__ || "guest-panel.html"}?returnTo=${encodeURIComponent(window.location.href)}`;
         return;
       }
       btn.disabled = true;

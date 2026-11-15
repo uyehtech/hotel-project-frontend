@@ -349,29 +349,39 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
     });
   }
 
-  function showConfirmation({ success, reference }) {
+  function showConfirmation({ success, reference, uncertain = false, onRetry }) {
     $("layout").style.display = "none";
     $("stepsBar").style.display = "none";
     document.querySelector("nav .wrap").insertAdjacentHTML("beforeend", "");
     const area = document.createElement("div");
     area.className = "wrap";
+    const retryLabel = uncertain ? "Check payment status" : "Try payment again";
     area.innerHTML = `
       <div class="confirm-panel${success ? "" : " failed"}">
         <div class="cp-mark">${success ? "&#10003;" : "!"}</div>
-        <h2>${success ? "You're booked" : "Payment didn't go through"}</h2>
+        <h2>${success ? "You're booked" : uncertain ? "Confirming your payment…" : "Payment didn't go through"}</h2>
         <p>${success
           ? "Your reservation is confirmed and a receipt has been sent to your email."
-          : "Your booking is held as pending — no charge was made. You can try paying again, or contact us with your reference."}</p>
+          : uncertain
+            ? "We couldn't confirm your payment just now, but it may already have gone through — please don't pay again. Tap below to check, or contact us with your reference if this keeps happening."
+            : "Your booking is held as pending — no charge was made. You can try paying again, or contact us with your reference."}</p>
         <div class="ref">${esc(reference || (booking && booking.id) || "")}</div>
         <div class="actions">
-          ${success ? "" : `<button type="button" class="btn btn-primary" id="retryPayBtn">Try payment again</button>`}
+          ${success ? "" : `<button type="button" class="btn btn-primary" id="retryPayBtn">${retryLabel}</button>`}
           <a href="index.html" class="btn btn-outline">Return home</a>
         </div>
       </div>`;
     document.body.insertBefore(area, document.querySelector("footer"));
     goToStep("done");
     if (!success) {
-      document.getElementById("retryPayBtn").addEventListener("click", () => window.location.reload());
+      document.getElementById("retryPayBtn").addEventListener("click", async () => {
+        if (!uncertain || !onRetry) { window.location.reload(); return; }
+        const btn = document.getElementById("retryPayBtn");
+        btn.disabled = true; btn.textContent = "Checking…";
+        const confirmed = await onRetry().catch(() => false);
+        if (confirmed) showConfirmation({ success: true, reference });
+        else { btn.disabled = false; btn.textContent = retryLabel; }
+      });
     }
   }
 
@@ -402,7 +412,13 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
               await api("/payments/paystack/verify", { method: "POST", body: JSON.stringify({ reference }) });
               showConfirmation({ success: true, reference });
             } catch (err) {
-              showConfirmation({ success: false, reference });
+              showConfirmation({
+                success: false, reference, uncertain: true,
+                onRetry: async () => {
+                  await api("/payments/paystack/verify", { method: "POST", body: JSON.stringify({ reference }) });
+                  return true;
+                },
+              });
             }
           },
           onCancel: () => {
@@ -443,7 +459,13 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
         const { confirmed } = await api("/payments/stripe/verify", { method: "POST", body: JSON.stringify({ sessionId: e.data.sessionId }) });
         showConfirmation({ success: !!confirmed, reference: e.data.sessionId });
       } catch (err) {
-        showConfirmation({ success: false, reference: e.data.sessionId });
+        showConfirmation({
+          success: false, reference: e.data.sessionId, uncertain: true,
+          onRetry: async () => {
+            const { confirmed } = await api("/payments/stripe/verify", { method: "POST", body: JSON.stringify({ sessionId: e.data.sessionId }) });
+            return !!confirmed;
+          },
+        });
       }
     });
 
@@ -487,5 +509,6 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
   init();
 })();
 </script>
+<script src="chat-widget.js"></script>
 </body>
 </html>

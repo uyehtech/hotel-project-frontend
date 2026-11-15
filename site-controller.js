@@ -28,7 +28,18 @@
 (function (window, document) {
   "use strict";
 
-  const API_BASE = (window.__API_BASE__ || "/api").replace(/\/$/, "");
+  // Safe storage: falls back to memory when the browser blocks it (private mode, blocked cookies).
+  const safeStore = (name) => {
+    try { const s = window[name]; s.getItem("__t"); return s; }
+    catch (_) {
+      const m = new Map();
+      return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => { m.set(k, String(v)); }, removeItem: (k) => { m.delete(k); } };
+    }
+  };
+  const localStorage = safeStore("localStorage");
+  const sessionStorage = safeStore("sessionStorage");
+
+  const API_BASE = (window.__API_BASE__ || (window.Uyeh && window.Uyeh.API_BASE) || "/api").replace(/\/$/, "");
   const POLL_MS = 60 * 1000;
   const NS = "uyeh";
   const KEY = {
@@ -39,6 +50,7 @@
     branch: `${NS}_branch`,
     consent: `${NS}_cookie_consent`, // "all" | "essential"
     cache: `${NS}_settings_cache`,
+    strings: `${NS}_strings`,
   };
 
   let settings = null;
@@ -50,6 +62,19 @@
   let pollTimer = null;
   let fetching = false;
   const listeners = {};
+  let supportedLocales = ["en"];
+  let supportedCurrencies = [];
+  let stringsFresh = false;   // strings for the current locale have been fetched from the API this page load
+  let localeSeen = false;     // handleLanguage has run at least once
+  let urlLangUsed = false;    // ?lang= has been applied (only the first pass may use it)
+  // Translation + observer state. Declared here (not further down) because init() runs before later lines are reached.
+  const SKIP_TAGS = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "TEXTAREA", "SVG", "CODE", "PRE", "KBD", "TITLE"]);
+  const SKIP_SEL = '[translate="no"],[data-no-i18n],[data-i18n],[contenteditable="true"]';
+  const I18N_ATTRS = ["placeholder", "title", "aria-label", "alt"];
+  const spaces = (s) => [s.match(/^\s*/)[0], s.match(/\s*$/)[0]];
+  let observer = null;
+  const pending = new Set();
+  let flushScheduled = false;
 
   // ── Boot ───────────────────────────────────────────────────────
   // Apply the last known settings instantly (no flash of default
@@ -64,6 +89,7 @@
 
   async function init() {
     injectStyles();
+    startObserver();
     if (settings) applyAll(settings, { fromCache: true });
     await refresh();
     startPolling();
@@ -244,26 +270,49 @@
   async function handleLanguage(s, { fromCache } = {}) {
     const i18n = s.i18n || { defaultLocale: "en", supportedLocales: ["en"], rtlLocales: ["ar", "he", "fa", "ur"] };
     const supported = i18n.supportedLocales?.length ? i18n.supportedLocales : ["en"];
-    const fromUrl = new URLSearchParams(location.search).get("lang");
+    supportedLocales = supported;
+    // ?lang=fr is honoured once (shared links); after that the visitor's own pick wins.
+    const urlLang = urlLangUsed ? null : new URLSearchParams(location.search).get("lang");
+    urlLangUsed = true;
+    const fromUrl = urlLang && /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(urlLang) ? urlLang : null;
     if (fromUrl) localStorage.setItem(KEY.lang, fromUrl);
     const wanted = [fromUrl, localStorage.getItem(KEY.lang), ...(navigator.languages || [navigator.language]), i18n.defaultLocale, "en"];
     const pick = (l) => l && (supported.find((x) => x.toLowerCase() === l.toLowerCase()) || supported.find((x) => x.split("-")[0] === l.split("-")[0].toLowerCase()));
     const next = wanted.map(pick).find(Boolean) || "en";
 
-    const changed = next !== locale || !Object.keys(strings).length;
+    const changed = next !== locale || !localeSeen;
     locale = next;
+    localeSeen = true;
     document.documentElement.lang = locale;
     document.documentElement.dir = (i18n.rtlLocales || []).includes(locale.split("-")[0]) ? "rtl" : "ltr";
 
-    if (changed && !fromCache && supported.length > 1) {
-      try {
-        const res = await fetch(`${API_BASE}/i18n/${encodeURIComponent(locale)}`);
-        if (res.ok) strings = (await res.json()).strings || {};
-      } catch (_) { /* keep page copy */ }
-    }
+    if (changed) strings = readStringsCache(locale);   // instant, no flash of English on repeat visits
+    const needFetch = !fromCache && supported.length > 1 && (changed || !stringsFresh);
+    if (needFetch) await loadStrings(locale);
     translateDom();
     renderLangSelect(supported);
-    if (changed) emit("locale", locale);
+
+    // "settled" = the page can trust t()/translateDom now: we have strings, or there is nothing to fetch.
+    const settled = needFetch || Object.keys(strings).length > 0 || supported.length < 2 || locale.split("-")[0] === "en";
+    if ((changed || needFetch) && settled) emit("locale", locale);
+  }
+
+  async function loadStrings(l) {
+    try {
+      const res = await fetch(`${API_BASE}/i18n/${encodeURIComponent(l)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const next = (await res.json()).strings || {};
+      if (l !== locale) return; // the visitor switched language while this was loading
+      strings = next;
+      stringsFresh = true;
+      try { const j = JSON.stringify(next); if (j.length < 400000) localStorage.setItem(`${KEY.strings}_${l}`, j); } catch (_) { /* quota */ }
+    } catch (err) {
+      console.warn("[SiteController] strings unavailable:", err.message); // keep whatever we had (cache or page copy)
+    }
+  }
+
+  function readStringsCache(l) {
+    try { return JSON.parse(localStorage.getItem(`${KEY.strings}_${l}`) || "null") || {}; } catch (_) { return {}; }
   }
 
   function tr(key, fallback, vars) {
@@ -272,12 +321,117 @@
     return v;
   }
 
+  // The key for a sentence is derived from the English text, so pages need no per-string markup.
+  // IMPORTANT: scripts/extract-web-strings.py computes the same key — keep the two in step.
+  function keyOf(text) {
+    const s = String(text).replace(/\s+/g, " ").trim();
+    let h = 0x811c9dc5;
+    for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+    return "web." + h.toString(36);
+  }
+  /** Translate an English UI sentence from JS: SiteController.tt("Pay now") */
+  function tt(english, vars) { return tr(keyOf(english), english, vars); }
+
+  function translateTextNode(n) {
+    const p = n.parentNode;
+    if (!p || p.nodeType !== 1) return;
+    // (Re)record the English source when the node is new, or when page code changed it since we last wrote it.
+    if (n.__i18nSrc === undefined || n.nodeValue !== n.__i18nApplied) {
+      n.__i18nSrc = undefined;
+      if (SKIP_TAGS.has(String(p.tagName).toUpperCase())) return;
+      if (p.children.length) return;                       // mixed text + markup: leave in English
+      if (p.closest && p.closest(SKIP_SEL)) return;
+      const text = n.nodeValue.replace(/\s+/g, " ").trim();
+      if (text.length < 2 || !/[A-Za-z\u00C0-\uFFFF]/.test(text)) return;
+      n.__i18nSrc = n.nodeValue;
+      n.__i18nKey = keyOf(text);
+    }
+    const v = strings[n.__i18nKey];
+    const [lead, trail] = spaces(n.__i18nSrc);
+    const out = v !== undefined ? lead + v + trail : n.__i18nSrc;
+    if (n.nodeValue !== out) n.nodeValue = out;
+    n.__i18nApplied = out;
+  }
+
+  function translateAttrs(scope) {
+    const els = [scope, ...scope.querySelectorAll(I18N_ATTRS.map((a) => `[${a}]`).join(","))];
+    for (const el of els) {
+      if (!el.getAttribute || (el.closest && el.closest('[translate="no"],[data-no-i18n]'))) continue;
+      for (const a of I18N_ATTRS) {
+        if (!el.hasAttribute(a) || el.hasAttribute(`data-i18n-${a}`)) continue;
+        const cur = el.getAttribute(a);
+        el.__i18nAttrs = el.__i18nAttrs || {};
+        let rec = el.__i18nAttrs[a];
+        if (rec === undefined || (rec && cur !== rec.applied)) {
+          const text = cur.replace(/\s+/g, " ").trim();
+          rec = el.__i18nAttrs[a] = text.length >= 2 ? { raw: cur, key: keyOf(text), applied: cur } : null;
+        }
+        if (!rec) continue;
+        const v = strings[rec.key];
+        const out = v !== undefined ? v : rec.raw;
+        if (cur !== out) el.setAttribute(a, out);
+        rec.applied = out;
+      }
+    }
+  }
+
+  function translateTree(root) {
+    if (!root) return;
+    if (root.nodeType === 3) { translateTextNode(root); return; }
+    const scope = root.nodeType === 9 ? root.body : root;
+    if (!scope || scope.nodeType !== 1) return;
+    const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = walker.nextNode())) translateTextNode(n);
+    translateAttrs(scope);
+  }
+
   function translateDom(root = document) {
-    if (!Object.keys(strings).length) return;
-    root.querySelectorAll("[data-i18n]").forEach((el) => { const v = strings[el.getAttribute("data-i18n")]; if (v) el.textContent = v; });
-    ["placeholder", "title", "aria-label", "alt"].forEach((attr) => {
-      root.querySelectorAll(`[data-i18n-${attr}]`).forEach((el) => { const v = strings[el.getAttribute(`data-i18n-${attr}`)]; if (v) el.setAttribute(attr, v); });
+    // Hand-keyed markup: <span data-i18n="nav.book_now">Book now</span>. Reversible: the page copy is kept.
+    root.querySelectorAll("[data-i18n]").forEach((el) => {
+      if (el.__i18nSrc === undefined) el.__i18nSrc = el.textContent;
+      const v = strings[el.getAttribute("data-i18n")];
+      el.textContent = v !== undefined ? v : el.__i18nSrc;
     });
+    I18N_ATTRS.forEach((attr) => {
+      root.querySelectorAll(`[data-i18n-${attr}]`).forEach((el) => {
+        const k = `__i18nSrc_${attr}`;
+        if (el[k] === undefined) el[k] = el.getAttribute(attr) || "";
+        const v = strings[el.getAttribute(`data-i18n-${attr}`)];
+        el.setAttribute(attr, v !== undefined ? v : el[k]);
+      });
+    });
+    translateTree(root);
+  }
+
+  // Text, prices and language/currency pickers that pages add after load (cards, notices, the footer).
+  function startObserver() {
+    if (observer || !window.MutationObserver) return;
+    observer = new MutationObserver((muts) => {
+      for (const m of muts) m.addedNodes.forEach((n) => { if (n.nodeType === 1 || n.nodeType === 3) pending.add(n); });
+      if (pending.size && !flushScheduled) { flushScheduled = true; requestAnimationFrame(flushPending); }
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+  function flushPending() {
+    flushScheduled = false;
+    const nodes = [...pending];
+    pending.clear();
+    let rebindNeeded = false;
+    for (const n of nodes) {
+      if (!n.isConnected) continue;
+      translateTree(n);
+      if (n.nodeType === 1) {
+        if ((n.matches && n.matches("[data-price]")) || n.querySelector("[data-price]")) renderPrices(n);
+        if (n.querySelector("[data-lang-select],[data-currency-select],[data-branch-select]") || (n.matches && n.matches("[data-lang-select],[data-currency-select],[data-branch-select]"))) rebindNeeded = true;
+      }
+    }
+    if (rebindNeeded) rebind();
+  }
+  function rebind() {
+    renderLangSelect(supportedLocales);
+    renderCurrencySelect(supportedCurrencies);
+    handleBranches(settings || {});
   }
 
   function renderLangSelect(supported) {
@@ -295,9 +449,22 @@
 
   async function setLocale(l) {
     localStorage.setItem(KEY.lang, l);
-    strings = {};
+    urlLangUsed = true;
+    try { const u = new URL(location.href); if (u.searchParams.has("lang")) { u.searchParams.delete("lang"); history.replaceState(null, "", u.toString()); } } catch (_) { /* file:// etc. */ }
+    stringsFresh = false;
     await handleLanguage(settings || {});
     await handleCurrency(settings || {}); // number formats follow the language
+    syncGuestLocale(l);
+  }
+
+  function syncGuestLocale(l) {
+    const token = localStorage.getItem("guest_token");
+    if (!token) return;
+    fetch(`${API_BASE}/guest/profile`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ locale: l }),
+    }).catch(() => { /* best effort */ });
   }
 
   // ── 7. Currency ────────────────────────────────────────────────
@@ -306,6 +473,7 @@
   async function handleCurrency(s, { fromCache } = {}) {
     const cfg = s.currency || { base: s.baseCurrency || "NGN", supported: [s.baseCurrency || "NGN"] };
     const supported = cfg.supported?.length ? cfg.supported : [cfg.base];
+    supportedCurrencies = supported;
     const saved = localStorage.getItem(KEY.currency);
     currency = supported.includes(saved) ? saved : guessCurrency(supported) || cfg.base;
 
@@ -329,23 +497,28 @@
 
   function convert(amount, from, to) {
     if (!rates || from === to) return { amount, currency: from, converted: false };
+    if (rates.source === "disabled") return { amount, currency: from, converted: false };
+    if (rates.asOf && Date.now() - Date.parse(rates.asOf) > 48 * 3600 * 1000) return { amount, currency: from, converted: false };
     const r = rates.rates || {};
     if (!r[from] || !r[to]) return { amount, currency: from, converted: false };
     return { amount: (Number(amount) / r[from]) * r[to], currency: to, converted: true };
   }
 
-  function formatMoney(amount, cur) {
-    try { return new Intl.NumberFormat(locale, { style: "currency", currency: cur, maximumFractionDigits: cur === "JPY" ? 0 : 2 }).format(amount); }
-    catch (_) { return `${cur} ${Number(amount).toFixed(2)}`; }
+  function formatMoney(amount, cur, { approx = false } = {}) {
+    const n = Number(amount);
+    const whole = Number.isInteger(n) || (approx && Math.abs(n) >= 100);
+    try { return new Intl.NumberFormat(locale, { style: "currency", currency: cur, ...(whole ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {}) }).format(n); }
+    catch (_) { return `${cur} ${n.toFixed(2)}`; }
   }
 
   function renderPrices(root = document) {
-    root.querySelectorAll("[data-price]").forEach((el) => {
+    const els = [...(root.matches && root.matches("[data-price]") ? [root] : []), ...root.querySelectorAll("[data-price]")];
+    els.forEach((el) => {
       const raw = Number(el.getAttribute("data-price"));
       const from = el.getAttribute("data-currency") || (settings && settings.baseCurrency) || "NGN";
       if (!isFinite(raw)) return;
       const c = convert(raw, from, currency || from);
-      el.textContent = formatMoney(c.amount, c.currency);
+      el.textContent = formatMoney(c.amount, c.currency, { approx: c.converted });
       // The charge is always in the property's own currency — say so.
       if (c.converted) el.title = tr("price.indicative", "Approximate. You'll be charged {amount} at booking.", { amount: formatMoney(raw, from) });
       else el.removeAttribute("title");
@@ -480,7 +653,7 @@
     el.setAttribute("aria-label", tr("consent.title", "Cookie preferences"));
     el.innerHTML = `
       <p>${esc(tr("consent.text", "We use cookies to understand how our site is used and to improve your stay."))}
-        ${legal.privacyUrl ? `<a href="${safeUrl(legal.privacyUrl)}">${esc(tr("consent.privacy", "Privacy policy"))}</a>` : ""}</p>
+        ${legal.privacyUrl ? `<a href="${safeUrl(legalUrl(legal.privacyUrl, "privacy-policy.html"))}">${esc(tr("consent.privacy", "Privacy policy"))}</a>` : ""}</p>
       <div class="${NS}-consent-actions">
         <button type="button" data-choice="essential">${esc(tr("consent.essential", "Essential only"))}</button>
         <button type="button" data-choice="all" class="${NS}-primary">${esc(tr("consent.accept", "Accept all"))}</button>
@@ -543,7 +716,7 @@
 
   // ── 12. Push (opt-in, logged-in guests) ────────────────────────
   // await SiteController.enablePush({ token: guestAccessToken, swUrl: "/sw.js" })
-  async function enablePush({ token, swUrl = "/sw.js" } = {}) {
+  async function enablePush({ token, swUrl = "/sw-guest.js" } = {}) {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) throw new Error("Push is not supported on this browser");
     const key = settings?.push?.vapidPublicKey;
     if (!key) throw new Error("Push is not configured");
@@ -553,8 +726,8 @@
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64(key) });
     const res = await fetch(`${API_BASE}/push/subscribe`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify(sub.toJSON()),
+      headers: { "Content-Type": "application/json", "Accept-Language": locale, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ ...sub.toJSON(), locale }),
     });
     if (!res.ok) throw new Error(`Subscribe failed (${res.status})`);
     return true;
@@ -616,6 +789,8 @@
   function safeUrl(u) { try { const x = new URL(u, location.href); return ["http:", "https:", "mailto:", "tel:"].includes(x.protocol) ? esc(x.href) : "#"; } catch (_) { return "#"; } }
   function hash(str) { let h = 0; for (let i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h |= 0; } return h; }
   function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  // The backend defaults these to /privacy.html and /terms.html; the real pages have longer names.
+  function legalUrl(u, fallback) { return !u || u === "/privacy.html" || u === "/terms.html" ? fallback : u; }
   function loadScript(src) { const sc = document.createElement("script"); sc.async = true; sc.src = src; document.head.appendChild(sc); }
   function safe(fn, s) { try { fn(s); } catch (e) { console.error(`[SiteController] ${fn.name} failed:`, e); } }
   async function safeAsync(fn, s, o) { try { await fn(s, o); } catch (e) { console.error(`[SiteController] ${fn.name} failed:`, e); } }
@@ -626,7 +801,7 @@
     getSettings: () => settings,
     isFeatureEnabled,
     // language
-    getLocale: () => locale, setLocale, t: tr, translate: translateDom,
+    getLocale: () => locale, setLocale, t: tr, tt, keyOf, translate: translateDom, rebind,
     // money
     getCurrency: () => currency, setCurrency, formatMoney, convert,
     renderPrices, // call after injecting new [data-price] elements

@@ -134,6 +134,9 @@ section{padding:96px 0}
 .ticket-msg .who{font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;opacity:.6;margin-bottom:6px;display:block}
 @media(max-width:640px){.ticket-msg{max-width:88%}}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -286,17 +289,12 @@ section{padding:96px 0}
 <script>
 (function () {
   "use strict";
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  async function api(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-    return data;
-  }
+  const api = window.Uyeh.api;
 
   /* ---------- preloader ---------- */
   function initPreloader() {
@@ -444,7 +442,7 @@ section{padding:96px 0}
     const statusClass = ticket.status === "RESOLVED" ? " resolved" : "";
     const thread = (ticket.messages || []).map((m) => `
       <div class="ticket-msg ${m.senderType === "GUEST" ? "from-guest" : "from-staff"}">
-        <span class="who">${m.senderType === "GUEST" ? esc(m.guestName || "You") : "Team"} · ${new Date(m.createdAt).toLocaleString()}</span>
+        <span class="who">${m.senderType === "GUEST" ? esc(m.guestName || window.Uyeh.t("You")) : esc(window.Uyeh.t("Team"))} · ${esc(window.Uyeh.fmtDateTime(m.createdAt))}</span>
         ${esc(m.message)}
       </div>`).join("");
 

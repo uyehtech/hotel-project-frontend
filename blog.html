@@ -128,6 +128,9 @@ section{padding:88px 0}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .newsletter-note{font-size:.78rem;color:rgba(237,230,214,.6);margin-top:14px;min-height:1em}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -193,17 +196,12 @@ section{padding:88px 0}
 <script>
 (function () {
   "use strict";
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  async function api(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-    return data;
-  }
+  const api = window.Uyeh.api;
 
   /* ---------- preloader ---------- */
   function initPreloader() {
@@ -273,7 +271,7 @@ section{padding:88px 0}
       <a href="blog-post.html?slug=${encodeURIComponent(p.slug)}" class="post-card" style="--d:${i * 60}ms">
         <div class="post-card-image"${p.coverImageUrl ? ` style="background-image:url('${esc(p.coverImageUrl)}')"` : ""}></div>
         <div class="post-card-body">
-          <div class="post-meta">${esc(p.branch ? p.branch.name : "Company news")} &middot; ${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : ""}</div>
+          <div class="post-meta">${esc(p.branch ? p.branch.name : window.Uyeh.t("Company news"))} &middot; ${p.publishedAt ? esc(window.Uyeh.fmtDate(p.publishedAt, { month: "long" })) : ""}</div>
           <h3>${esc(p.title)}</h3>
           <p>${esc(p.excerpt || "")}</p>
           <span class="read-more">Read more &rarr;</span>

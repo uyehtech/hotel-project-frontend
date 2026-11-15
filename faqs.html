@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="pageTitle">FAQs — Our Hotel</title>
+<meta name="description" content="Answers to common questions about booking, payment, cancellations, and staying with us.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#14181f">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ink:#14181f; --ink-soft:#1c222b; --ink-deep:#0d1015;
+  --ivory:#f6f1e7; --ivory-dim:#ede5d4;
+  --brass:#b98d45; --brass-light:#d9b876;
+  --teal:#2f5d5a; --teal-light:#3f7a76;
+  --text-muted:#6b6355; --text-on-ink:#ede6d6;
+  --line-on-ink:rgba(237,230,214,0.16);
+  --radius:3px;
+  --font-display:'Fraunces',Georgia,serif;
+  --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --ease-out:cubic-bezier(0.16,1,0.3,1);
+  --ease-in-out:cubic-bezier(0.87,0,0.13,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:96px}
+body{font-family:var(--font-body);background:var(--ivory);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}#preloader{display:none!important}}
+h1,h2,h3{font-family:var(--font-display);font-weight:500;line-height:1.15;letter-spacing:-0.01em}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:900px;margin:0 auto;padding:0 28px}
+button,input{font:inherit;color:inherit}
+
+#preloader{position:fixed;inset:0;z-index:999;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:transform .9s var(--ease-in-out)}
+#preloader.lifted{transform:translateY(-101%)}
+.preloader-mark{font-family:var(--font-display);font-size:1.5rem;letter-spacing:.04em;color:var(--ivory)}
+.preloader-mark span{color:var(--brass)}
+.preloader-bar{width:150px;height:1px;background:var(--line-on-ink);position:relative;overflow:hidden}
+.preloader-bar::after{content:"";position:absolute;inset:0;background:var(--brass);transform:translateX(-100%);animation:slide 1.3s var(--ease-in-out) infinite}
+@keyframes slide{to{transform:translateX(100%)}}
+.site-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(20,24,31,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--line-on-ink)}
+.site-nav .wrap{max-width:1180px;display:flex;align-items:center;justify-content:space-between;height:72px;gap:20px}
+.brand{font-family:var(--font-display);font-size:1.22rem;letter-spacing:.02em;color:var(--ivory);text-decoration:none}
+.brand-logo{height:30px;width:auto}
+.nav-links{display:flex;align-items:center;gap:22px;font-size:.88rem}
+.nav-links a{color:rgba(237,230,214,.78)}
+.nav-links a:hover{color:var(--ivory)}
+.nav-cta{border:1px solid var(--brass);color:var(--brass-light)!important;padding:9px 18px;border-radius:999px}
+.nav-cta:hover{background:var(--brass);color:var(--ink)!important}
+.nav-toggle{display:none;background:none;border:0;cursor:pointer;padding:8px;flex-direction:column;gap:5px}
+.nav-toggle .bar{display:block;width:22px;height:1.5px;background:var(--ivory)}
+@media(max-width:900px){
+  .nav-toggle{display:flex}
+  .nav-links{position:absolute;top:72px;left:0;right:0;flex-direction:column;align-items:flex-start;gap:0;background:var(--ink-soft);border-bottom:1px solid var(--line-on-ink);max-height:0;overflow:hidden;transition:max-height .4s var(--ease-out)}
+  .nav-links.open{max-height:420px}
+  .nav-links a{padding:15px 28px;width:100%;border-bottom:1px solid rgba(237,230,214,.07)}
+  .nav-cta{border:0;border-radius:0;color:var(--brass-light)!important}
+}
+
+.page-header{position:relative;background:var(--ink);color:var(--text-on-ink);padding:140px 0 50px;overflow:hidden}
+.page-header::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 15% 0%,rgba(47,93,90,.4),transparent 60%)}
+.page-header .wrap{position:relative;z-index:2;max-width:1180px}
+.eyebrow{font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-light);margin-bottom:16px;display:inline-flex;align-items:center;gap:8px}
+.eyebrow::before{content:"";width:24px;height:1px;background:var(--brass)}
+.page-header h1{font-size:clamp(2.2rem,4.5vw,3.2rem);max-width:18ch;margin-bottom:26px}
+
+.search-box{position:relative;max-width:520px}
+.search-box input{width:100%;padding:14px 18px;border-radius:30px;border:1px solid var(--line-on-ink);background:rgba(255,255,255,.06);color:var(--ivory);font-size:.94rem}
+.search-box input::placeholder{color:rgba(237,230,214,.45)}
+.search-box input:focus{outline:none;border-color:var(--brass-light)}
+
+section{padding:56px 0}
+.category-nav{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:44px}
+.cat-chip{font-size:.82rem;color:var(--teal);background:rgba(47,93,90,.08);padding:8px 16px;border-radius:20px;cursor:pointer;border:1px solid transparent;transition:all .2s}
+.cat-chip:hover,.cat-chip.active{background:var(--teal);color:var(--ivory)}
+
+.faq-category{margin-bottom:44px}
+.faq-category h2{font-size:1.15rem;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+.faq-category .cat-key{width:30px;height:30px;border-radius:6px;background:var(--brass);color:var(--ink);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:.85rem;flex-shrink:0}
+
+.faq-item{border-bottom:1px solid rgba(107,99,85,.14)}
+.faq-q{width:100%;text-align:left;background:none;border:none;padding:18px 0;display:flex;justify-content:space-between;align-items:center;gap:16px;cursor:pointer;font-size:.98rem;font-weight:500}
+.faq-q .plus{font-size:1.3rem;color:var(--brass);transition:transform .3s var(--ease-out);flex-shrink:0}
+.faq-item.open .plus{transform:rotate(45deg)}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .35s var(--ease-out)}
+.faq-a p{padding:0 0 20px;color:var(--text-muted);max-width:68ch;font-size:.94rem}
+.faq-item.open .faq-a{max-height:400px}
+
+.empty-state{padding:60px 0;text-align:center;color:var(--text-muted)}
+
+.cta-band{text-align:center;background:linear-gradient(140deg,var(--teal),var(--ink-deep));color:var(--ivory);padding:70px 0}
+.cta-band .wrap{max-width:520px}
+.cta-band h2{color:var(--ivory);font-size:clamp(1.6rem,3vw,2.1rem);margin-bottom:10px}
+.cta-band p{color:rgba(237,230,214,.72);margin-bottom:26px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 28px;border-radius:2px;font-size:.9rem;font-weight:600;border:1px solid transparent;cursor:pointer;transition:.25s}
+.btn-primary{background:var(--brass);color:var(--ink)}
+.btn-primary:hover{background:var(--brass-light)}
+
+footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-align:center;font-size:.8rem}
+</style>
+</head>
+<body>
+
+<div id="preloader" aria-hidden="true">
+  <div class="preloader-mark">Our Hotel<span>.</span></div>
+  <div class="preloader-bar"></div>
+</div>
+
+<nav class="site-nav" id="siteNav">
+  <div class="wrap">
+    <a href="index.html" class="brand" id="navBrand">Our Hotel</a>
+    <div class="nav-links" id="navLinks">
+      <a href="index.html">Home</a>
+      <a href="index.html#locations">Locations</a>
+      <a href="blog.html">Blog</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+      <a href="index.html#book" class="nav-cta">Check availability</a>
+    </div>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </button>
+  </div>
+</nav>
+
+<header class="page-header">
+  <div class="wrap">
+    <span class="eyebrow">Help center</span>
+    <h1>Questions, answered.</h1>
+    <div class="search-box">
+      <input type="search" id="faqSearch" placeholder="Search FAQs — e.g. cancellation, payment, pets…">
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="category-nav" id="categoryNav"></div>
+    <div id="faqCategories"></div>
+    <div class="empty-state" id="emptyState" style="display:none;">No results for that search — try a different word, or <a href="contact.html" style="text-decoration:underline;">contact us</a> directly.</div>
+  </div>
+</section>
+
+<section class="cta-band">
+  <div class="wrap">
+    <h2>Still have a question?</h2>
+    <p>Open a ticket and the branch team will get back to you directly — no account needed.</p>
+    <a href="contact.html" class="btn btn-primary">Contact us</a>
+  </div>
+</section>
+
+<footer>&copy; <span id="year"></span> <span id="footerName">Our Hotel</span>. All rights reserved.</footer>
+
+<script>
+(function () {
+  "use strict";
+  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const $ = (id) => document.getElementById(id);
+
+  const DATA = [
+    { cat: "Booking", key: "B", items: [
+      ["How do I check if a room is available?", "Pick a location on our homepage, enter your dates and guest count, and available rooms show instantly — no account or sign-up needed to check."],
+      ["Do I need an account to book?", "No. You can book as a guest with just your name, email, and phone number. Creating an account just makes it easier to see your booking history and leave reviews later."],
+      ["Can I book for someone else?", "Yes — use your own contact details for the booking confirmation, and add the actual guest's name in the special requests field so the branch knows who to expect."],
+      ["Is there a minimum stay?", "This varies by branch and room type, and is shown before you confirm your dates if it applies."],
+    ]},
+    { cat: "Payment", key: "P", items: [
+      ["What payment methods do you accept?", "Card and bank transfer, through Paystack or Stripe depending on the currency of the branch you're booking — checkout shows whichever methods apply to you."],
+      ["Is my payment secure?", "Yes. Card details are handled directly by Paystack or Stripe — we never see or store your full card number."],
+      ["When am I charged?", "Payment is collected at the time of booking to confirm your reservation, unless a specific branch has offered a pay-on-arrival option."],
+      ["Do you charge in my local currency?", "Each branch sets its own currency for its rates. The total you see at checkout is the total you're charged, in that currency."],
+    ]},
+    { cat: "Cancellations", key: "C", items: [
+      ["What's your cancellation policy?", "It depends on the branch and room type, and is always shown before you pay. Generally, cancelling within the free-cancellation window shown at booking gets a full refund."],
+      ["How do I cancel or change a booking?", "Contact the branch directly, or reach us through our Contact page — include your booking reference if you have it."],
+      ["How long do refunds take?", "Once approved, refunds return to your original payment method and typically take a few business days to appear, depending on your bank."],
+    ]},
+    { cat: "Your stay", key: "S", items: [
+      ["What time is check-in and check-out?", "Standard times are set per branch and shown on that branch's page. Early check-in or late check-out can often be arranged on request, subject to availability."],
+      ["Can I bring a pet?", "Pet policies vary by branch — check the specific location's page or contact them directly before booking if you're travelling with a pet."],
+      ["Is breakfast included?", "This depends on the room rate and branch — it's stated clearly on the room details page before you book."],
+      ["Do you offer accessible rooms?", "Availability varies by building. Contact the branch directly, or reach us via our Contact page, to confirm what's available before booking."],
+    ]},
+    { cat: "Account & support", key: "A", items: [
+      ["I don't have an account — can I still get help?", "Yes. Our Contact page lets you open a support ticket and track replies using just your email and a reference number, no account required."],
+      ["How do I leave a review?", "Reviews are enabled after a completed stay, tied to your booking, to keep them genuine."],
+      ["Can I delete my account or data?", "Yes — contact us through the Contact page and we'll handle the request in line with our Privacy Policy."],
+    ]},
+    { cat: "Groups & events", key: "G", items: [
+      ["Can I book multiple rooms at once?", "Yes, through the same booking flow — for larger group bookings, contacting the branch directly is usually faster."],
+      ["Do you host events or meetings?", "Some locations do — check that branch's page for event space, or ask via our Contact page."],
+    ]},
+  ];
+
+  function renderFaqs(filterText) {
+    const q = (filterText || "").trim().toLowerCase();
+    const container = $("faqCategories");
+    let totalShown = 0;
+
+    container.innerHTML = DATA.map((group) => {
+      const items = group.items.filter(([question, answer]) =>
+        !q || question.toLowerCase().includes(q) || answer.toLowerCase().includes(q)
+      );
+      if (!items.length) return "";
+      totalShown += items.length;
+      return `
+        <div class="faq-category" data-cat="${group.cat}">
+          <h2><span class="cat-key">${group.key}</span>${group.cat}</h2>
+          ${items.map(([question, answer]) => `
+            <div class="faq-item">
+              <button class="faq-q" type="button">${question}<span class="plus">+</span></button>
+              <div class="faq-a"><p>${answer}</p></div>
+            </div>
+          `).join("")}
+        </div>`;
+    }).join("");
+
+    $("emptyState").style.display = totalShown ? "none" : "block";
+
+    container.querySelectorAll(".faq-q").forEach((btn) => {
+      btn.addEventListener("click", () => btn.closest(".faq-item").classList.toggle("open"));
+    });
+  }
+
+  function renderCategoryNav() {
+    $("categoryNav").innerHTML = `<span class="cat-chip active" data-cat="">All</span>` +
+      DATA.map((g) => `<span class="cat-chip" data-cat="${g.cat}">${g.cat}</span>`).join("");
+    $("categoryNav").querySelectorAll(".cat-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        $("categoryNav").querySelectorAll(".cat-chip").forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        const cat = chip.dataset.cat;
+        document.querySelectorAll(".faq-category").forEach((el) => {
+          el.style.display = (!cat || el.dataset.cat === cat) ? "block" : "none";
+        });
+      });
+    });
+  }
+
+  $("faqSearch").addEventListener("input", (e) => {
+    document.querySelectorAll(".cat-chip").forEach((c) => c.classList.toggle("active", c.dataset.cat === ""));
+    document.querySelectorAll(".faq-category").forEach((el) => { el.style.display = "block"; });
+    renderFaqs(e.target.value);
+  });
+
+  const el = $("preloader");
+  setTimeout(() => { el.classList.add("lifted"); setTimeout(() => { el.style.display = "none"; }, 950); }, 500);
+
+  $("navToggle").addEventListener("click", () => {
+    const open = $("navLinks").classList.toggle("open");
+    $("navToggle").setAttribute("aria-expanded", String(open));
+  });
+
+  $("year").textContent = new Date().getFullYear();
+
+  fetch(`${API_BASE}/settings`).then((r) => r.json()).then(({ settings }) => {
+    const name = settings.platformName || "Our Hotel";
+    document.title = document.title.replace("Our Hotel", name);
+    $("navBrand").textContent = name;
+    $("footerName").textContent = name;
+  }).catch(() => {});
+
+  renderCategoryNav();
+  renderFaqs("");
+})();
+</script>
+<script src="chat-widget.js"></script>
+</body>
+</html>

@@ -604,6 +604,37 @@ function openBookingModal(room) {
 }
 function closeBookingModal() { const el = document.getElementById("bookingModal"); if (el) el.remove(); }
 
+function loadScriptOnce(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const s = document.createElement("script");
+    s.src = src; s.onload = resolve; s.onerror = () => reject(new Error("Couldn't load payment script"));
+    document.head.appendChild(s);
+  });
+}
+
+/** Shared embedded Paystack flow for every paying page in this panel
+ * (room bookings, event tickets, orders, spa) — opens in-page instead of
+ * a full-page redirect to Paystack's hosted checkout, so success/failure
+ * comes back in seconds and doesn't depend on the guest's browser
+ * successfully following a redirect back to the site. */
+async function payViaPaystackInline({ accessCode, reference, onSuccess, onFailure, onCancel }) {
+  await loadScriptOnce("https://js.paystack.co/v2/inline.js");
+  const popup = new PaystackPop();
+  popup.resumeTransaction(accessCode, {
+    onSuccess: async () => {
+      try {
+        await guestApi.verifyPaystackPayment(reference);
+        onSuccess();
+      } catch (err) {
+        onFailure(err);
+      }
+    },
+    onCancel: () => { if (onCancel) onCancel(); },
+    onError: () => onFailure(new Error("Payment window couldn't open — please try again.")),
+  });
+}
+
 async function submitBookingForm(e, room) {
   e.preventDefault();
   const btn = document.getElementById("bkSubmitBtn"); btn.disabled = true; btn.textContent = "Processing…";
@@ -619,9 +650,15 @@ async function submitBookingForm(e, room) {
     });
 
     // Booking is created PENDING — payment is a separate step.
-    const { authorizationUrl } = await guestApi.initiateBookingPayment(_searchContext.branchId, booking.id, window.location.origin + window.location.pathname);
+    const { accessCode, reference, authorizationUrl } = await guestApi.initiateBookingPayment(_searchContext.branchId, booking.id, window.location.origin + window.location.pathname);
     closeBookingModal();
-    if (authorizationUrl) {
+    if (accessCode) {
+      await payViaPaystackInline({
+        accessCode, reference,
+        onSuccess: () => { showNotice("searchNotice", `Booking confirmed! Reference: ${booking.id}. See it under "My Bookings".`, "success"); switchPage("bookings"); },
+        onFailure: () => showNotice("searchNotice", "Payment didn't go through — your booking is held as pending. Try again from \"My Bookings\", or contact us with your reference."),
+      });
+    } else if (authorizationUrl) {
       window.location.href = authorizationUrl;
     } else {
       showNotice("searchNotice", `Booking confirmed! Reference: ${booking.id}. See it under "My Bookings".`, "success");
@@ -867,9 +904,15 @@ function openEventTicketModal(ev) {
     try {
       const quantity = Math.max(1, Number(document.getElementById("etQuantity").value) || 1);
       const { order } = await guestApi.createOrder(ev._branchId, { type: "EVENT_TICKET", eventId: ev.id, quantity });
-      const { authorizationUrl } = await guestApi.initiateOrderPayment(ev._branchId, order.id, window.location.origin + window.location.pathname);
+      const { accessCode, reference, authorizationUrl } = await guestApi.initiateOrderPayment(ev._branchId, order.id, window.location.origin + window.location.pathname);
       overlay.remove();
-      if (authorizationUrl) window.location.href = authorizationUrl;
+      if (accessCode) {
+        await payViaPaystackInline({
+          accessCode, reference,
+          onSuccess: () => showNotice("eventsNotice", "Ticket booked!", "success"),
+          onFailure: () => showNotice("eventsNotice", "Payment didn't go through — your ticket order is held as pending. Try again, or contact us with your reference."),
+        });
+      } else if (authorizationUrl) window.location.href = authorizationUrl;
       else showNotice("eventsNotice", "Ticket booked!", "success");
     } catch (err) {
       document.getElementById("eventTicketNotice").innerHTML = `<div class="notice error">${err.message}</div>`;
@@ -960,9 +1003,15 @@ function openUpcomingEventTicketModal(ue) {
     try {
       const quantity = Math.max(1, Number(document.getElementById("ueQuantity").value) || 1);
       const { order } = await guestApi.createOrder(ue._branchId, { type: "UPCOMING_EVENT_TICKET", upcomingEventId: ue.id, quantity });
-      const { authorizationUrl } = await guestApi.initiateOrderPayment(ue._branchId, order.id, window.location.origin + window.location.pathname);
+      const { accessCode, reference, authorizationUrl } = await guestApi.initiateOrderPayment(ue._branchId, order.id, window.location.origin + window.location.pathname);
       overlay.remove();
-      if (authorizationUrl) window.location.href = authorizationUrl;
+      if (accessCode) {
+        await payViaPaystackInline({
+          accessCode, reference,
+          onSuccess: () => { showNotice("upcomingEventsNotice", "Ticket booked!", "success"); loadMyTickets(); },
+          onFailure: () => showNotice("upcomingEventsNotice", "Payment didn't go through — your ticket order is held as pending. Try again, or contact us with your reference."),
+        });
+      } else if (authorizationUrl) window.location.href = authorizationUrl;
       else { showNotice("upcomingEventsNotice", "Ticket booked!", "success"); loadMyTickets(); }
     } catch (err) {
       document.getElementById("ueTicketNotice").innerHTML = `<div class="notice error">${err.message}</div>`;
@@ -1393,8 +1442,18 @@ async function submitOrder() {
       return;
     }
 
-    const { authorizationUrl } = await guestApi.initiateOrderPayment(branchId, order.id, window.location.origin + window.location.pathname);
-    if (authorizationUrl) {
+    const { accessCode, reference, authorizationUrl } = await guestApi.initiateOrderPayment(branchId, order.id, window.location.origin + window.location.pathname);
+    if (accessCode) {
+      await payViaPaystackInline({
+        accessCode, reference,
+        onSuccess: () => { _orderCart = []; showNotice("orderNotice", "Order placed!", "success"); renderOrderCartSummary(); },
+        onFailure: () => {
+          showNotice("orderNotice", "Payment didn't go through — your order is held as pending. Try again, or contact us with your reference.");
+          if (btn) { btn.disabled = false; btn.textContent = "Place order & pay"; }
+        },
+        onCancel: () => { if (btn) { btn.disabled = false; btn.textContent = "Place order & pay"; } },
+      });
+    } else if (authorizationUrl) {
       window.location.href = authorizationUrl;
     } else {
       _orderCart = [];
@@ -1453,9 +1512,15 @@ function bookSpaTreatment(treatment) {
         return;
       }
 
-      const { authorizationUrl } = await guestApi.initiateOrderPayment(branchId, order.id, window.location.origin + window.location.pathname);
+      const { accessCode, reference, authorizationUrl } = await guestApi.initiateOrderPayment(branchId, order.id, window.location.origin + window.location.pathname);
       overlay.remove();
-      if (authorizationUrl) window.location.href = authorizationUrl;
+      if (accessCode) {
+        await payViaPaystackInline({
+          accessCode, reference,
+          onSuccess: () => showNotice("orderNotice", "Spa appointment booked!", "success"),
+          onFailure: () => showNotice("orderNotice", "Payment didn't go through — your spa booking is held as pending. Try again, or contact us with your reference."),
+        });
+      } else if (authorizationUrl) window.location.href = authorizationUrl;
       else showNotice("orderNotice", "Spa appointment booked!", "success");
     } catch (err) {
       document.getElementById("spaModalNotice").innerHTML = `<div class="notice error">${err.message}</div>`;
@@ -2068,5 +2133,6 @@ hydratePlatformName();
 checkForPaymentReturn();
 if (getToken() && getGuest()) { showApp(); } else { showAuth(); }
 </script>
+<script src="chat-widget.js"></script>
 </body>
 </html>

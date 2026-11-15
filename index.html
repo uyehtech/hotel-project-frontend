@@ -258,6 +258,9 @@ section{position:relative;padding:96px 0}
 .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:var(--ivory);color:var(--ink);padding:12px 20px;border-radius:2px;font-size:.86rem;opacity:0;pointer-events:none;transition:.35s var(--ease-out);z-index:300}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -496,11 +499,6 @@ section{position:relative;padding:96px 0}
 
 <div class="sticky-cta" id="stickyCta"><a href="#book">Check availability</a></div>
 
-<div class="cookie-banner" id="cookieBanner" role="dialog" aria-label="Cookie notice">
-  <p>We use minimal cookies to remember your session and improve the site. See our <a href="privacy.html" style="text-decoration:underline;">Privacy Policy</a>.</p>
-  <button type="button" class="btn btn-primary" id="cookieAccept">Got it</button>
-</div>
-
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script type="application/ld+json" id="ldJson">
 {"@context":"https://schema.org","@type":"Organization","name":"Uyeh Hotel","url":"/index.html","logo":"/assets/og-default.jpg","description":"A multi-location hospitality brand — rooms, dining, spa and events booked directly with real-time availability at every branch."}
@@ -511,24 +509,14 @@ section{position:relative;padding:96px 0}
 (function () {
   "use strict";
 
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const finePointer = window.matchMedia("(pointer: fine)").matches;
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  // Every branch sets its own RoomType.currency — never assume Naira.
-  // Falls back to USD only when a room genuinely has no currency set.
-  const fmtMoney = (amount, currency) => {
-    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount); }
-    catch { return `${currency || ""} ${Number(amount).toLocaleString()}`.trim(); }
-  };
+  const fmtMoney = window.Uyeh.fmtMoney, priceHtml = window.Uyeh.priceHtml, L = window.Uyeh.t;
 
-  async function api(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-    return data;
-  }
+  const api = window.Uyeh.api;
 
   function toast(msg) {
     const el = $("toast");
@@ -681,6 +669,7 @@ section{position:relative;padding:96px 0}
     } catch (err) {
       console.warn("Site settings unavailable, using page defaults:", err.message);
     } finally {
+      await window.Uyeh.ready;
       typewriter();
       initHeadingMasks();
     }
@@ -763,8 +752,8 @@ section{position:relative;padding:96px 0}
         <article class="room-card">
           ${t.images && t.images[0] ? `<div class="room-card-image" style="background-image:url('${esc(t.images[0])}')"></div>` : ""}
           <h4>${esc(t.name)}</h4>
-          <div class="room-price">${t.basePrice != null ? fmtMoney(t.basePrice, t.currency) : "On request"}<span class="room-meta"> / night</span></div>
-          <p class="room-meta">${esc(branch.name)}${t.maxOccupancy ? ` · sleeps ${esc(t.maxOccupancy)}` : ""}</p>
+          <div class="room-price">${t.basePrice != null ? priceHtml(t.basePrice, t.currency) : esc(L("On request"))}<span class="room-meta"> / night</span></div>
+          <p class="room-meta">${esc(branch.name)}${t.maxOccupancy ? ` · ${esc(L("sleeps {n}", { n: t.maxOccupancy }))}` : ""}</p>
           <a class="btn btn-dark" href="room-details.html?branch=${esc(branch.slug || branch.id)}&roomType=${esc(t.id)}">View room details</a>
         </article>`).join("");
       const sec = $("rooms");
@@ -780,7 +769,7 @@ section{position:relative;padding:96px 0}
   }
 
   function reviewCard(r) {
-    const name = (r.guest && r.guest.name) ? r.guest.name.split(" ")[0] : "Guest";
+    const name = (r.guest && r.guest.name) ? r.guest.name.split(" ")[0] : L("Guest");
     return `<article class="review-card">
       <div class="review-stars">${starString(r.ratingValue)}</div>
       ${r.title ? `<h4>${esc(r.title)}</h4>` : ""}
@@ -808,7 +797,7 @@ section{position:relative;padding:96px 0}
         <div class="rating-num">${avg.toFixed(1)}</div>
         <div>
           <div class="review-stars">${starString(avg)}</div>
-          <div class="room-meta">${reviews.length} verified stay${reviews.length === 1 ? "" : "s"}</div>
+          <div class="room-meta">${esc(L(reviews.length === 1 ? "{n} verified stay" : "{n} verified stays", { n: reviews.length }))}</div>
         </div>`;
 
       reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -837,14 +826,14 @@ section{position:relative;padding:96px 0}
       branch: branchSlug, roomType: t.roomTypeId,
       checkIn: checkInVal, checkOut: checkOutVal, guests: guestsVal,
     });
-    const meta = [t.bedConfiguration, t.maxOccupancy ? `sleeps ${t.maxOccupancy}` : null].filter(Boolean).join(" · ");
+    const meta = [t.bedConfiguration, t.maxOccupancy ? L("sleeps {n}", { n: t.maxOccupancy }) : null].filter(Boolean).join(" · ");
     return `<article class="avail-card${soldOut ? " avail-sold-out" : ""}">
       <div class="avail-card-img"${img ? ` style="background-image:url('${esc(img)}');"` : ""}></div>
       <div class="avail-card-body">
         <h4>${esc(t.name)}</h4>
         ${meta ? `<p class="room-meta">${esc(meta)}</p>` : ""}
-        <div class="room-price">${t.basePrice != null ? fmtMoney(t.basePrice, t.currency) : "On request"}<span class="room-meta"> / night</span></div>
-        <p class="room-meta">${soldOut ? "Fully booked for these dates" : `${sellable} room${sellable === 1 ? "" : "s"} left for these dates`}</p>
+        <div class="room-price">${t.basePrice != null ? priceHtml(t.basePrice, t.currency) : esc(L("On request"))}<span class="room-meta"> / night</span></div>
+        <p class="room-meta">${esc(soldOut ? L("Fully booked for these dates") : L(sellable === 1 ? "{n} room left for these dates" : "{n} rooms left for these dates", { n: sellable }))}</p>
         ${soldOut
           ? `<button type="button" class="btn btn-dark" disabled>Sold out</button>`
           : `<a class="btn btn-primary" href="location.html?${bookParams.toString()}">Book this room</a>`}
@@ -861,8 +850,8 @@ section{position:relative;padding:96px 0}
       <div class="avail-card-body">
         <h4>${esc(b.name)}</h4>
         ${location ? `<p class="room-meta">${esc(location)}</p>` : ""}
-        <div class="room-price">${r.fromPrice != null ? fmtMoney(r.fromPrice, r.currency) : "On request"}<span class="room-meta"> from / night</span></div>
-        <p class="room-meta">${r.availableCount} room${r.availableCount === 1 ? "" : "s"} available for these dates</p>
+        <div class="room-price">${r.fromPrice != null ? priceHtml(r.fromPrice, r.currency) : esc(L("On request"))}<span class="room-meta"> from / night</span></div>
+        <p class="room-meta">${esc(L(r.availableCount === 1 ? "{n} room available for these dates" : "{n} rooms available for these dates", { n: r.availableCount }))}</p>
         <a class="btn btn-primary" href="location.html?${bookParams.toString()}">View rooms</a>
       </div>
     </article>`;
@@ -886,7 +875,7 @@ section{position:relative;padding:96px 0}
       box.innerHTML = `<div class="avail-grid">${results.map((r) => branchAvailCard(r, checkInVal, checkOutVal, guestsVal)).join("")}</div>`;
     } catch (err) {
       console.error("Cross-branch availability check failed:", err);
-      box.innerHTML = `<div class="empty-state">Couldn't check availability right now — ${esc(err.message)}. Please try again.</div>`;
+      box.innerHTML = `<div class="empty-state">${esc(L("Couldn't check availability right now"))} — ${esc(err.message)}. ${esc(L("Please try again."))}</div>`;
     }
   }
 
@@ -905,14 +894,14 @@ section{position:relative;padding:96px 0}
         return;
       }
       if (!types.length) {
-        box.innerHTML = `<div class="empty-state">No rooms here sleep ${esc(String(guestsNum))}+ guests for those dates. Try another location, fewer guests, or different dates.</div>`;
+        box.innerHTML = `<div class="empty-state">${esc(L("No rooms here sleep {n}+ guests for those dates. Try another location, fewer guests, or different dates.", { n: guestsNum }))}</div>`;
         return;
       }
       types.sort((a, b) => (Number(b.sellable) > 0) - (Number(a.sellable) > 0) || Number(a.basePrice) - Number(b.basePrice));
       box.innerHTML = `<div class="avail-grid">${types.map((t) => availCard(t, checkInVal, checkOutVal, guestsVal, branchSlug)).join("")}</div>`;
     } catch (err) {
       console.error("Availability check failed:", err);
-      box.innerHTML = `<div class="empty-state">Couldn't check availability right now — ${esc(err.message)}. Please try again.</div>`;
+      box.innerHTML = `<div class="empty-state">${esc(L("Couldn't check availability right now"))} — ${esc(err.message)}. ${esc(L("Please try again."))}</div>`;
     }
   }
 
@@ -992,17 +981,6 @@ section{position:relative;padding:96px 0}
       entries.forEach((en) => bar.classList.toggle("show", !en.isIntersecting && window.scrollY > 200));
     }, { threshold: 0 });
     io.observe(bookEl);
-  }
-
-  /* ---------- cookie notice ---------- */
-  function initCookieConsent() {
-    const banner = $("cookieBanner");
-    if (!banner || localStorage.getItem("cookieConsent") === "1") return;
-    setTimeout(() => banner.classList.add("show"), 1200);
-    $("cookieAccept").addEventListener("click", () => {
-      localStorage.setItem("cookieConsent", "1");
-      banner.classList.remove("show");
-    });
   }
 
   /* ---------- ambient hero 3D ---------- */
@@ -1153,13 +1131,12 @@ section{position:relative;padding:96px 0}
     initFaq();
     initEmailCopy();
     initStickyCta();
-    initCookieConsent();
     hydrateSettings();
     loadBranches();
     $("branchSearch").addEventListener("input", renderBranches);
   });
 })();
 </script>
-<script src="/chat-widget.js"></script>
+<script src="chat-widget.js"></script>
 </body>
 </html>

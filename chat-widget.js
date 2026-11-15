@@ -27,8 +27,9 @@
   /* ============================================================
      CONFIG — the only block you should need to touch
      ============================================================ */
-  const CW_API = "https://YOUR-UYEH-HOTEL-BACKEND.onrender.com"; // same value as index.html's API_BASE
-  const CW_EXCLUDE = ["/manager", "/director", "/staff", "/admin", "/login"]; // no guest widget on internal dashboards
+  const CW_API = String(window.__API_BASE__ || "https://uyeh-hotel-backend.onrender.com/api").replace(/\/api\/?$/, ""); // the socket server root (no /api)
+  const cwLang = () => (window.Uyeh ? window.Uyeh.acceptLanguage() : navigator.language || "en");
+  const CW_EXCLUDE = ["/manager", "/director", "/staff", "/admin"]; // no guest widget on internal dashboards
   // If your site stores a logged-in GUEST's login token in localStorage under
   // a different key, change this so the widget can auto-skip the pre-chat
   // form for returning logged-in guests. Leave as-is if you don't have this yet.
@@ -179,12 +180,12 @@
   function loadBranchPicker() {
     const sel = $("ucwBranch");
     if (branchId) { sel.style.display = "none"; return; }
-    fetch(`${CW_API}/api/branches`)
+    fetch(`${CW_API}/api/branches`, { headers: { "Accept-Language": cwLang() } })
       .then((r) => r.json())
       .then((d) => {
         const branches = d.branches || [];
         sel.innerHTML = branches.length
-          ? `<option value="">Choose a location…</option>` + branches.map((b) => `<option value="${b.id}">${b.name}</option>`).join("")
+          ? `<option value="">Choose a location…</option>` + branches.map((b) => `<option value="${escapeAttr(b.id)}">${escapeHtml(b.name)}</option>`).join("")
           : `<option value="">No locations available</option>`;
       })
       .catch(() => { sel.innerHTML = `<option value="">Couldn't load locations</option>`; });
@@ -226,9 +227,7 @@
     socket.on("new_message", (msg) => {
       if (msg.senderType === "GUEST") return; // our own sends render optimistically already
       const html = (msg.message ? escapeHtml(msg.message) : "") +
-        (msg.attachmentUrl ? (msg.attachmentType === "image"
-          ? `<img class="ucw-attach" src="${msg.attachmentUrl}" alt="Attachment" />`
-          : `<a href="${msg.attachmentUrl}" target="_blank" rel="noopener">📎 Attachment</a>`) : "");
+        attachmentHtml(msg.attachmentUrl, msg.attachmentType);
       addMsg(html, "staff", true);
       bumpUnread();
       if (panelOpen) socket.emit("mark_read", { ticketId });
@@ -253,6 +252,15 @@
     const d = document.createElement("div");
     d.textContent = s;
     return d.innerHTML;
+  }
+  function escapeAttr(s) { return String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+  function safeHttpUrl(u) { try { const x = new URL(u, location.href); return x.protocol === "https:" || x.protocol === "http:" ? x.href : ""; } catch (_) { return ""; } }
+  function attachmentHtml(url, type) {
+    const u = safeHttpUrl(url);
+    if (!u) return "";
+    return type === "image"
+      ? `<img class="ucw-attach" src="${escapeAttr(u)}" alt="Attachment" />`
+      : `<a href="${escapeAttr(u)}" target="_blank" rel="noopener">📎 Attachment</a>`;
   }
 
   /* ============================================================
@@ -282,6 +290,7 @@
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Accept-Language": cwLang(),
         ...(loginToken ? { Authorization: "Bearer " + loginToken } : {}),
       },
       body: JSON.stringify({ subject, message: "Chat started from the website.", guest: loginToken ? undefined : { name, email } }),
@@ -321,7 +330,7 @@
     socket.emit("guest_message", { ticketId, message: text, attachmentUrl, attachmentType }, (ack) => {
       if (ack && ack.ok) {
         const html = (text ? escapeHtml(text) : "") +
-          (attachmentUrl ? (attachmentType === "image" ? `<img class="ucw-attach" src="${attachmentUrl}" />` : `<a href="${attachmentUrl}" target="_blank" rel="noopener">📎 Attachment</a>`) : "");
+          attachmentHtml(attachmentUrl, attachmentType);
         const el = addMsg(html, "guest", true);
         const meta = document.createElement("div");
         meta.className = "ucw-meta";

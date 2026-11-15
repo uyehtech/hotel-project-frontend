@@ -107,6 +107,9 @@ nav .wrap{display:flex;align-items:center;justify-content:space-between}
 
 footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-align:center;font-size:.8rem}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 
@@ -186,21 +189,14 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
 <script>
 (function () {
   "use strict";
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const fmtMoney = (amount, currency) => {
-    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount); }
-    catch { return `${currency || ""} ${Number(amount).toLocaleString()}`.trim(); }
-  };
-  const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const fmtMoney = window.Uyeh.fmtMoney;
+  const fmtDate = window.Uyeh.fmtDate;
+  const L = window.Uyeh.t;
 
-  async function api(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-    return data;
-  }
+  const api = window.Uyeh.api;
 
   document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -281,8 +277,8 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
       $("sumBranchName").textContent = branch.name;
       $("sumCheckIn").textContent = fmtDate(checkIn);
       $("sumCheckOut").textContent = fmtDate(checkOut);
-      $("sumNights").textContent = `${nights} night${nights === 1 ? "" : "s"}`;
-      $("sumRate").textContent = `${fmtMoney(roomType.basePrice, roomType.currency)} / night`;
+      $("sumNights").textContent = L(nights === 1 ? "{n} night" : "{n} nights", { n: nights });
+      $("sumRate").textContent = L("{price} / night", { price: fmtMoney(roomType.basePrice, roomType.currency) });
       $("sumTotal").textContent = fmtMoney(estimate, roomType.currency);
 
       if (initialGuests) $("gCount").value = initialGuests;
@@ -301,7 +297,7 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
     const btn = $("detailsBtn"), notice = $("detailsNotice");
     const guestsCount = Number($("gCount").value) || 1;
     if (roomType.maxOccupancy && guestsCount > roomType.maxOccupancy) {
-      notice.innerHTML = `<div class="notice no">This room sleeps up to ${roomType.maxOccupancy} guests.</div>`;
+      notice.innerHTML = `<div class="notice no">${esc(L("This room sleeps up to {n} guests.", { n: roomType.maxOccupancy }))}</div>`;
       return;
     }
     btn.disabled = true;
@@ -317,7 +313,7 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
         roomTypeId: roomType.id,
         checkIn, checkOut, guestsCount,
         specialRequests: $("gRequests").value || undefined,
-        guest: { name: $("gName").value, email: $("gEmail").value, phone: $("gPhone").value || undefined },
+        guest: { name: $("gName").value, email: $("gEmail").value, phone: $("gPhone").value || undefined, locale: (window.SiteController && window.SiteController.getLocale()) || undefined },
         promoCode: $("gPromo").value || undefined,
       };
       const { booking: created } = await api(`/branches/${encodeURIComponent(branchId)}/bookings`, { method: "POST", body: JSON.stringify(payload) });
@@ -349,28 +345,45 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
     });
   }
 
-  function showConfirmation({ success, reference }) {
+    /** Ask the server what happened. Only a provider-reported failure is shown as a failure:
+   *  an error or a "not yet" answer means we do not know, and the guest may already have been charged. */
+  async function verifyAndShow(path, body, reference) {
+    try {
+      const r = await api(path, { method: "POST", body: JSON.stringify(body) });
+      if (r && r.confirmed) return showConfirmation({ state: "success", reference });
+      const failed = ["failed", "abandoned", "canceled", "cancelled", "reversed"].includes(String((r && r.status) || "").toLowerCase());
+      return showConfirmation({ state: failed ? "failed" : "pending", reference });
+    } catch (_) {
+      return showConfirmation({ state: "pending", reference });
+    }
+  }
+
+  function showConfirmation({ success, state, reference }) {
+    const st = state || (success ? "success" : "failed");
     $("layout").style.display = "none";
     $("stepsBar").style.display = "none";
     document.querySelector("nav .wrap").insertAdjacentHTML("beforeend", "");
     const area = document.createElement("div");
     area.className = "wrap";
+    const copy = {
+      success: [L("You're booked"), L("Your reservation is confirmed and a receipt has been sent to your email.")],
+      pending: [L("We're confirming your payment"), L("This can take a minute. If you were charged, your booking will be confirmed automatically and a receipt emailed to you — please don't pay again. Keep this reference.")],
+      failed: [L("Payment didn't go through"), L("Your booking is held as pending — no charge was made. You can try paying again, or contact us with your reference.")],
+    }[st];
     area.innerHTML = `
-      <div class="confirm-panel${success ? "" : " failed"}">
-        <div class="cp-mark">${success ? "&#10003;" : "!"}</div>
-        <h2>${success ? "You're booked" : "Payment didn't go through"}</h2>
-        <p>${success
-          ? "Your reservation is confirmed and a receipt has been sent to your email."
-          : "Your booking is held as pending — no charge was made. You can try paying again, or contact us with your reference."}</p>
+      <div class="confirm-panel${st === "success" ? "" : " failed"}">
+        <div class="cp-mark">${st === "success" ? "&#10003;" : st === "pending" ? "&hellip;" : "!"}</div>
+        <h2>${esc(copy[0])}</h2>
+        <p>${esc(copy[1])}</p>
         <div class="ref">${esc(reference || (booking && booking.id) || "")}</div>
         <div class="actions">
-          ${success ? "" : `<button type="button" class="btn btn-primary" id="retryPayBtn">Try payment again</button>`}
-          <a href="index.html" class="btn btn-outline">Return home</a>
+          ${st === "failed" ? `<button type="button" class="btn btn-primary" id="retryPayBtn">${esc(L("Try payment again"))}</button>` : ""}
+          <a href="index.html" class="btn btn-outline">${esc(L("Return home"))}</a>
         </div>
       </div>`;
     document.body.insertBefore(area, document.querySelector("footer"));
     goToStep("done");
-    if (!success) {
+    if (st === "failed") {
       document.getElementById("retryPayBtn").addEventListener("click", () => window.location.reload());
     }
   }
@@ -397,13 +410,8 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
         });
         const popup = new PaystackPop();
         popup.resumeTransaction(accessCode, {
-          onSuccess: async () => {
-            try {
-              await api("/payments/paystack/verify", { method: "POST", body: JSON.stringify({ reference }) });
-              showConfirmation({ success: true, reference });
-            } catch (err) {
-              showConfirmation({ success: false, reference });
-            }
+                    onSuccess: async () => {
+            await verifyAndShow("/payments/paystack/verify", { reference }, reference);
           },
           onCancel: () => {
             payBtn.disabled = false;
@@ -439,12 +447,7 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
         return;
       }
       payBtn.innerHTML = `<span class="spinner"></span>Confirming payment…`;
-      try {
-        const { confirmed } = await api("/payments/stripe/verify", { method: "POST", body: JSON.stringify({ sessionId: e.data.sessionId }) });
-        showConfirmation({ success: !!confirmed, reference: e.data.sessionId });
-      } catch (err) {
-        showConfirmation({ success: false, reference: e.data.sessionId });
-      }
+            await verifyAndShow("/payments/stripe/verify", { sessionId: e.data.sessionId }, e.data.sessionId);
     });
 
     payBtn.onclick = async () => {
@@ -487,5 +490,6 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
   init();
 })();
 </script>
+<script src="chat-widget.js"></script>
 </body>
 </html>

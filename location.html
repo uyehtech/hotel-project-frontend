@@ -161,6 +161,9 @@ section{padding:96px 0}
 .contact-item p,.contact-item a{font-size:.9rem;color:rgba(237,230,214,.66)}
 .contact-item a:hover{color:var(--brass-light)}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -316,24 +319,14 @@ section{padding:96px 0}
 (function () {
   "use strict";
 
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const finePointer = window.matchMedia("(pointer: fine)").matches;
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  // Every branch sets its own RoomType.currency — this is a worldwide
-  // platform, never assume Naira. Falls back to USD only if genuinely unset.
-  const fmtMoney = (amount, currency) => {
-    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount); }
-    catch { return `${currency || ""} ${Number(amount).toLocaleString()}`.trim(); }
-  };
+  const fmtMoney = window.Uyeh.fmtMoney, priceHtml = window.Uyeh.priceHtml, L = window.Uyeh.t, fmtDate = window.Uyeh.fmtDate;
 
-  async function api(path, options = {}) {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-    return data;
-  }
+  const api = window.Uyeh.api;
 
   const params = new URLSearchParams(window.location.search);
   const branchParam = params.get("branch");
@@ -474,8 +467,8 @@ section{padding:96px 0}
             <h3>${esc(t.name)}</h3>
             <p class="desc">${esc(t.description || "")}</p>
             <div class="room-meta">
-              <div class="price">From ${fmtMoney(t.basePrice, t.currency)}<small> / night</small></div>
-              ${t.maxOccupancy ? `<span style="color:var(--text-muted);font-size:.85rem;">Sleeps ${esc(t.maxOccupancy)}</span>` : ""}
+              <div class="price">${esc(L("From"))} ${priceHtml(t.basePrice, t.currency)}<small> / night</small></div>
+              ${t.maxOccupancy ? `<span style="color:var(--text-muted);font-size:.85rem;">${esc(L("Sleeps {n}", { n: t.maxOccupancy }))}</span>` : ""}
             </div>
             <a href="room-details.html?branch=${esc(currentBranch.slug || currentBranch.id)}&roomType=${esc(t.id)}" class="btn btn-dark" style="width:100%;">View details &amp; check dates</a>
           </div>
@@ -500,7 +493,7 @@ section{padding:96px 0}
           <div class="room-card-body">
             <h3>${esc(e.title)}</h3>
             <p class="desc">${esc(e.description || "")}</p>
-            <div class="room-meta"><span style="color:var(--text-muted);font-size:.88rem;">${e.date ? new Date(e.date).toLocaleDateString() : ""}</span></div>
+            <div class="room-meta"><span style="color:var(--text-muted);font-size:.88rem;">${e.date ? esc(fmtDate(e.date)) : ""}</span></div>
           </div>
         </div>`).join("");
     } catch (err) {
@@ -541,10 +534,10 @@ section{padding:96px 0}
             <h3>${esc(t.name)}</h3>
             <p class="desc">${esc(t.description || "")}</p>
             <div class="room-meta">
-              <div class="price">${fmtMoney(t.basePrice, t.currency)}<small> / night</small></div>
-              <span style="color:var(--text-muted);font-size:.85rem;">${t.sellable} available</span>
+              <div class="price">${priceHtml(t.basePrice, t.currency)}<small> / night</small></div>
+              <span style="color:var(--text-muted);font-size:.85rem;">${esc(L("{n} available", { n: t.sellable }))}</span>
             </div>
-            <a href="booking.html?branch=${esc(currentBranch.slug || currentBranch.id)}&roomType=${esc(t.roomTypeId)}&checkIn=${checkIn}&checkOut=${checkOut}" class="btn btn-dark" style="width:100%;">Book this room</a>
+            <a href="booking.html?branch=${esc(currentBranch.slug || currentBranch.id)}&roomType=${esc(t.roomTypeId)}&checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}" class="btn btn-dark" style="width:100%;">${esc(L("Book this room"))}</a>
           </div>
         </div>`).join("");
     } catch (err) {

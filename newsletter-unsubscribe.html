@@ -29,6 +29,9 @@ p { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 26px; }
 .btn:hover { background: var(--brass-light); }
 footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 0.8rem; }
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 
@@ -48,7 +51,7 @@ footer { text-align: center; padding: 24px; color: var(--text-muted); font-size:
 <script>
 (function () {
   "use strict";
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
 
   async function unsubscribe() {
     const token = new URLSearchParams(window.location.search).get("token");
@@ -84,5 +87,6 @@ footer { text-align: center; padding: 24px; color: var(--text-muted); font-size:
   });
 })();
 </script>
+<script src="chat-widget.js"></script>
 </body>
 </html>

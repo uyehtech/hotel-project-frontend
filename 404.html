@@ -47,6 +47,9 @@ p{color:rgba(237,230,214,.7);max-width:44ch;margin:0 auto 36px}
 .btn-ghost:hover{border-color:var(--brass-light);color:var(--brass-light)}
 footer{text-align:center;padding:24px;font-size:.78rem;color:rgba(237,230,214,.4)}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 <a href="index.html" class="brand" id="navBrand">Uyeh Hotel</a>
@@ -70,7 +73,7 @@ footer{text-align:center;padding:24px;font-size:.78rem;color:rgba(237,230,214,.4
 <script>
 (function () {
   "use strict";
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   document.getElementById("year").textContent = new Date().getFullYear();
 
   // Brand name only — this page intentionally skips footer.js (no
@@ -87,5 +90,6 @@ footer{text-align:center;padding:24px;font-size:.78rem;color:rgba(237,230,214,.4
     .catch(() => {});
 })();
 </script>
+<script src="chat-widget.js"></script>
 </body>
 </html>

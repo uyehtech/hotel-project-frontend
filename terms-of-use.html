@@ -83,6 +83,9 @@ button{font:inherit;color:inherit}
 
 footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-align:center;font-size:.8rem}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 
@@ -184,7 +187,7 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
 <script>
 (function () {
   "use strict";
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   const $ = (id) => document.getElementById(id);
 
   const el = $("preloader");
@@ -218,5 +221,6 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
   }
 })();
 </script>
+<script src="/chat-widget.js"></script>
 </body>
 </html>

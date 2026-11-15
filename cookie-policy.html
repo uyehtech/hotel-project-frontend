@@ -87,6 +87,9 @@ button{font:inherit;color:inherit}
 
 footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-align:center;font-size:.8rem}
 </style>
+<script src="config.js"></script>
+<script src="web-core.js"></script>
+<script src="site-controller.js" defer></script>
 </head>
 <body>
 
@@ -138,7 +141,9 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
       <tr><th>Key</th><th>Purpose</th><th>Expires</th></tr>
       <tr><td><code>guest_token</code></td><td>Keeps you logged into your guest account, if you have one, so you don't have to log in on every page</td><td>Until you log out or clear browser data</td></tr>
       <tr><td><code>guest_user</code></td><td>Remembers basic profile info (name, id) so the site can show it without a fresh request</td><td>Same as above</td></tr>
-      <tr><td><code>cookieConsent</code></td><td>Remembers that you've dismissed the cookie notice, so it doesn't reappear every visit</td><td>Until you clear browser data</td></tr>
+      <tr><td><code>uyeh_cookie_consent</code></td><td>Remembers your analytics choice ("Essential only" or "Accept all"), so we ask once</td><td>Until you clear browser data</td></tr>
+      <tr><td><code>uyeh_lang</code>, <code>uyeh_currency</code>, <code>uyeh_branch</code></td><td>Remember the language, currency and location you picked</td><td>Until you clear browser data</td></tr>
+      <tr><td><code>uyeh_settings_cache</code>, <code>uyeh_strings_*</code></td><td>A copy of our site settings and translations, so pages show instantly</td><td>Refreshed automatically</td></tr>
     </table>
     <p>Local storage isn't sent to us automatically with every request the way a cookie is — it's read by the page's own code to personalize what you see in your own browser. Clearing your browser's site data removes all of it.</p>
 
@@ -146,7 +151,7 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
     <p>When you pay for a booking, you're briefly interacting directly with Paystack or Stripe's own secure payment interfaces. Those providers may set their own cookies as part of fraud prevention and processing your payment — governed by their own cookie and privacy policies, not this one.</p>
 
     <h2 id="managing">Managing your preference</h2>
-    <p>You can dismiss our cookie notice using the button on it, or clear your browser's local storage for this site at any time through your browser's settings (usually under "Privacy" or "Site data"). Doing so will log you out of any guest account and bring the notice back on your next visit.</p>
+    <p>You can choose “Essential only” or “Accept all” on our cookie notice (shown when analytics are enabled), or clear your browser's local storage for this site at any time through your browser's settings (usually under "Privacy" or "Site data"). Doing so will log you out of any guest account and bring the notice back on your next visit.</p>
     <a href="#" class="manage-btn" id="clearStorageBtn">Clear this site's stored data now</a>
     <div id="clearNotice" style="margin-top:10px;font-size:.86rem;color:var(--teal);"></div>
 
@@ -163,7 +168,7 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
 <script>
 (function () {
   "use strict";
-  const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
+  const API_BASE = window.Uyeh.API_BASE;
   const $ = (id) => document.getElementById(id);
 
   const el = $("preloader");
@@ -187,7 +192,7 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
     e.preventDefault();
     localStorage.removeItem("guest_token");
     localStorage.removeItem("guest_user");
-    localStorage.removeItem("cookieConsent");
+    Object.keys(localStorage).filter((k) => k.indexOf("uyeh_") === 0 || k === "cookieConsent").forEach((k) => localStorage.removeItem(k));
     $("clearNotice").textContent = "Done — stored data for this site has been cleared. Refresh the page to see the cookie notice again.";
   });
 
@@ -205,5 +210,6 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
   }
 })();
 </script>
+<script src="chat-widget.js"></script>
 </body>
 </html>
