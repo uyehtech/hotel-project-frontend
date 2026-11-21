@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500,600,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.8.0/socket.io.min.js"></script>
+<script src="../config.js"></script>
+<script src="../web-core.js"></script>
 <style>
 /* ============================================================
    Uyeh HOTEL — STAFF PANEL
@@ -142,6 +144,7 @@ tr:last-child td { border-bottom: none; }
 .notice { padding: 12px 16px; border-radius: var(--radius); font-size: 0.84rem; margin-bottom: 14px; }
 .notice.error { background: rgba(163,57,42,0.08); color: var(--danger); border: 1px solid rgba(163,57,42,0.2); }
 .notice.success { background: rgba(47,93,90,0.08); color: var(--teal); border: 1px solid rgba(47,93,90,0.2); }
+.notice.info { background: rgba(31,41,55,0.06); color: var(--text, #1F2937); border: 1px solid rgba(31,41,55,0.15); }
 
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-field { margin-bottom: 14px; }
@@ -224,13 +227,187 @@ tr:last-child td { border-bottom: none; }
 
 <script>
 /* ============================================================
+   SAFE HTML (F2) — every ${} inside an html`...` template is escaped for
+   the exact place it lands: element text, a normal attribute, a URL
+   attribute (scheme allow-list), a style attribute, or inside a
+   quoted JavaScript string of an on*="" handler. Nothing the server
+   (or another guest) wrote can break out of its slot.
+     html`...`      -> SafeHtml (assign to .innerHTML directly)
+     raw(str)       -> trusted markup, inserted as-is
+     html.join(arr) -> SafeHtml of an array of items ("" when empty)
+     refJs(obj)     -> JS expression for onclick that hands `obj` back
+   ============================================================ */
+class SafeHtml { constructor(s) { this.s = s; } toString() { return this.s; } }
+const raw = (s) => new SafeHtml(String(s == null ? "" : s));
+const _ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+const escHtml = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => _ESC[c]);
+const _jsStr = (v) => String(v == null ? "" : v).replace(/[\\'"<>&\u0000-\u001f\u2028\u2029`$]/g, (c) => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+const _URL_ATTRS = new Set(["href", "src", "action", "formaction", "poster", "cite", "data", "xlink:href"]);
+function _safeUrl(v, tag, attr) {
+  const s = String(v == null ? "" : v).trim();
+  const probe = s.replace(/[\u0000-  ]/g, "");
+  if (!/^[a-z][a-z0-9+.\-]*:/i.test(probe)) return s; // relative, #, ?, //host
+  if (/^(https?:|mailto:|tel:)/i.test(probe)) return s;
+  if (tag === "img" && attr === "src" && /^data:image\/(png|jpe?g|gif|webp);base64,[a-z0-9+\/=]+$/i.test(probe)) return s;
+  return "";
+}
+function _inJsString(src) {
+  let q = "";
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (q) { if (c === "\\") i++; else if (c === q) q = ""; }
+    else if (c === "'" || c === '"' || c === "`") q = c;
+  }
+  return !!q;
+}
+/** Where does the next interpolation land, given the markup written so far? */
+function _ctx(s) {
+  let st = 0, tag = "", attr = "", q = "", valStart = 0, i = 0, m;
+  const NAME = /\s*([^\s=>\/"']+)/y, EQ = /\s*=\s*/y;
+  while (i < s.length) {
+    if (st === 0) {
+      const j = s.indexOf("<", i);
+      if (j < 0) break;
+      m = /^[A-Za-z][A-Za-z0-9-]*/.exec(s.slice(j + 1, j + 40));
+      if (m) { tag = m[0].toLowerCase(); i = j + 1 + m[0].length; st = 1; attr = ""; } else i = j + 1;
+    } else if (st === 1) {
+      if (s[i] === ">") { st = 0; i++; continue; }
+      NAME.lastIndex = i; m = NAME.exec(s);
+      if (!m) { i++; continue; }
+      attr = m[1].toLowerCase(); i = NAME.lastIndex;
+      EQ.lastIndex = i; m = EQ.exec(s);
+      if (m) { i = EQ.lastIndex; st = 2; }
+    } else if (st === 2) {
+      const c = s[i];
+      if (c === '"' || c === "'") { q = c; valStart = i + 1; i++; st = 3; } else { q = ""; valStart = i; st = 4; }
+    } else if (st === 3) {
+      const j = s.indexOf(q, i);
+      if (j < 0) { i = s.length; break; }
+      i = j + 1; st = 1;
+    } else {
+      const j = s.slice(i).search(/[\s>]/);
+      if (j < 0) { i = s.length; break; }
+      i += j; st = 1;
+    }
+  }
+  if (st === 3 || st === 4) return { kind: "value", tag, attr, so: s.slice(valStart) };
+  if (st === 0) return { kind: "text" };
+  return { kind: "tag" };
+}
+function _fill(v, out) {
+  if (v instanceof SafeHtml) return v.s;
+  if (Array.isArray(v)) return v.map((x) => _fill(x, out)).join("");
+  if (v == null || v === false) return "";
+  const c = _ctx(out);
+  if (c.kind === "tag") return String(v).replace(/[^\w\-]/g, "");
+  if (c.kind === "text") return escHtml(v);
+  const { tag, attr, so } = c;
+  if (attr.startsWith("on")) {
+    if (_inJsString(so)) return escHtml(_jsStr(v));
+    if (typeof v === "number" && Number.isFinite(v)) return String(v);
+    if (typeof v === "boolean") return String(v);
+    return "null"; // never splice text into bare JavaScript
+  }
+  if (attr === "style") return escHtml(String(v).replace(/[;{}\\<>]|url\s*\(|expression\s*\(/gi, ""));
+  if (_URL_ATTRS.has(attr) && so === "") return escHtml(_safeUrl(v, tag, attr));
+  return escHtml(v);
+}
+function html(strings, ...vals) {
+  let out = "";
+  for (let i = 0; i < strings.length; i++) {
+    out += strings[i];
+    if (i < vals.length) out += _fill(vals[i], out);
+  }
+  return new SafeHtml(out);
+}
+html.join = (arr, sep = "") => { const s = arr.map((x) => _fill(x, "")).join(sep); return s ? new SafeHtml(s) : ""; };
+const _refs = new Map(); let _refSeq = 0;
+window.__ref = (id) => _refs.get(id);
+function refJs(obj) {
+  _refs.set(++_refSeq, obj);
+  if (_refs.size > 600) _refs.delete(_refs.keys().next().value);
+  return raw(`__ref(${_refSeq})`);
+}
+/** Rich text written by staff (blog posts): keep formatting, drop anything active. */
+function sanitizeRich(htmlStr) {
+  const doc = new DOMParser().parseFromString(String(htmlStr || ""), "text/html");
+  const OK = new Set(["P", "BR", "STRONG", "B", "EM", "I", "U", "UL", "OL", "LI", "A", "H1", "H2", "H3", "H4", "BLOCKQUOTE", "IMG", "FIGURE", "FIGCAPTION", "SPAN", "DIV", "HR", "CODE", "PRE", "SMALL", "SUB", "SUP", "TABLE", "THEAD", "TBODY", "TR", "TH", "TD"]);
+  const walk = (node) => {
+    for (const el of Array.from(node.children)) {
+      if (!OK.has(el.tagName)) { el.remove(); continue; }
+      for (const a of Array.from(el.attributes)) {
+        const n = a.name.toLowerCase();
+        const okAttr = (n === "href" && el.tagName === "A") || (n === "src" && el.tagName === "IMG") || n === "alt" || n === "title";
+        if (!okAttr) { el.removeAttribute(a.name); continue; }
+        if ((n === "href" || n === "src") && !_safeUrl(a.value, el.tagName.toLowerCase(), n)) el.removeAttribute(a.name);
+      }
+      if (el.tagName === "A") { el.setAttribute("rel", "noopener noreferrer"); el.setAttribute("target", "_blank"); }
+      walk(el);
+    }
+  };
+  walk(doc.body);
+  return raw(doc.body.innerHTML);
+}
+
+/* ---- money + dates: always the record's own currency, never a guess ---- */
+let _baseCurrency = "";
+function money(amount, currency) {
+  const c = currency || _baseCurrency || "";
+  if (window.Uyeh) return window.Uyeh.fmtMoney(amount, c);
+  const n = Number(amount);
+  return Number.isFinite(n) ? `${c} ${n.toLocaleString()}`.trim() : "—";
+}
+function fmtD(v) { if (!v) return ""; return window.Uyeh ? window.Uyeh.fmtDate(v) : new Date(v).toLocaleDateString(); }
+function fmtDT(v) { if (!v) return ""; return window.Uyeh ? window.Uyeh.fmtDateTime(v) : new Date(v).toLocaleString(); }
+/* datetime-local fields hold the viewer's own clock time with no zone: show stored instants in local time, send them back as real instants. */
+function toLocalInput(iso) { const d = new Date(iso); if (isNaN(d)) return ""; const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; }
+function fromLocalInput(v) { if (!v) return undefined; const d = new Date(v); return isNaN(d) ? undefined : d.toISOString(); }
+
+/* ============================================================
    CONFIG / SESSION
    ============================================================ */
 const API_BASE = "https://uyeh-hotel-backend.onrender.com/api";
 function getToken() { return localStorage.getItem("stf_token"); }
 function getStaff() { try { return JSON.parse(localStorage.getItem("stf_staff")); } catch { return null; } }
-function setSession(token, staff) { localStorage.setItem("stf_token", token); localStorage.setItem("stf_staff", JSON.stringify(staff)); }
-function clearSession() { localStorage.removeItem("stf_token"); localStorage.removeItem("stf_staff"); }
+function getRefreshToken() { return localStorage.getItem("stf_refresh"); }
+function setSession(token, staff, refreshToken) {
+  localStorage.setItem("stf_token", token); localStorage.setItem("stf_staff", JSON.stringify(staff));
+  if (refreshToken) localStorage.setItem("stf_refresh", refreshToken);
+}
+function clearSession() { localStorage.removeItem("stf_token"); localStorage.removeItem("stf_staff"); localStorage.removeItem("stf_refresh"); }
+/** Leaves this account for good: tells the server to revoke the renewal token, drops the live socket, shows the login. */
+function endSession(message) {
+  const rt = getRefreshToken();
+  if (rt) fetch(`${API_BASE}/auth/logout`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken: rt }), keepalive: true }).catch(() => {});
+  clearSession();
+  if (_staffSocket) { try { _staffSocket.disconnect(); } catch { /* already closed */ } _staffSocket = null; }
+  showLogin();
+  if (message) { const n = document.getElementById("loginNotice"); if (n) n.innerHTML = html`<div class="notice info">${message}</div>`; }
+}
+/** The language the server should answer in: the browser's list. */
+function acceptLang() { return window.Uyeh && window.Uyeh.acceptLanguage ? window.Uyeh.acceptLanguage() : (navigator.language || "en"); }
+class ApiError extends Error {
+  constructor(message, status, data) { super(message); this.name = "ApiError"; this.status = status || 0; this.data = data || {}; this.code = (data && data.code) || null; }
+}
+/** Access tokens last about 10 minutes. One renewal at a time; true = renewed, false = refused (sign in again), null = couldn't reach the server (keep the session). */
+let _refreshing = null;
+function refreshSession() {
+  if (_refreshing) return _refreshing;
+  const rt = getRefreshToken();
+  if (!rt) return Promise.resolve(false);
+  _refreshing = (async () => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/refresh`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken: rt }) });
+      if (res.status === 401 || res.status === 403) return false;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.token) return null;
+      localStorage.setItem("stf_token", data.token);
+      if (data.refreshToken) localStorage.setItem("stf_refresh", data.refreshToken);
+      return true;
+    } catch { return null; } finally { _refreshing = null; }
+  })();
+  return _refreshing;
+}
 function hasPermission(perm) { const s = getStaff(); return s && (s.permissions || []).includes(perm); }
 
 /* ============================================================
@@ -265,8 +442,14 @@ function toast(message, type = "info") {
  * automatically server-side on connect. */
 let _staffSocket = null;
 function connectStaffSocket() {
-  if (_staffSocket) return;
-  _staffSocket = io(API_BASE.replace(/\/api$/, ""), { auth: { token: getToken() } });
+  if (_staffSocket || typeof io !== "function") return; // live updates are a bonus: the panel must still work if the socket script was blocked
+  _staffSocket = io(API_BASE.replace(/\/api$/, ""), { auth: (cb) => cb({ token: getToken() }) }); // fresh token on every (re)connect
+  let _renewedOnce = false;
+  _staffSocket.on("connect_error", async () => { // an expired token: renew once, then let it retry with the new one
+    if (_renewedOnce) return; _renewedOnce = true;
+    if ((await refreshSession()) === false) endSession("Your session ended. Please sign in again.");
+  });
+  _staffSocket.on("connect", () => { _renewedOnce = false; });
   _staffSocket.on("notification", (n) => toast(`${n.title}${n.body ? " — " + n.body : ""}`, "info"));
   _staffSocket.on("ticket_message", (n) => {
     toast(`${n.title}${n.body ? " — " + n.body : ""}`, "info");
@@ -335,19 +518,23 @@ async function handlePushToggle() {
   refreshPushToggleIcon();
 }
 
-async function adminRequest(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}`, ...(options.headers || {}) },
-  });
-  if (res.status === 401) { clearSession(); showLogin(); throw new Error("Session expired"); }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const err = new Error(data.error || `Request failed (${res.status})`);
-    err.code = data.code;
-    err.data = data;
-    throw err;
+async function adminRequest(path, options = {}, _retried = false) {
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", "Accept-Language": acceptLang(), Authorization: `Bearer ${getToken()}`, ...(options.headers || {}) },
+    });
+  } catch { throw new ApiError("Can't reach the server. Check your connection and try again.", 0); }
+  if (res.status === 401 && !path.startsWith("/auth/") && !_retried) {
+    const ok = await refreshSession();
+    if (ok) return adminRequest(path, options, true);
+    if (ok === false) { endSession("Your session ended. Please sign in again."); throw new ApiError("Session expired", 401); }
+    throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
   }
+  if (res.status === 401 && !path.startsWith("/auth/")) { endSession("Your session ended. Please sign in again."); throw new ApiError("Session expired", 401); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(data.error || `Request failed (${res.status})`, res.status, data);
   return data;
 }
 
@@ -359,15 +546,16 @@ const staffApi = {
   enableTwoFactor: (code) => adminRequest("/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) }),
   disableTwoFactor: (password) => adminRequest("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password }) }),
   login: (email, password) =>
-    fetch(`${API_BASE}/auth/staff/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) })
-      .then(async (res) => { const data = await res.json(); if (!res.ok) throw new Error(data.error || "Login failed"); return data; }),
+    fetch(`${API_BASE}/auth/staff/login`, { method: "POST", headers: { "Content-Type": "application/json", "Accept-Language": acceptLang() }, body: JSON.stringify({ email, password }) })
+      .catch(() => { throw new ApiError("Can't reach the server. Check your connection and try again.", 0); })
+      .then(async (res) => { const data = await res.json().catch(() => ({})); if (!res.ok) throw new ApiError(data.error || "Login failed", res.status, data); return data; }),
 
   verifyTwoFactor: async (tempToken, code) => {
     const res = await fetch(`${API_BASE}/auth/login/2fa`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tempToken, code }),
+      method: "POST", headers: { "Content-Type": "application/json", "Accept-Language": acceptLang() }, body: JSON.stringify({ tempToken, code }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Verification failed");
+    if (!res.ok) throw new ApiError(data.error || "Verification failed", res.status, data);
     if (!data.staff) throw new Error("Unexpected response — no account data returned");
     return { token: data.token, refreshToken: data.refreshToken, staff: data.staff };
   },
@@ -493,12 +681,12 @@ function renderSidebar() {
   document.getElementById("adminRole").textContent = staff.title || "Staff";
   document.getElementById("adminBranch").textContent = staff.branchName || "";
 
-  const groupsHtml = NAV_GROUPS.map((group) => {
+  const groupsHtml = html.join(NAV_GROUPS.map((group) => {
     const visibleItems = group.items.filter((item) => item.permissions
       ? item.permissions.some((p) => (staff.permissions || []).includes(p))
       : (staff.permissions || []).includes(item.permission));
     if (!visibleItems.length) return "";
-    return `
+    return html`
       <div class="nav-group open" data-group="${group.id}">
         <div class="nav-group-header" onclick="toggleNavGroup(this)">
           <i class="fas ${group.icon} group-icon"></i>
@@ -506,18 +694,18 @@ function renderSidebar() {
           <i class="fas fa-chevron-down group-chevron"></i>
         </div>
         <div class="nav-group-body">
-          ${visibleItems.map((item) => `
+          ${html.join(visibleItems.map((item) => html`
             <div class="nav-item" data-page="${item.page}" onclick="switchPage('${item.page}')">
               <i class="fas ${item.icon}"></i><span>${item.label}</span>
-              ${item.badgeId ? `<span class="nav-badge" id="${item.badgeId}">0</span>` : ""}
+              ${item.badgeId ? html`<span class="nav-badge" id="${item.badgeId}">0</span>` : ""}
             </div>
-          `).join("")}
+          `))}
         </div>
       </div>
     `;
-  }).join("");
+  }));
 
-  document.getElementById("navMenu").innerHTML = `
+  document.getElementById("navMenu").innerHTML = html`
     <div class="nav-item-standalone active" data-page="dashboard" onclick="switchPage('dashboard')">
       <i class="fas fa-house"></i><span>Dashboard</span>
     </div>
@@ -562,28 +750,28 @@ function switchPage(page) {
     orders: "manage_bookings" }[page];
   const pageAnyPermissions = { "place-order": ["manage_menu", "manage_laundry", "manage_spa"] }[page];
   if (pagePermission && !hasPermission(pagePermission)) {
-    container.innerHTML = `<div class="empty-state">You don't have access to this section. Ask your Manager to grant it.</div>`;
+    container.innerHTML = html`<div class="empty-state">You don't have access to this section. Ask your Manager to grant it.</div>`;
     return;
   }
   if (pageAnyPermissions && !pageAnyPermissions.some((p) => hasPermission(p))) {
-    container.innerHTML = `<div class="empty-state">You don't have access to this section. Ask your Manager to grant it.</div>`;
+    container.innerHTML = html`<div class="empty-state">You don't have access to this section. Ask your Manager to grant it.</div>`;
     return;
   }
 
   const loader = PAGE_LOADERS[page];
-  if (!loader) { container.innerHTML = `<div class="empty-state">Unknown page.</div>`; return; }
-  container.innerHTML = `<div class="loading-state">Loading…</div>`;
+  if (!loader) { container.innerHTML = html`<div class="empty-state">Unknown page.</div>`; return; }
+  container.innerHTML = html`<div class="loading-state">Loading…</div>`;
   loader();
   if (window.innerWidth <= 900) document.getElementById("sidebar").classList.remove("open");
 }
 function loadComingSoon(title, description) {
-  document.getElementById("pageContent").innerHTML = `
+  document.getElementById("pageContent").innerHTML = html`
     <div class="page-header"><div><h1 class="page-title">${title}</h1></div></div>
     <div class="panel"><div class="coming-soon"><i class="fas fa-hammer"></i><p><b>${title} isn't built yet.</b></p><p style="margin-top:6px;">${description}</p></div></div>
   `;
 }
 function pageHeader(title, subtitle, actionHtml = "") {
-  return `<div class="page-header"><div><h1 class="page-title">${title}</h1>${subtitle ? `<p class="page-subtitle">${subtitle}</p>` : ""}</div>${actionHtml}</div>`;
+  return html`<div class="page-header"><div><h1 class="page-title">${title}</h1>${subtitle ? html`<p class="page-subtitle">${subtitle}</p>` : ""}</div>${actionHtml}</div>`;
 }
 
 /* ============================================================
@@ -602,14 +790,14 @@ async function loadDashboardPage() {
       const upcoming = bookings.filter((b) => ["PENDING", "CONFIRMED"].includes(b.status));
       cards.push({ label: "Upcoming bookings", value: upcoming.length });
       if (bookings.length) {
-        bookingsPanel = `
+        bookingsPanel = html`
           <div class="panel"><h3>Recent bookings</h3>
             <table><thead><tr><th>Guest</th><th>Room</th><th>Dates</th><th>Status</th></tr></thead>
-              <tbody>${bookings.slice(0, 6).map((b) => `
-                <tr><td>${b.guest.name}</td><td>${b.room ? `${b.room.name} — ${b.room.roomNumber}` : `<span style="color:var(--text-muted);">Not assigned</span>`}</td>
+              <tbody>${html.join(bookings.slice(0, 6).map((b) => html`
+                <tr><td>${b.guest.name}</td><td>${b.room ? `${b.room.name} — ${b.room.roomNumber}` : html`<span style="color:var(--text-muted);">Not assigned</span>`}</td>
                 <td>${b.checkIn.slice(0,10)} → ${b.checkOut.slice(0,10)}</td>
                 <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td></tr>
-              `).join("")}</tbody>
+              `))}</tbody>
             </table>
           </div>`;
       }
@@ -622,32 +810,32 @@ async function loadDashboardPage() {
       const { tickets } = await staffApi.listTickets("OPEN");
       cards.push({ label: "Open tickets", value: tickets.length });
       if (tickets.length) {
-        ticketsPanel = `
+        ticketsPanel = html`
           <div class="panel"><h3>Open guest tickets</h3>
             <table><thead><tr><th>Subject</th><th>Guest</th><th>Priority</th><th>Status</th></tr></thead>
-              <tbody>${tickets.slice(0, 6).map((t) => `
+              <tbody>${html.join(tickets.slice(0, 6).map((t) => html`
                 <tr><td>${t.subject}</td><td>${t.guest.name}</td><td>${t.priority}</td>
                 <td><span class="badge badge-${t.status.toLowerCase()}">${t.status}</span></td></tr>
-              `).join("")}</tbody>
+              `))}</tbody>
             </table>
           </div>`;
       }
     }
     if (hasPermission("manage_payments")) {
-      const { totals } = await staffApi.listTransactions();
-      cards.push({ label: "Recorded this month", value: `\u20a6${Number(totals?.paid || 0).toLocaleString()}` });
+      const { totals, totalsCurrency } = await staffApi.listTransactions();
+      cards.push({ label: "Recorded this month", value: money(totals?.paid || 0, totalsCurrency) });
     }
 
-    container.innerHTML = `
+    container.innerHTML = html`
       ${pageHeader("Overview", staff.branchName ? `What's happening at ${staff.branchName} right now.` : "A quick look at what's happening right now.")}
       <div class="stats-grid">
-        ${cards.length ? cards.map((c) => `<div class="stat-card"><b>${c.value}</b><span>${c.label}</span></div>`).join("")
-          : `<div class="empty-state">Your account doesn't have access to any dashboard sections yet — ask your Manager to grant permissions.</div>`}
+        ${cards.length ? html.join(cards.map((c) => html`<div class="stat-card"><b>${c.value}</b><span>${c.label}</span></div>`))
+          : html`<div class="empty-state">Your account doesn't have access to any dashboard sections yet — ask your Manager to grant permissions.</div>`}
       </div>
       ${bookingsPanel}${ticketsPanel}
     `;
   } catch (err) {
-    container.innerHTML = `${pageHeader("Overview")}<div class="empty-state">Couldn't load your overview (${err.message}).</div>`;
+    container.innerHTML = html`${pageHeader("Overview")}<div class="empty-state">Couldn't load your overview (${err.message}).</div>`;
   }
 }
 
@@ -658,7 +846,7 @@ async function loadDashboardPage() {
    ============================================================ */
 async function loadMyShiftPage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("My Shift", "Your upcoming shifts and assigned tasks.")}
     <div id="myShiftNotice"></div>
     <div class="panel" style="margin-bottom:20px;">
@@ -680,15 +868,15 @@ async function loadMyShiftPage() {
 async function refreshMyShifts() {
   try {
     const { shifts } = await staffApi.getMyShifts();
-    document.getElementById("myShiftsBody").innerHTML = shifts.length ? shifts.map((s) => `
+    document.getElementById("myShiftsBody").innerHTML = shifts.length ? html.join(shifts.map((s) => html`
       <tr>
-        <td>${new Date(s.date).toLocaleDateString()}</td>
+        <td>${fmtD(s.date)}</td>
         <td>${s.startTime}${s.endTime ? " – " + s.endTime : ""}</td>
         <td><span class="badge badge-${(s.status || "").toLowerCase()}">${s.status || (s.attendance?.clockOutAt ? "Completed" : s.attendance?.clockInAt ? "Clocked in" : "Scheduled")}</span></td>
-        <td>${!s.attendance?.clockInAt ? `<button class="btn btn-sm btn-primary" onclick="clockInShift('${s.id}')">Clock in</button>`
-          : !s.attendance?.clockOutAt ? `<button class="btn btn-sm btn-outline" onclick="clockOutShift('${s.id}')">Clock out</button>` : ""}</td>
+        <td>${!s.attendance?.clockInAt ? html`<button class="btn btn-sm btn-primary" onclick="clockInShift('${s.id}')">Clock in</button>`
+          : !s.attendance?.clockOutAt ? html`<button class="btn btn-sm btn-outline" onclick="clockOutShift('${s.id}')">Clock out</button>` : ""}</td>
       </tr>
-    `).join("") : `<tr><td colspan="4" class="empty-state">No upcoming shifts scheduled.</td></tr>`;
+    `)) : html`<tr><td colspan="4" class="empty-state">No upcoming shifts scheduled.</td></tr>`;
   } catch (err) { showNotice("myShiftNotice", err.message); }
 }
 async function clockInShift(id) {
@@ -705,15 +893,15 @@ async function refreshMyTasks() {
     const { tasks } = await staffApi.getMyTasks();
     const canManage = hasPermission("manage_rooms");
     const TASK_NEXT = { PENDING: "IN_PROGRESS", ASSIGNED: "IN_PROGRESS", IN_PROGRESS: "COMPLETED" };
-    document.getElementById("myTasksBody").innerHTML = tasks.length ? tasks.map((t) => `
+    document.getElementById("myTasksBody").innerHTML = tasks.length ? html.join(tasks.map((t) => html`
       <tr>
         <td>${t.room ? t.room.roomNumber : "—"}</td>
         <td>${t.type.replace(/_/g, " ")}</td>
         <td><span class="badge badge-${t.priority.toLowerCase()}">${t.priority}</span></td>
         <td><span class="badge badge-${t.status.toLowerCase()}">${t.status.replace(/_/g, " ")}</span></td>
-        <td>${canManage && TASK_NEXT[t.status] ? `<button class="btn btn-sm btn-outline" onclick="advanceMyTask('${t.id}','${TASK_NEXT[t.status]}')">${TASK_NEXT[t.status] === "COMPLETED" ? "Complete" : "Start"}</button>` : ""}</td>
+        <td>${canManage && TASK_NEXT[t.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceMyTask('${t.id}','${TASK_NEXT[t.status]}')">${TASK_NEXT[t.status] === "COMPLETED" ? "Complete" : "Start"}</button>` : ""}</td>
       </tr>
-    `).join("") : `<tr><td colspan="5" class="empty-state">No tasks assigned to you.</td></tr>`;
+    `)) : html`<tr><td colspan="5" class="empty-state">No tasks assigned to you.</td></tr>`;
   } catch (err) { showNotice("myShiftNotice", err.message); }
 }
 async function advanceMyTask(id, status) {
@@ -729,7 +917,7 @@ async function advanceMyTask(id, status) {
    ============================================================ */
 async function loadRoomsPage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Rooms", "View rooms and update status.")}
     <div class="locked-note"><i class="fas fa-lock"></i><span>Adding, editing, or pricing rooms is limited to Directors. You can update a room's status below.</span></div>
     <div id="roomsNotice"></div>
@@ -741,13 +929,13 @@ async function loadRoomsPage() {
   `;
   try {
     const { rooms } = await staffApi.listRooms();
-    document.getElementById("roomsBody").innerHTML = rooms.length ? rooms.map((r) => `
+    document.getElementById("roomsBody").innerHTML = rooms.length ? html.join(rooms.map((r) => html`
       <tr>
-        <td>${r.images && r.images[0] ? `<img src="${r.images[0]}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">` : ""}</td>
+        <td>${r.images && r.images[0] ? html`<img src="${r.images[0]}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">` : ""}</td>
         <td>${r.roomNumber}</td>
         <td>${r.name}</td>
-        <td>${(r.tags || []).map((t) => `<span class="badge">${t}</span>`).join(" ") || "—"}</td>
-        <td>&#8358;${Number(r.basePrice).toLocaleString()}</td>
+        <td>${(r.tags || []).length ? html.join((r.tags || []).map((t) => html`<span class="badge">${t}</span>`), " ") : "—"}</td>
+        <td>${money(r.basePrice, r.currency)}</td>
         <td>${r.floor || "—"}</td>
         <td>
           <select onchange="updateRoomStatusInline('${r.id}', this.value)" style="padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem;">
@@ -758,7 +946,7 @@ async function loadRoomsPage() {
           </select>
         </td>
       </tr>
-    `).join("") : `<tr><td colspan="7" class="empty-state">No rooms yet.</td></tr>`;
+    `)) : html`<tr><td colspan="7" class="empty-state">No rooms yet.</td></tr>`;
   } catch (err) { showNotice("roomsNotice", err.message); }
 }
 async function updateRoomStatusInline(id, status) {
@@ -777,14 +965,14 @@ const HOUSEKEEPING_LABELS = { CLEAN: "Clean", DIRTY: "Dirty", CLEANING: "Cleanin
 
 async function loadHousekeepingPage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Housekeeping", "Track which rooms are ready to hand to a guest right now.")}
     <div class="panel" style="margin-bottom:16px;">
       <div class="form-field" style="max-width:260px;">
         <label>Filter by status</label>
         <select id="hkStatusFilter" onchange="refreshHousekeeping()">
           <option value="">All rooms</option>
-          ${HOUSEKEEPING_STATUSES.map((s) => `<option value="${s}">${HOUSEKEEPING_LABELS[s]}</option>`).join("")}
+          ${html.join(HOUSEKEEPING_STATUSES.map((s) => html`<option value="${s}">${HOUSEKEEPING_LABELS[s]}</option>`))}
         </select>
       </div>
     </div>
@@ -881,21 +1069,21 @@ async function refreshHousekeeping() {
   const statusFilter = document.getElementById("hkStatusFilter")?.value || "";
   try {
     const { rooms } = await staffApi.listHousekeeping(statusFilter);
-    document.getElementById("housekeepingBody").innerHTML = rooms.length ? rooms.map((r) => `
+    document.getElementById("housekeepingBody").innerHTML = rooms.length ? html.join(rooms.map((r) => html`
       <tr>
         <td>${r.roomNumber}</td>
         <td>${r.name}</td>
         <td>${r.floor || "—"}</td>
-        <td>${r.housekeepingUpdatedAt ? new Date(r.housekeepingUpdatedAt).toLocaleString() : "—"}</td>
+        <td>${r.housekeepingUpdatedAt ? fmtDT(r.housekeepingUpdatedAt) : "—"}</td>
         <td>
           <span class="badge badge-${r.housekeepingStatus.toLowerCase()}" style="margin-right:8px;">${HOUSEKEEPING_LABELS[r.housekeepingStatus]}</span>
           <select onchange="changeHousekeepingStatus('${r.id}', this.value)" style="padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem;">
             <option value="">Change…</option>
-            ${HOUSEKEEPING_STATUSES.filter((s) => s !== r.housekeepingStatus).map((s) => `<option value="${s}">${HOUSEKEEPING_LABELS[s]}</option>`).join("")}
+            ${html.join(HOUSEKEEPING_STATUSES.filter((s) => s !== r.housekeepingStatus).map((s) => html`<option value="${s}">${HOUSEKEEPING_LABELS[s]}</option>`))}
           </select>
         </td>
       </tr>
-    `).join("") : `<tr><td colspan="5" class="empty-state">No rooms match this filter.</td></tr>`;
+    `)) : html`<tr><td colspan="5" class="empty-state">No rooms match this filter.</td></tr>`;
   } catch (err) { showNotice("housekeepingNotice", err.message); }
 }
 
@@ -914,7 +1102,7 @@ async function changeHousekeepingStatus(roomId, housekeepingStatus) {
 async function refreshHousekeepingBoard() {
   try {
     const { summary, rooms } = await staffApi.getHousekeepingBoard();
-    document.getElementById("hkBoardStats").innerHTML = `
+    document.getElementById("hkBoardStats").innerHTML = html`
       <div class="stat-card"><b>${summary.openTasks}</b><span>Open tasks</span></div>
       <div class="stat-card"><b>${summary.openWorkOrders}</b><span>Open issues</span></div>
       <div class="stat-card"><b>${summary.dirty}</b><span>Dirty rooms</span></div>
@@ -923,26 +1111,26 @@ async function refreshHousekeepingBoard() {
     const canManage = hasPermission("manage_rooms");
     const TASK_NEXT = { PENDING: "IN_PROGRESS", ASSIGNED: "IN_PROGRESS", IN_PROGRESS: "COMPLETED" };
     const tasks = rooms.flatMap((r) => r.tasks.map((t) => ({ ...t, roomNumber: r.roomNumber })));
-    document.getElementById("hkTasksBody").innerHTML = tasks.length ? tasks.map((t) => `
+    document.getElementById("hkTasksBody").innerHTML = tasks.length ? html.join(tasks.map((t) => html`
       <tr>
         <td>${t.roomNumber}</td><td>${t.type.replace(/_/g, " ")}</td>
         <td><span class="badge badge-${t.priority.toLowerCase()}">${t.priority}</span></td>
         <td><span class="badge badge-${t.status.toLowerCase()}">${t.status.replace(/_/g, " ")}</span></td>
-        <td>${canManage && TASK_NEXT[t.status] ? `<button class="btn btn-sm btn-outline" onclick="advanceTask('${t.id}','${TASK_NEXT[t.status]}')">${TASK_NEXT[t.status] === "COMPLETED" ? "Complete" : "Start"}</button>` : ""}</td>
+        <td>${canManage && TASK_NEXT[t.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceTask('${t.id}','${TASK_NEXT[t.status]}')">${TASK_NEXT[t.status] === "COMPLETED" ? "Complete" : "Start"}</button>` : ""}</td>
       </tr>
-    `).join("") : `<tr><td colspan="5" class="empty-state">No open tasks.</td></tr>`;
+    `)) : html`<tr><td colspan="5" class="empty-state">No open tasks.</td></tr>`;
 
     const issues = rooms.flatMap((r) => r.workOrders.map((w) => ({ ...w, roomNumber: r.roomNumber })));
-    document.getElementById("hkMaintBody").innerHTML = issues.length ? issues.map((w) => `
+    document.getElementById("hkMaintBody").innerHTML = issues.length ? html.join(issues.map((w) => html`
       <tr>
         <td>${w.roomNumber || "—"}</td><td>${w.title}</td>
         <td><span class="badge badge-${w.priority.toLowerCase()}">${w.priority}</span></td>
         <td><span class="badge badge-${w.status.toLowerCase()}">${w.status.replace(/_/g, " ")}</span></td>
-        <td>${canManage ? `<button class="btn btn-sm btn-outline" onclick="resolveMaintenance('${w.id}')">Resolve</button>` : ""}</td>
+        <td>${canManage ? html`<button class="btn btn-sm btn-outline" onclick="resolveMaintenance('${w.id}')">Resolve</button>` : ""}</td>
       </tr>
-    `).join("") : `<tr><td colspan="5" class="empty-state">No open issues.</td></tr>`;
+    `)) : html`<tr><td colspan="5" class="empty-state">No open issues.</td></tr>`;
 
-    const roomOptions = rooms.map((r) => `<option value="${r.id}">${r.roomNumber}</option>`).join("");
+    const roomOptions = html.join(rooms.map((r) => html`<option value="${r.id}">${r.roomNumber}</option>`));
     document.getElementById("tkRoomId").innerHTML = roomOptions;
     document.getElementById("mtRoomId").innerHTML += roomOptions;
   } catch (err) {
@@ -1011,7 +1199,7 @@ async function submitMaintenanceForm(e) {
    ============================================================ */
 async function loadStockPage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Stock", "View inventory and record entries, adjustments, or a closing count.")}
     <div class="locked-note"><i class="fas fa-lock"></i><span>Adding or removing a stock item is limited to Managers and Directors. You can record movements below.</span></div>
     <div id="stockNotice"></div>
@@ -1103,15 +1291,15 @@ async function submitTransferForm(e) {
 async function refreshStock() {
   try {
     const { stockItems } = await staffApi.listStockItems();
-    document.getElementById("stockBody").innerHTML = stockItems.length ? stockItems.map((s) => `
+    document.getElementById("stockBody").innerHTML = stockItems.length ? html.join(stockItems.map((s) => html`
       <tr>
         <td>${s.name}</td>
-        <td>${s.quantity <= s.lowStockThreshold ? `<span class="badge badge-warning">${s.quantity}</span>` : s.quantity}</td>
+        <td>${s.quantity <= s.lowStockThreshold ? html`<span class="badge badge-warning">${s.quantity}</span>` : s.quantity}</td>
         <td>${s.unit || "—"}</td>
         <td>${s.lowStockThreshold}</td>
-        <td><button class="btn btn-sm btn-primary" onclick='openLedgerModal(${JSON.stringify(s).replace(/'/g, "&#39;")})'>Ledger</button><button class="btn btn-sm btn-outline" onclick='openTransferModal(${JSON.stringify(s).replace(/'/g, "&#39;")})'>Transfer</button></td>
+        <td><button class="btn btn-sm btn-primary" onclick='openLedgerModal(${refJs(s)})'>Ledger</button><button class="btn btn-sm btn-outline" onclick='openTransferModal(${refJs(s)})'>Transfer</button></td>
       </tr>
-    `).join("") : `<tr><td colspan="5" class="empty-state">No stock items yet.</td></tr>`;
+    `)) : html`<tr><td colspan="5" class="empty-state">No stock items yet.</td></tr>`;
   } catch (err) {
     showNotice("stockNotice", err.message);
   }
@@ -1138,16 +1326,16 @@ function closeLedgerModal() { document.getElementById("ledgerModal").style.displ
 async function refreshLedger() {
   try {
     const { movements } = await staffApi.listStockMovements(_ledgerCurrentItem.id);
-    document.getElementById("ledgerBody").innerHTML = movements.length ? movements.map((m) => `
+    document.getElementById("ledgerBody").innerHTML = movements.length ? html.join(movements.map((m) => html`
       <tr>
-        <td style="font-size:0.78rem;">${new Date(m.createdAt).toLocaleString()}</td>
+        <td style="font-size:0.78rem;">${fmtDT(m.createdAt)}</td>
         <td>${m.type}</td>
         <td style="color:${m.quantityDelta < 0 ? "var(--danger)" : "var(--brass-dark)"};">${m.quantityDelta > 0 ? "+" : ""}${m.quantityDelta}</td>
         <td>${m.balanceAfter}</td>
         <td style="font-size:0.82rem; color:var(--text-muted);">${m.note || "—"}</td>
         <td style="font-size:0.78rem;">${m.recordedByType}</td>
       </tr>
-    `).join("") : `<tr><td colspan="6" class="empty-state">No movements yet.</td></tr>`;
+    `)) : html`<tr><td colspan="6" class="empty-state">No movements yet.</td></tr>`;
   } catch (err) {
     showNotice("ledgerNotice", err.message);
   }
@@ -1182,7 +1370,7 @@ async function submitMovementForm(e) {
 const MENU_CATEGORY_LABELS = { FOOD: "Food", DRINK: "Drink" };
 async function loadMenuPage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Menu", "Food & drink items currently offered at your branch.")}
     <div class="locked-note"><i class="fas fa-lock"></i><span>Adding items or changing prices is limited to Managers and Directors.</span></div>
     <div class="panel">
@@ -1193,12 +1381,12 @@ async function loadMenuPage() {
   `;
   try {
     const { menuItems } = await staffApi.listMenuItems();
-    document.getElementById("menuBody").innerHTML = menuItems.length ? menuItems.map((m) => `
+    document.getElementById("menuBody").innerHTML = menuItems.length ? html.join(menuItems.map((m) => html`
       <tr><td>${m.name}</td><td>${MENU_CATEGORY_LABELS[m.category] || m.category}</td>
-      <td>${(m.tags || []).map((t) => `<span class="badge">${t}</span>`).join(" ") || "—"}</td>
-      <td>&#8358;${Number(m.price).toLocaleString()}</td></tr>
-    `).join("") : `<tr><td colspan="4" class="empty-state">No menu items yet.</td></tr>`;
-  } catch (err) { document.getElementById("menuBody").innerHTML = `<tr><td colspan="4" class="empty-state">${err.message}</td></tr>`; }
+      <td>${(m.tags || []).length ? html.join((m.tags || []).map((t) => html`<span class="badge">${t}</span>`), " ") : "—"}</td>
+      <td>${money(m.price, m.currency)}</td></tr>
+    `)) : html`<tr><td colspan="4" class="empty-state">No menu items yet.</td></tr>`;
+  } catch (err) { document.getElementById("menuBody").innerHTML = html`<tr><td colspan="4" class="empty-state">${err.message}</td></tr>`; }
 }
 
 /* ============================================================
@@ -1223,16 +1411,16 @@ async function loadPlaceOrderPage() {
   _poCart = []; _poSelectedGuestId = null;
 
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Place Order", "Create an order on behalf of a guest at the counter, phone, or table.")}
     <div id="placeOrderNotice"></div>
-    ${!availableTypes.length ? `<div class="empty-state">You don't have access to any order type. Ask your Manager to grant it.</div>` : `
+    ${!availableTypes.length ? html`<div class="empty-state">You don't have access to any order type. Ask your Manager to grant it.</div>` : html`
     <div class="panel">
       <div class="form-row">
         <div class="form-field">
           <label>Order type</label>
           <select id="poType" onchange="onOrderTypeChange()">
-            ${availableTypes.map((t) => `<option value="${t}">${ORDER_TYPE_LABELS[t]}</option>`).join("")}
+            ${html.join(availableTypes.map((t) => html`<option value="${t}">${ORDER_TYPE_LABELS[t]}</option>`))}
           </select>
         </div>
         <div class="form-field">
@@ -1285,7 +1473,7 @@ async function loadPlaceOrderPage() {
         </div>
       </div>
 
-      <div class="summary-line total" style="margin:14px 0;"><span>Total</span><span id="poTotalDisplay">&#8358;0</span></div>
+      <div class="summary-line total" style="margin:14px 0;"><span>Total</span><span id="poTotalDisplay">—</span></div>
       <button type="button" class="btn btn-primary" id="poSubmitBtn" onclick="submitWalkInOrder()">Place order</button>
     </div>
     `}
@@ -1295,7 +1483,7 @@ async function loadPlaceOrderPage() {
   togglePaymentMethodField();
   try {
     const { rooms } = await staffApi.listRooms();
-    document.getElementById("poRoom").innerHTML += rooms.map((r) => `<option value="${r.id}">${r.name} — ${r.roomNumber}</option>`).join("");
+    document.getElementById("poRoom").innerHTML += html.join(rooms.map((r) => html`<option value="${r.id}">${r.name} — ${r.roomNumber}</option>`));
   } catch { /* room charging just won't be selectable if this fails */ }
 
   await onOrderTypeChange();
@@ -1310,17 +1498,17 @@ async function onOrderTypeChange() {
   const type = document.getElementById("poType").value;
   _poCart = [];
   const catalogEl = document.getElementById("poCatalog");
-  catalogEl.innerHTML = `<div class="loading-state">Loading catalog…</div>`;
+  catalogEl.innerHTML = html`<div class="loading-state">Loading catalog…</div>`;
 
   try {
     if (type === "SPA") {
       const { spaTreatments } = await staffApi.listSpaTreatments();
       _poCatalogItems = spaTreatments;
-      catalogEl.innerHTML = `
+      catalogEl.innerHTML = html`
         <div class="form-row">
           <div class="form-field"><label>Treatment</label>
             <select id="poSpaTreatment" onchange="updatePoTotal()">
-              ${spaTreatments.map((t) => `<option value="${t.id}" data-price="${t.price}">${t.name} — &#8358;${Number(t.price).toLocaleString()}</option>`).join("")}
+              ${html.join(spaTreatments.map((t) => html`<option value="${t.id}" data-price="${t.price}" data-currency="${t.currency}">${t.name} — ${money(t.price, t.currency)}</option>`))}
             </select>
           </div>
           <div class="form-field"><label>Date &amp; time</label><input type="datetime-local" id="poSpaTime"></div>
@@ -1329,12 +1517,12 @@ async function onOrderTypeChange() {
     } else if (type === "LAUNDRY") {
       const { laundryItems } = await staffApi.listLaundryItems();
       _poCatalogItems = laundryItems;
-      catalogEl.innerHTML = `
+      catalogEl.innerHTML = html`
         <table><thead><tr><th>Item</th><th>Price</th><th></th></tr></thead>
-          <tbody>${laundryItems.length ? laundryItems.map((i) => `
-            <tr><td>${i.name}</td><td>&#8358;${Number(i.price).toLocaleString()}</td>
+          <tbody>${laundryItems.length ? html.join(laundryItems.map((i) => html`
+            <tr><td>${i.name}</td><td>${money(i.price, i.currency)}</td>
             <td><button type="button" class="btn btn-sm btn-outline" onclick="addToPoCart('${i.id}')">Add</button></td></tr>
-          `).join("") : `<tr><td colspan="3" class="empty-state">Nothing available.</td></tr>`}</tbody>
+          `)) : html`<tr><td colspan="3" class="empty-state">Nothing available.</td></tr>`}</tbody>
         </table>
         <div id="poCartWrap" style="margin-top:14px;"></div>
       `;
@@ -1343,19 +1531,19 @@ async function onOrderTypeChange() {
       const { menuItems } = await staffApi.listMenuItems(type === "BAR" ? "DRINK" : "FOOD");
       const items = type === "ROOM_SERVICE" ? menuItems.filter((i) => i.availableForRoomService) : menuItems;
       _poCatalogItems = items;
-      catalogEl.innerHTML = `
+      catalogEl.innerHTML = html`
         <table><thead><tr><th>Item</th><th>Price</th><th></th></tr></thead>
-          <tbody>${items.length ? items.map((i) => `
-            <tr><td>${i.name}</td><td>&#8358;${Number(i.price).toLocaleString()}</td>
+          <tbody>${items.length ? html.join(items.map((i) => html`
+            <tr><td>${i.name}</td><td>${money(i.price, i.currency)}</td>
             <td><button type="button" class="btn btn-sm btn-outline" onclick="addToPoCart('${i.id}')">Add</button></td></tr>
-          `).join("") : `<tr><td colspan="3" class="empty-state">Nothing available${type === "ROOM_SERVICE" ? " for room service" : ""}.</td></tr>`}</tbody>
+          `)) : html`<tr><td colspan="3" class="empty-state">Nothing available${type === "ROOM_SERVICE" ? " for room service" : ""}.</td></tr>`}</tbody>
         </table>
         <div id="poCartWrap" style="margin-top:14px;"></div>
       `;
       renderPoCart();
     }
   } catch (err) {
-    catalogEl.innerHTML = `<div class="empty-state">${err.message}</div>`;
+    catalogEl.innerHTML = html`<div class="empty-state">${err.message}</div>`;
   }
   updatePoTotal();
 }
@@ -1365,7 +1553,7 @@ function addToPoCart(itemId) {
   if (!item) return;
   const existing = _poCart.find((l) => l.id === itemId);
   if (existing) existing.quantity += 1;
-  else _poCart.push({ id: item.id, name: item.name, price: Number(item.price), quantity: 1 });
+  else _poCart.push({ id: item.id, name: item.name, price: Number(item.price), currency: item.currency, quantity: 1 });
   renderPoCart();
   updatePoTotal();
 }
@@ -1377,26 +1565,33 @@ function removeFromPoCart(itemId) {
 function renderPoCart() {
   const wrap = document.getElementById("poCartWrap");
   if (!wrap) return;
-  wrap.innerHTML = _poCart.length ? `
+  wrap.innerHTML = _poCart.length ? html`
     <table><thead><tr><th>Item</th><th>Qty</th><th>Line total</th><th></th></tr></thead>
-      <tbody>${_poCart.map((l) => `
-        <tr><td>${l.name}</td><td>${l.quantity}</td><td>&#8358;${(l.price * l.quantity).toLocaleString()}</td>
+      <tbody>${html.join(_poCart.map((l) => html`
+        <tr><td>${l.name}</td><td>${l.quantity}</td><td>${money(l.price * l.quantity, l.currency)}</td>
         <td><button type="button" class="btn btn-sm btn-danger" onclick="removeFromPoCart('${l.id}')">Remove</button></td></tr>
-      `).join("")}</tbody>
+      `))}</tbody>
     </table>
-  ` : `<p style="color:var(--text-muted); font-size:0.84rem;">No items added yet.</p>`;
+  ` : html`<p style="color:var(--text-muted); font-size:0.84rem;">No items added yet.</p>`;
 }
 
 function updatePoTotal() {
   const type = document.getElementById("poType").value;
   let total = 0;
+  const byCurrency = {}; // never add prices in different currencies together
   if (type === "SPA") {
     const sel = document.getElementById("poSpaTreatment");
-    total = sel ? Number(sel.selectedOptions[0]?.dataset.price || 0) : 0;
+    const opt = sel && sel.selectedOptions[0];
+    total = opt ? Number(opt.dataset.price || 0) : 0;
+    if (opt) byCurrency[opt.dataset.currency || ""] = total;
   } else {
-    total = _poCart.reduce((sum, l) => sum + l.price * l.quantity, 0);
+    for (const l of _poCart) {
+      const amt = l.price * l.quantity;
+      total += amt; byCurrency[l.currency || ""] = (byCurrency[l.currency || ""] || 0) + amt;
+    }
   }
-  document.getElementById("poTotalDisplay").textContent = `₦${total.toLocaleString()}`;
+  const parts = Object.entries(byCurrency).map(([c, a]) => money(a, c));
+  document.getElementById("poTotalDisplay").textContent = parts.length ? parts.join(" + ") : "—";
   return total;
 }
 
@@ -1409,11 +1604,11 @@ function searchGuestDebounced() {
     if (q.length < 2) { resultsEl.innerHTML = ""; return; }
     try {
       const { guests } = await staffApi.searchGuests(q);
-      resultsEl.innerHTML = guests.length ? guests.map((g) => `
-        <div style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; margin-top:4px; cursor:pointer;" onclick='selectGuest(${JSON.stringify(g).replace(/'/g, "&#39;")})'>
+      resultsEl.innerHTML = guests.length ? html.join(guests.map((g) => html`
+        <div style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; margin-top:4px; cursor:pointer;" onclick='selectGuest(${refJs(g)})'>
           <b>${g.name}</b> <span style="color:var(--text-muted); font-size:0.82rem;">${g.email}${g.phone ? " · " + g.phone : ""}</span>
         </div>
-      `).join("") : `<p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">No match — enter their details below instead.</p>`;
+      `)) : html`<p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">No match — enter their details below instead.</p>`;
     } catch { /* search failing shouldn't block manual entry below */ }
   }, 350);
 }
@@ -1462,7 +1657,7 @@ async function submitWalkInOrder() {
 
   if (type === "SPA") {
     payload.treatmentId = document.getElementById("poSpaTreatment").value;
-    payload.scheduledAt = document.getElementById("poSpaTime").value;
+    payload.scheduledAt = fromLocalInput(document.getElementById("poSpaTime").value);
     if (!payload.scheduledAt) { showNotice("placeOrderNotice", "Pick a date and time for the appointment."); return; }
   } else {
     if (!_poCart.length) { showNotice("placeOrderNotice", "Add at least one item."); return; }
@@ -1504,7 +1699,7 @@ async function submitWalkInOrder() {
    ============================================================ */
 async function loadOrdersQueuePage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Orders", "Every order placed at this branch — online and walk-in.")}
     <div id="ordersNotice"></div>
     <div class="panel">
@@ -1527,20 +1722,20 @@ async function refreshOrdersQueue() {
   const NEXT_STATUS = { PENDING: "IN_PROGRESS", IN_PROGRESS: "COMPLETED" };
   try {
     const { orders } = await staffApi.listOrders();
-    document.getElementById("ordersBody").innerHTML = orders.length ? orders.map((o) => `
+    document.getElementById("ordersBody").innerHTML = orders.length ? html.join(orders.map((o) => html`
       <tr>
         <td>${o.guest.name}</td>
         <td>${(o.type || "").replace(/_/g, " ")}</td>
-        <td>${o.totalAmount != null ? "&#8358;" + Number(o.totalAmount).toLocaleString() : "—"}</td>
+        <td>${o.totalAmount != null ? money(o.totalAmount, o.currency) : "—"}</td>
         <td><span class="badge badge-${o.status.toLowerCase()}">${o.status}</span></td>
         <td style="font-size:0.82rem; color:var(--text-muted);">${o.placedByStaff ? o.placedByStaff.name : "Guest"}</td>
         <td><button class="btn btn-sm btn-outline" onclick="openOrderDetailModal('${o.id}')">View</button>
-        ${NEXT_STATUS[o.status] ? `<button class="btn btn-sm btn-outline" onclick="advanceOrder('${o.id}','${NEXT_STATUS[o.status]}')">${NEXT_STATUS[o.status].replace("_"," ").toLowerCase()}</button>` : ""}
-        ${["PENDING","IN_PROGRESS"].includes(o.status) ? `<button class="btn btn-sm btn-danger" onclick="advanceOrder('${o.id}','CANCELLED')">Cancel</button>` : ""}</td>
+        ${NEXT_STATUS[o.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceOrder('${o.id}','${NEXT_STATUS[o.status]}')">${NEXT_STATUS[o.status].replace("_"," ").toLowerCase()}</button>` : ""}
+        ${["PENDING","IN_PROGRESS"].includes(o.status) ? html`<button class="btn btn-sm btn-danger" onclick="advanceOrder('${o.id}','CANCELLED')">Cancel</button>` : ""}</td>
       </tr>
-    `).join("") : `<tr><td colspan="6" class="empty-state">No orders yet.</td></tr>`;
+    `)) : html`<tr><td colspan="6" class="empty-state">No orders yet.</td></tr>`;
   } catch (err) {
-    document.getElementById("ordersBody").innerHTML = `<tr><td colspan="6" class="empty-state">${err.message}</td></tr>`;
+    document.getElementById("ordersBody").innerHTML = html`<tr><td colspan="6" class="empty-state">${err.message}</td></tr>`;
   }
 }
 async function advanceOrder(id, status) {
@@ -1569,20 +1764,20 @@ async function refreshOrderDetail() {
     const { order } = await staffApi.getOrder(_odOrderId);
     const canEditLines = hasPermission("manage_orders");
     const canReopen = hasPermission("manage_payments");
-    body.innerHTML = `
+    body.innerHTML = html`
       <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:10px;">${order.guest.name} · <span class="badge badge-${order.status.toLowerCase()}">${order.status}</span> ${order.isOpen ? "" : "· Closed"}</p>
-      <table><thead><tr><th>Item</th><th>Qty</th><th>Line total</th><th>Status</th>${canEditLines ? "<th></th>" : ""}</tr></thead>
-        <tbody>${order.lines.length ? order.lines.map((l) => `
+      <table><thead><tr><th>Item</th><th>Qty</th><th>Line total</th><th>Status</th>${canEditLines ? raw("<th></th>") : ""}</tr></thead>
+        <tbody>${order.lines.length ? html.join(order.lines.map((l) => html`
           <tr>
             <td>${l.itemName}</td><td>${l.quantity}</td>
-            <td>&#8358;${(Number(l.unitPrice) * l.quantity).toLocaleString()}</td>
+            <td>${money(Number(l.unitPrice) * l.quantity, order.currency)}</td>
             <td><span class="badge badge-${l.status.toLowerCase()}">${l.status}</span></td>
-            ${canEditLines ? `<td>${l.status === "ACTIVE" ? `<button class="btn btn-sm btn-danger" onclick="voidOrderLineRow('${l.id}')">Void</button>` : ""}</td>` : ""}
+            ${canEditLines ? html`<td>${l.status === "ACTIVE" ? html`<button class="btn btn-sm btn-danger" onclick="voidOrderLineRow('${l.id}')">Void</button>` : ""}</td>` : ""}
           </tr>
-        `).join("") : `<tr><td colspan="${canEditLines ? 5 : 4}" class="empty-state">No items on this order.</td></tr>`}</tbody>
+        `)) : html`<tr><td colspan="${canEditLines ? 5 : 4}" class="empty-state">No items on this order.</td></tr>`}</tbody>
       </table>
-      <div class="summary-line total" style="margin-top:10px;"><span>Total</span><span>&#8358;${Number(order.totalAmount || 0).toLocaleString()}</span></div>
-      ${canEditLines && order.isOpen ? `
+      <div class="summary-line total" style="margin-top:10px;"><span>Total</span><span>${money(order.totalAmount || 0, order.currency)}</span></div>
+      ${canEditLines && order.isOpen ? html`
         <form id="addLineForm" style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px;">
           <div class="form-row">
             <div class="form-field"><label>Add item</label><select id="odMenuItemId"><option value="">Loading…</option></select></div>
@@ -1593,20 +1788,20 @@ async function refreshOrderDetail() {
       ` : ""}
       <div class="modal-actions">
         <button type="button" class="btn btn-outline" onclick="closeOrderDetailModal()">Close</button>
-        ${canEditLines && order.isOpen ? `<button type="button" class="btn btn-danger" onclick="closeOrderRow()">Close order</button>` : ""}
-        ${canReopen && !order.isOpen ? `<button type="button" class="btn btn-outline" onclick="reopenOrderRow()">Reopen order</button>` : ""}
+        ${canEditLines && order.isOpen ? html`<button type="button" class="btn btn-danger" onclick="closeOrderRow()">Close order</button>` : ""}
+        ${canReopen && !order.isOpen ? html`<button type="button" class="btn btn-outline" onclick="reopenOrderRow()">Reopen order</button>` : ""}
       </div>
     `;
     if (canEditLines && order.isOpen) {
       const menuSelect = document.getElementById("odMenuItemId");
       try {
         const { menuItems } = await staffApi.listMenuItems();
-        menuSelect.innerHTML = menuItems.map((m) => `<option value="${m.id}">${m.name} — &#8358;${Number(m.price).toLocaleString()}</option>`).join("");
-      } catch { menuSelect.innerHTML = `<option value="">Couldn't load menu</option>`; }
+        menuSelect.innerHTML = html.join(menuItems.map((m) => html`<option value="${m.id}">${m.name} — ${money(m.price, m.currency)}</option>`));
+      } catch { menuSelect.innerHTML = html`<option value="">Couldn't load menu</option>`; }
       document.getElementById("addLineForm").addEventListener("submit", submitAddOrderLine);
     }
   } catch (err) {
-    body.innerHTML = `<div class="notice error">${err.message}</div>`;
+    body.innerHTML = html`<div class="notice error">${err.message}</div>`;
   }
 }
 
@@ -1660,7 +1855,7 @@ async function reopenOrderRow() {
 let _bookingsCache = [];
 async function loadBookingsPage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Bookings", "Confirm, check in, check out, or cancel.")}
     <div id="bookingsNotice"></div>
     <div class="panel">
@@ -1731,17 +1926,17 @@ async function refreshBookingsTable() {
   try {
     const { bookings } = await staffApi.listBookings();
     _bookingsCache = bookings;
-    document.getElementById("bookingsBody").innerHTML = bookings.length ? bookings.map((b) => `
+    document.getElementById("bookingsBody").innerHTML = bookings.length ? html.join(bookings.map((b) => html`
       <tr><td>${b.guest.name}<br><span style="color:var(--text-muted); font-size:0.78rem;">${b.guest.email}</span></td>
-      <td>${b.room ? `${b.room.name} — ${b.room.roomNumber}` : `<span style="color:var(--text-muted);">Not assigned yet</span>`}</td>
+      <td>${b.room ? `${b.room.name} — ${b.room.roomNumber}` : html`<span style="color:var(--text-muted);">Not assigned yet</span>`}</td>
       <td>${b.checkIn.slice(0,10)} → ${b.checkOut.slice(0,10)}</td>
       <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
-      <td>${b.status === "CHECKED_IN" ? `<button class="btn btn-sm btn-outline" onclick="openFolioModal('${b.id}')">Check out</button><button class="btn btn-sm btn-outline" onclick="openAssignRoomModal('${b.id}')">Change room</button>`
-        : b.status === "CONFIRMED" ? `<button class="btn btn-sm btn-outline" onclick="openCheckInModal('${b.id}')">Check in</button>`
-        : NEXT_STATUS[b.status] ? `<button class="btn btn-sm btn-outline" onclick="advanceBooking('${b.id}','${NEXT_STATUS[b.status]}')">${NEXT_STATUS[b.status].replace("_"," ").toLowerCase()}</button>` : ""}
-      ${["PENDING","CONFIRMED"].includes(b.status) ? `<button class="btn btn-sm btn-danger" onclick="advanceBooking('${b.id}','CANCELLED')">Cancel</button>` : ""}</td></tr>
-    `).join("") : `<tr><td colspan="5" class="empty-state">No bookings yet.</td></tr>`;
-  } catch (err) { document.getElementById("bookingsBody").innerHTML = `<tr><td colspan="5" class="empty-state">${err.message}</td></tr>`; }
+      <td>${b.status === "CHECKED_IN" ? html`<button class="btn btn-sm btn-outline" onclick="openFolioModal('${b.id}')">Check out</button><button class="btn btn-sm btn-outline" onclick="openAssignRoomModal('${b.id}')">Change room</button>`
+        : b.status === "CONFIRMED" ? html`<button class="btn btn-sm btn-outline" onclick="openCheckInModal('${b.id}')">Check in</button>`
+        : NEXT_STATUS[b.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceBooking('${b.id}','${NEXT_STATUS[b.status]}')">${NEXT_STATUS[b.status].replace("_"," ").toLowerCase()}</button>` : ""}
+      ${["PENDING","CONFIRMED"].includes(b.status) ? html`<button class="btn btn-sm btn-danger" onclick="advanceBooking('${b.id}','CANCELLED')">Cancel</button>` : ""}</td></tr>
+    `)) : html`<tr><td colspan="5" class="empty-state">No bookings yet.</td></tr>`;
+  } catch (err) { document.getElementById("bookingsBody").innerHTML = html`<tr><td colspan="5" class="empty-state">${err.message}</td></tr>`; }
 }
 async function advanceBooking(id, status) {
   try { await staffApi.updateBookingStatus(id, status); refreshBookingsTable(); }
@@ -1749,12 +1944,12 @@ async function advanceBooking(id, status) {
 }
 
 async function populateRoomSelect(selectEl, selectedRoomId, includeAutoOption) {
-  selectEl.innerHTML = `<option value="">Loading…</option>`;
+  selectEl.innerHTML = html`<option value="">Loading…</option>`;
   try {
     const { rooms } = await staffApi.listRooms();
-    selectEl.innerHTML = (includeAutoOption ? `<option value="">— Auto-assign —</option>` : "")
-      + rooms.map((r) => `<option value="${r.id}" ${r.id === selectedRoomId ? "selected" : ""}>${r.name} — ${r.roomNumber}</option>`).join("");
-  } catch { selectEl.innerHTML = includeAutoOption ? `<option value="">— Auto-assign —</option>` : `<option value="">Couldn't load rooms</option>`; }
+    selectEl.innerHTML = (includeAutoOption ? html`<option value="">— Auto-assign —</option>` : "")
+      + html.join(rooms.map((r) => html`<option value="${r.id}" ${r.id === selectedRoomId ? "selected" : ""}>${r.name} — ${r.roomNumber}</option>`));
+  } catch { selectEl.innerHTML = includeAutoOption ? html`<option value="">— Auto-assign —</option>` : html`<option value="">Couldn't load rooms</option>`; }
 }
 
 async function openCheckInModal(bookingId) {
@@ -1834,7 +2029,7 @@ async function submitAssignRoomForm(e) {
 async function openFolioModal(bookingId) {
   const overlay = document.createElement("div");
   overlay.className = "modal-overlay"; overlay.id = "folioModal";
-  overlay.innerHTML = `
+  overlay.innerHTML = html`
     <div class="modal" style="max-width:600px;">
       <h3>Room folio</h3>
       <div id="folioModalNotice"></div>
@@ -1846,14 +2041,14 @@ async function openFolioModal(bookingId) {
 
 async function refreshFolioModal(bookingId) {
   try {
-    const { booking, charges, balance } = await staffApi.getFolio(bookingId);
-    document.getElementById("folioModalContent").innerHTML = `
+    const { booking, charges, balance, currency: folioCurrency } = await staffApi.getFolio(bookingId);
+    document.getElementById("folioModalContent").innerHTML = html`
       <p style="color:var(--text-muted); font-size:0.86rem; margin-bottom:12px;">${booking.guestName} — Room ${booking.roomNumber}</p>
-      ${charges.length ? `
+      ${charges.length ? html`
         <table><thead><tr><th>Type</th><th>Placed</th><th style="text-align:right;">Amount</th></tr></thead>
-          <tbody>${charges.map((c) => `<tr><td>${c.type.replace(/_/g, " ")}</td><td>${new Date(c.createdAt).toLocaleString()}</td><td style="text-align:right;">&#8358;${Number(c.totalAmount).toLocaleString()}</td></tr>`).join("")}</tbody>
+          <tbody>${html.join(charges.map((c) => html`<tr><td>${c.type.replace(/_/g, " ")}</td><td>${fmtDT(c.createdAt)}</td><td style="text-align:right;">${money(c.totalAmount, c.currency || folioCurrency)}</td></tr>`))}</tbody>
         </table>
-        <div class="summary-line total" style="margin-top:10px;"><span>Balance due</span><span>&#8358;${Number(balance).toLocaleString()}</span></div>
+        <div class="summary-line total" style="margin-top:10px;"><span>Balance due</span><span>${money(balance, folioCurrency)}</span></div>
         <form id="folioSettleForm" style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
           <div class="form-field">
             <label>Settle by</label>
@@ -1870,7 +2065,7 @@ async function refreshFolioModal(bookingId) {
             <button type="submit" class="btn btn-primary" id="folioSettleBtn">Settle &amp; check out</button>
           </div>
         </form>
-      ` : `
+      ` : html`
         <div class="empty-state">No room charges on this stay.</div>
         <div class="modal-actions" style="margin-top:14px;">
           <button type="button" class="btn btn-outline" onclick="document.getElementById('folioModal').remove()">Close</button>
@@ -1882,7 +2077,7 @@ async function refreshFolioModal(bookingId) {
       document.getElementById("folioSettleForm").addEventListener("submit", (e) => { e.preventDefault(); settleFolioAndCheckOut(bookingId); });
     }
   } catch (err) {
-    document.getElementById("folioModalContent").innerHTML = `<div class="notice error">${err.message}</div>`;
+    document.getElementById("folioModalContent").innerHTML = html`<div class="notice error">${err.message}</div>`;
   }
 }
 
@@ -1909,7 +2104,7 @@ async function settleFolioAndCheckOut(bookingId) {
     showNotice("bookingsNotice", "Folio settled and guest checked out.", "success");
     refreshBookingsTable();
   } catch (err) {
-    document.getElementById("folioModalNotice").innerHTML = `<div class="notice error">${err.message}</div>`;
+    document.getElementById("folioModalNotice").innerHTML = html`<div class="notice error">${err.message}</div>`;
     if (btn) { btn.disabled = false; btn.textContent = "Settle & check out"; }
   }
 }
@@ -1921,7 +2116,7 @@ async function checkOutFromFolio(bookingId) {
     showNotice("bookingsNotice", "Guest checked out.", "success");
     refreshBookingsTable();
   } catch (err) {
-    document.getElementById("folioModalNotice").innerHTML = `<div class="notice error">${err.message}</div>`;
+    document.getElementById("folioModalNotice").innerHTML = html`<div class="notice error">${err.message}</div>`;
   }
 }
 
@@ -1930,9 +2125,9 @@ async function checkOutFromFolio(bookingId) {
    ============================================================ */
 async function loadEventsPage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Events", "Create and manage events at your branch, and scan tickets at the door.",
-      `<button class="btn btn-primary" onclick="openEventModal()">New event</button>`)}
+      html`<button class="btn btn-primary" onclick="openEventModal()">New event</button>`)}
     <div id="eventsNotice"></div>
 
     <div class="panel" style="margin-bottom:20px;">
@@ -1990,19 +2185,19 @@ async function loadEventsPage() {
 async function refreshEventsTable() {
   try {
     const { events } = await staffApi.listEvents();
-    document.getElementById("eventsBody").innerHTML = events.length ? events.map((ev) => `
+    document.getElementById("eventsBody").innerHTML = events.length ? html.join(events.map((ev) => html`
       <tr>
         <td>${ev.name}</td>
-        <td>${new Date(ev.startsAt).toLocaleString()}</td>
+        <td>${fmtDT(ev.startsAt)}</td>
         <td>${ev.capacity ?? "—"}</td>
-        <td>${ev.price ? "&#8358;" + Number(ev.price).toLocaleString() : "Free"}</td>
+        <td>${ev.price ? money(ev.price, ev.currency) : "Free"}</td>
         <td>
           <button class="btn btn-sm btn-outline" onclick="openAttendeesModal('${ev.id}')">Attendees</button>
-          <button class="btn btn-sm btn-outline" onclick='openEventModal(${JSON.stringify(ev).replace(/'/g, "&#39;")})'>Edit</button>
+          <button class="btn btn-sm btn-outline" onclick='openEventModal(${refJs(ev)})'>Edit</button>
           <button class="btn btn-sm btn-danger" onclick="deleteEventRow('${ev.id}')">Delete</button>
         </td>
       </tr>
-    `).join("") : `<tr><td colspan="5" class="empty-state">No events yet.</td></tr>`;
+    `)) : html`<tr><td colspan="5" class="empty-state">No events yet.</td></tr>`;
   } catch (err) {
     showNotice("eventsNotice", err.message);
   }
@@ -2015,8 +2210,8 @@ function openEventModal(ev) {
   if (ev) {
     document.getElementById("evName").value = ev.name;
     document.getElementById("evDescription").value = ev.description || "";
-    document.getElementById("evStartsAt").value = ev.startsAt ? ev.startsAt.slice(0, 16) : "";
-    document.getElementById("evEndsAt").value = ev.endsAt ? ev.endsAt.slice(0, 16) : "";
+    document.getElementById("evStartsAt").value = ev.startsAt ? toLocalInput(ev.startsAt) : "";
+    document.getElementById("evEndsAt").value = ev.endsAt ? toLocalInput(ev.endsAt) : "";
     document.getElementById("evCapacity").value = ev.capacity ?? "";
     document.getElementById("evPrice").value = ev.price ?? 0;
   }
@@ -2032,8 +2227,8 @@ async function submitEventForm(e) {
   const payload = {
     name: document.getElementById("evName").value,
     description: document.getElementById("evDescription").value || undefined,
-    startsAt: document.getElementById("evStartsAt").value,
-    endsAt: document.getElementById("evEndsAt").value || undefined,
+    startsAt: fromLocalInput(document.getElementById("evStartsAt").value),
+    endsAt: fromLocalInput(document.getElementById("evEndsAt").value),
     capacity: document.getElementById("evCapacity").value ? Number(document.getElementById("evCapacity").value) : undefined,
     price: document.getElementById("evPrice").value ? Number(document.getElementById("evPrice").value) : 0,
   };
@@ -2063,17 +2258,17 @@ async function deleteEventRow(id) {
 
 async function openAttendeesModal(id) {
   document.getElementById("attendeesModal").style.display = "flex";
-  document.getElementById("attendeesBody").innerHTML = `<div class="loading-state">Loading…</div>`;
+  document.getElementById("attendeesBody").innerHTML = html`<div class="loading-state">Loading…</div>`;
   try {
     const { total, redeemed, tickets } = await staffApi.getEventAttendees(id);
-    document.getElementById("attendeesBody").innerHTML = `
+    document.getElementById("attendeesBody").innerHTML = html`
       <p style="font-size:0.86rem; color:var(--text-muted); margin-bottom:12px;">${redeemed} of ${total} scanned in.</p>
       <table><thead><tr><th>Name</th><th>Type</th><th>Status</th></tr></thead>
-        <tbody>${tickets.length ? tickets.map((t) => `<tr><td>${t.holderName || "—"}</td><td>${t.ticketType || "—"}</td><td><span class="badge badge-${t.status.toLowerCase()}">${t.status}</span></td></tr>`).join("") : `<tr><td colspan="3" class="empty-state">No tickets sold yet.</td></tr>`}</tbody>
+        <tbody>${tickets.length ? html.join(tickets.map((t) => html`<tr><td>${t.holderName || "—"}</td><td>${t.ticketType || "—"}</td><td><span class="badge badge-${t.status.toLowerCase()}">${t.status}</span></td></tr>`)) : html`<tr><td colspan="3" class="empty-state">No tickets sold yet.</td></tr>`}</tbody>
       </table>
     `;
   } catch (err) {
-    document.getElementById("attendeesBody").innerHTML = `<div class="empty-state">${err.message}</div>`;
+    document.getElementById("attendeesBody").innerHTML = html`<div class="empty-state">${err.message}</div>`;
   }
 }
 
@@ -2083,12 +2278,12 @@ async function submitTicketScan(e) {
   const code = codeInput.value.trim();
   if (!code) return;
   const resultEl = document.getElementById("scanResult");
-  resultEl.innerHTML = `<div class="loading-state">Checking…</div>`;
+  resultEl.innerHTML = html`<div class="loading-state">Checking…</div>`;
   try {
     const result = await staffApi.redeemTicket(code);
-    resultEl.innerHTML = `<div class="notice success">${result.message}${result.ticket?.holderName ? ` — ${result.ticket.holderName}` : ""}</div>`;
+    resultEl.innerHTML = html`<div class="notice success">${result.message}${result.ticket?.holderName ? ` — ${result.ticket.holderName}` : ""}</div>`;
   } catch (err) {
-    resultEl.innerHTML = `<div class="notice error">${err.data?.message || err.message}</div>`;
+    resultEl.innerHTML = html`<div class="notice error">${err.data?.message || err.message}</div>`;
   }
   codeInput.value = "";
   codeInput.focus();
@@ -2099,7 +2294,7 @@ async function submitTicketScan(e) {
    ============================================================ */
 async function loadTicketsPage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Guest Tickets", "Support requests from guests at your branch.")}
     <div id="ticketsNotice"></div>
     <div class="panel">
@@ -2130,26 +2325,26 @@ async function loadTicketsPage() {
 async function refreshTicketsTable() {
   try {
     const { tickets } = await staffApi.listTickets();
-    document.getElementById("ticketsBody").innerHTML = tickets.length ? tickets.map((t) => `
+    document.getElementById("ticketsBody").innerHTML = tickets.length ? html.join(tickets.map((t) => html`
       <tr><td>${t.subject}</td><td>${t.guest.name}</td><td>${t.priority}</td>
       <td>${(t.assignedManager || t.assignedStaffMember) ? (t.assignedManager || t.assignedStaffMember).name : "—"}</td><td><span class="badge badge-${t.status.toLowerCase()}">${t.status}</span></td>
       <td><button class="btn btn-sm btn-outline" onclick="openTicketDetailModal('${t.id}')">View</button>
-      ${!(t.assignedManager || t.assignedStaffMember) ? `<button class="btn btn-sm btn-outline" onclick="claimTicket('${t.id}')">Assign to me</button>` : ""}
-      ${t.status !== "RESOLVED" ? `<button class="btn btn-sm btn-outline" onclick="resolveTicketRow('${t.id}')">Resolve</button>` : ""}</td></tr>
-    `).join("") : `<tr><td colspan="6" class="empty-state">No tickets yet.</td></tr>`;
+      ${!(t.assignedManager || t.assignedStaffMember) ? html`<button class="btn btn-sm btn-outline" onclick="claimTicket('${t.id}')">Assign to me</button>` : ""}
+      ${t.status !== "RESOLVED" ? html`<button class="btn btn-sm btn-outline" onclick="resolveTicketRow('${t.id}')">Resolve</button>` : ""}</td></tr>
+    `)) : html`<tr><td colspan="6" class="empty-state">No tickets yet.</td></tr>`;
 
     const openCount = tickets.filter((t) => ["OPEN", "IN_PROGRESS"].includes(t.status)).length;
     const bellBadge = document.getElementById("ticketsBellBadge");
     const navBadge = document.getElementById("ticketsNavBadge");
     [bellBadge, navBadge].forEach((el) => { if (!el) return; el.textContent = openCount; el.style.display = openCount ? "flex" : "none"; el.classList.toggle("visible", openCount > 0); });
-  } catch (err) { document.getElementById("ticketsBody").innerHTML = `<tr><td colspan="6" class="empty-state">${err.message}</td></tr>`; }
+  } catch (err) { document.getElementById("ticketsBody").innerHTML = html`<tr><td colspan="6" class="empty-state">${err.message}</td></tr>`; }
 }
 async function claimTicket(id) { try { await staffApi.assignTicket(id); refreshTicketsTable(); } catch (err) { showNotice("ticketsNotice", err.message); } }
 async function resolveTicketRow(id) { try { await staffApi.resolveTicket(id); refreshTicketsTable(); } catch (err) { showNotice("ticketsNotice", err.message); } }
 
 async function openTicketDetailModal(id) {
   document.getElementById("ticketDetailNotice").innerHTML = "";
-  document.getElementById("tdThread").innerHTML = `<div class="loading-state">Loading…</div>`;
+  document.getElementById("tdThread").innerHTML = html`<div class="loading-state">Loading…</div>`;
   document.getElementById("tdReplyForm").dataset.ticketId = id;
   document.getElementById("ticketDetailModal").style.display = "flex";
   await refreshTicketDetail(id);
@@ -2161,12 +2356,12 @@ async function refreshTicketDetail(id) {
     const { ticket } = await staffApi.getTicketDetail(id);
     document.getElementById("tdSubject").textContent = ticket.subject;
     document.getElementById("tdMeta").textContent = `${ticket.guest.name} · ${ticket.priority} · ${ticket.status}`;
-    document.getElementById("tdThread").innerHTML = ticket.messages.length ? ticket.messages.map((m) => `
+    document.getElementById("tdThread").innerHTML = ticket.messages.length ? html.join(ticket.messages.map((m) => html`
       <div style="margin-bottom:10px; ${m.senderType === "GUEST" ? "" : "text-align:right;"}">
-        <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:2px;">${m.senderType === "GUEST" ? ticket.guest.name : "You"} · ${new Date(m.createdAt).toLocaleString()}</div>
+        <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:2px;">${m.senderType === "GUEST" ? ticket.guest.name : "You"} · ${fmtDT(m.createdAt)}</div>
         <div style="display:inline-block; padding:8px 12px; border-radius:8px; background:${m.senderType === "GUEST" ? "var(--ivory)" : "rgba(185,141,69,0.12)"}; font-size:0.86rem;">${m.message || ""}</div>
       </div>
-    `).join("") : `<div class="empty-state">No messages yet.</div>`;
+    `)) : html`<div class="empty-state">No messages yet.</div>`;
     document.getElementById("tdThread").scrollTop = document.getElementById("tdThread").scrollHeight;
   } catch (err) {
     showNotice("ticketDetailNotice", err.message);
@@ -2195,18 +2390,18 @@ async function submitTicketReply(e) {
    ============================================================ */
 async function loadReportsPage() {
   const container = document.getElementById("pageContent");
-  container.innerHTML = `
+  container.innerHTML = html`
     ${pageHeader("Branch Reports", "A snapshot of this branch's activity.")}
     <div id="reportsNotice"></div>
     <div class="stats-grid" id="reportsStatCards"><div class="loading-state">Loading…</div></div>
   `;
   try {
     const { report } = await staffApi.getReports();
-    document.getElementById("reportsStatCards").innerHTML = `
+    document.getElementById("reportsStatCards").innerHTML = html`
       <div class="stat-card"><b>${report.roomCount}</b><span>Rooms</span></div>
       <div class="stat-card"><b>${report.activeBookings}</b><span>Active bookings</span></div>
       <div class="stat-card"><b>${report.bookingsThisMonth}</b><span>Bookings this month</span></div>
-      <div class="stat-card"><b>&#8358;${Number(report.revenueThisMonth).toLocaleString()}</b><span>Revenue this month</span></div>
+      <div class="stat-card"><b>${money(report.revenueThisMonth, report.currency)}</b><span>Revenue this month</span></div>
       <div class="stat-card"><b>${report.openTickets}</b><span>Open tickets</span></div>
     `;
   } catch (err) { showNotice("reportsNotice", err.message); }
@@ -2216,7 +2411,7 @@ async function loadReportsPage() {
    ============================================================ */
 function renderSecurityModalShell() {
   if (document.getElementById("securityModal")) return;
-  document.body.insertAdjacentHTML("beforeend", `
+  document.body.insertAdjacentHTML("beforeend", html`
     <div class="modal-overlay" id="securityModal" style="display:none;">
       <div class="modal">
         <h3>Account & Security</h3>
@@ -2271,12 +2466,12 @@ function closeTwoFactorModal(id) { document.getElementById(id).style.display = "
 function renderSecurityBody() {
   const staff = getStaff();
   const enabled = !!staff.twoFactorEnabled;
-  document.getElementById("securityBody").innerHTML = enabled ? `
+  document.getElementById("securityBody").innerHTML = enabled ? html`
     <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:14px;">
       <span class="badge badge-active">Enabled</span> Your account requires a code from your authenticator app at every login.
     </p>
     <button class="btn btn-outline" onclick="openDisable2FAModal()">Turn off 2FA</button>
-  ` : `
+  ` : html`
     <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:14px;">
       <span class="badge badge-inactive">Disabled</span> Add a second step at login using an authenticator app.
     </p>
@@ -2287,7 +2482,7 @@ function renderSecurityBody() {
 async function startTwoFactorSetup() {
   try {
     const { qrCodeDataUrl } = await staffApi.setupTwoFactor();
-    document.getElementById("qrCodeContainer").innerHTML = `<img src="${qrCodeDataUrl}" alt="2FA QR code" style="width:200px; height:200px;">`;
+    document.getElementById("qrCodeContainer").innerHTML = html`<img src="${qrCodeDataUrl}" alt="2FA QR code" style="width:200px; height:200px;">`;
     document.getElementById("enable2FAStep1").style.display = "";
     document.getElementById("enable2FAStep2").style.display = "none";
     document.getElementById("enable2FAModal").style.display = "flex";
@@ -2297,7 +2492,7 @@ async function submitEnableTwoFactor() {
   const btn = document.getElementById("enable2FASubmitBtn"); btn.disabled = true;
   try {
     const { backupCodes } = await staffApi.enableTwoFactor(document.getElementById("enable2FACode").value.trim());
-    document.getElementById("backupCodesList").innerHTML = backupCodes.map((c) => `<div>${c}</div>`).join("");
+    document.getElementById("backupCodesList").innerHTML = html.join(backupCodes.map((c) => html`<div>${c}</div>`));
     document.getElementById("enable2FAStep1").style.display = "none";
     document.getElementById("enable2FAStep2").style.display = "";
     const staff = getStaff(); staff.twoFactorEnabled = true; setSession(getToken(), staff);
@@ -2320,7 +2515,7 @@ async function submitDisableTwoFactor() {
    ============================================================ */
 function showNotice(containerId, message, type = "error") {
   const el = document.getElementById(containerId); if (!el) return;
-  el.innerHTML = `<div class="notice ${type}">${message}</div>`;
+  el.innerHTML = html`<div class="notice ${type}">${message}</div>`;
   setTimeout(() => { if (el) el.innerHTML = ""; }, 4000);
 }
 function showLogin() { document.getElementById("loginScreen").style.display = "flex"; document.getElementById("appShell").style.display = "none"; }
@@ -2356,10 +2551,10 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
       document.getElementById("twoFactorCode").focus();
       return;
     }
-    setSession(result.token, result.staff);
+    setSession(result.token, result.staff, result.refreshToken);
     showApp();
   } catch (err) {
-    notice.innerHTML = `<div class="notice error">${err.message}</div>`;
+    notice.innerHTML = html`<div class="notice error">${err.message}</div>`;
   } finally { btn.disabled = false; btn.textContent = "Log in"; }
 });
 
@@ -2371,10 +2566,10 @@ document.getElementById("twoFactorForm").addEventListener("submit", async (e) =>
   try {
     const result = await staffApi.verifyTwoFactor(_pendingTempToken, document.getElementById("twoFactorCode").value.trim());
     _pendingTempToken = null;
-    setSession(result.token, result.staff);
+    setSession(result.token, result.staff, result.refreshToken);
     showApp();
   } catch (err) {
-    notice.innerHTML = `<div class="notice error">${err.message}</div>`;
+    notice.innerHTML = html`<div class="notice error">${err.message}</div>`;
   } finally { btn.disabled = false; btn.textContent = "Verify"; }
 });
 
@@ -2385,7 +2580,7 @@ document.getElementById("twoFactorBackBtn").addEventListener("click", () => {
   document.getElementById("loginForm").style.display = "block";
   document.getElementById("loginNotice").innerHTML = "";
 });
-document.getElementById("logoutBtn").addEventListener("click", () => { clearSession(); showLogin(); });
+document.getElementById("logoutBtn").addEventListener("click", () => endSession());
 document.getElementById("hamburgerBtn").addEventListener("click", () => document.getElementById("sidebar").classList.toggle("open"));
 document.getElementById("ticketsBellBtn").addEventListener("click", () => switchPage("tickets"));
 
