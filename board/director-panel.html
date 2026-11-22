@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- PATCHED-BY-UYEH-FIX -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -997,7 +998,15 @@ async function authedFetch(path, init = {}, _retried = false) {
 async function adminRequest(path, options = {}) {
   const res = await authedFetch(path, { ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(typeof data.error === "string" && data.error ? data.error : res.status === 429 ? "Too many requests — wait a moment and try again." : `Request failed (${res.status})`, res.status, data);
+  if (!res.ok) {
+    const base = typeof data.error === "string" && data.error ? data.error
+      : res.status === 429 ? "Too many requests — wait a moment and try again."
+      : [502, 503, 504].includes(res.status) ? "The server is starting up or temporarily unavailable — wait a few seconds and try again."
+      : `Request failed (${res.status})`;
+    // Directors get the underlying reason on unexpected server errors (see the error handler patch).
+    const extra = typeof data.detail === "string" && data.detail && !base.includes(data.detail) ? ` (${data.detail})` : "";
+    throw new ApiError(base + extra, res.status, data);
+  }
   return data;
 }
 
@@ -1398,6 +1407,15 @@ Object.assign(adminApi, {
   listRefunds: (filters = {}) => adminRequest(`/manager/refunds${bqs(filters)}`),
   requestRefund: (bookingId, payload) => POST(`/manager/bookings/${bookingId}/refund`, payload),
   retryRefund: (id) => POST(`/manager/refunds/${id}/retry`, {}),
+  resolveRefund: (id, payload) => POST(`/manager/refunds/${id}/resolve`, payload),
+  listFxRates: () => adminRequest(`/director/exchange-rates`),
+  sendPurchaseOrder: (id) => POST(`/manager/purchase-orders/${id}/send`, {}),
+  cancelPurchaseOrder: (id) => POST(`/manager/purchase-orders/${id}/cancel`, {}),
+  // The guest's own branch is passed explicitly so a director never moves the wrong booking.
+  moveRoom: (id, payload) => adminRequest(`/manager/bookings/${id}/move-room`, { method: "POST", body: JSON.stringify(payload) }),
+  transferToBranch: (id, payload) => adminRequest(`/manager/bookings/${id}/transfer`, { method: "POST", body: JSON.stringify(payload) }),
+  transferTargets: (branchId) => adminRequest(`/manager/transfer-targets${qs({ branchId })}`),
+  managerRooms: (branchId) => adminRequest(`/manager/rooms${qs({ branchId })}`),
   listExchangeRates: () => adminRequest(`/exchange-rates`),
   refreshExchangeRates: () => POST("/director/exchange-rates/refresh", {}),
 
@@ -1989,7 +2007,8 @@ async function loadDirectorDashboard() {
         <div class="stat-card"><b>${totals.occupancyRatePercent}%</b><span>Occupancy today</span></div>
         <div class="stat-card"><b>${totals.openTickets}</b><span>Open tickets</span></div>
         <div class="stat-card"><b>${totals.activeStaff}</b><span>Active staff</span></div>
-        <div class="stat-card"><b>${fmtMoney(totals.revenueThisMonth || 0, totals.currency)}</b><span>Revenue this month</span></div>
+        <div class="stat-card"><b>${fmtMoney(totals.revenueThisMonth || 0, totals.currency)}</b><span>Booked revenue this month</span></div>
+        <div class="stat-card"><b>${fmtMoney(totals.collectedThisMonth || 0, totals.collectedCurrency || totals.currency)}</b><span>Collected this month</span></div>
       </div>
       <div class="panel">
         <h3>Branches at a glance</h3>
@@ -2030,7 +2049,7 @@ async function loadBranchDashboard() {
           <div class="panel"><h3>Recent bookings</h3>
             <table><thead><tr><th>Guest</th><th>Room</th><th>Dates</th><th>Status</th></tr></thead>
               <tbody>${html.join(bookings.slice(0, 6).map((b) => html`
-                <tr><td>${b.guest.name}</td><td>${b.room.name} — ${b.room.roomNumber}</td>
+                <tr><td>${(b.guest && b.guest.name) || "Guest"}</td><td>${b.roomLabel || (b.room ? `${b.room.name} — ${b.room.roomNumber}` : "Room not yet assigned")}</td>
                 <td>${b.checkIn.slice(0,10)} → ${b.checkOut.slice(0,10)}</td>
                 <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td></tr>
               `))}</tbody>
@@ -2099,43 +2118,6 @@ async function loadBranchesPage() {
         <thead><tr><th>Branch</th><th>Location</th><th>Manager</th><th>Services active</th><th>Status</th><th></th></tr></thead>
         <tbody id="branchesBody"><tr><td colspan="6" class="loading-state">Loading…</td></tr></tbody>
       </table>
-    </div>
-    <div class="modal-overlay" id="payoutModal" style="display:none;">
-      <div class="modal">
-        <h3>Payout account</h3>
-        <p class="muted" id="payoutBranchLabel" style="margin-top:-8px;"></p>
-        <div id="payoutNotice"></div>
-        <form id="payoutForm">
-          <input type="hidden" id="poBranchId">
-          <div class="form-field">
-            <label>Bank</label>
-            <select id="poBankCode" required><option value="">Loading banks&hellip;</option></select>
-          </div>
-          <div class="form-field"><label>Account number</label><input type="text" id="poAccountNumber" inputmode="numeric" maxlength="10" required></div>
-          <div id="poVerifyResult" style="display:none; padding:10px 12px; border-radius:8px; background:rgba(47,93,90,0.12); margin-bottom:12px;">
-            Account name: <b id="poVerifiedName"></b>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-outline" onclick="closePayoutModal()">Cancel</button>
-            <button type="button" class="btn btn-outline" id="poVerifyBtn" onclick="verifyPayoutAccountClick()">Verify account</button>
-            <button type="submit" class="btn btn-primary" id="poSaveBtn" disabled>Save payout account</button>
-          </div>
-        </form>
-
-        <div style="border-top:1px solid var(--border); margin-top:20px; padding-top:16px;">
-          <h4 style="margin-bottom:4px;">Stripe</h4>
-          <p class="muted" style="font-size:0.82rem; margin-bottom:10px;">
-            A separate provider from Paystack above — for guests paying by card through Stripe instead. Onboarding happens on Stripe's own hosted page, not here.
-            <br><b>Note:</b> Stripe Connect doesn't support payouts to Nigerian bank accounts — this only makes sense for a branch settling in a currency/country Stripe Connect actually supports.
-          </p>
-          <div id="stripeStatusBlock" style="margin-bottom:10px; font-size:0.86rem;">Checking status…</div>
-          <div class="form-field" id="stripeConnectFields">
-            <label>Email for the Stripe account</label>
-            <input type="email" id="stripeConnectEmail" placeholder="finance@yourhotel.com">
-          </div>
-          <button type="button" class="btn btn-outline btn-sm" id="stripeConnectBtn" onclick="connectStripeClick()">Connect / continue Stripe onboarding</button>
-        </div>
-      </div>
     </div>
     <div class="modal-overlay" id="branchModal" style="display:none;">
       <div class="modal">
@@ -2235,23 +2217,96 @@ function openBranchModal(branch) {
 
 let _poVerified = null;
 
-async function openPayoutModal(branch) {
+const PAYOUT_MODAL_HTML = `
+<div class="modal-overlay" id="payoutModal" style="display:none;">
+  <div class="modal">
+    <h3>Payout account</h3>
+    <p class="muted" id="payoutBranchLabel" style="margin-top:-8px;"></p>
+    <div id="payoutCurrent" style="font-size:0.86rem; margin-bottom:12px;"></div>
+    <div id="payoutNotice"></div>
+    <form id="payoutForm">
+      <input type="hidden" id="poBranchId">
+      <div class="form-field">
+        <label>Bank</label>
+        <select id="poBankCode" required><option value="">Loading banks&hellip;</option></select>
+      </div>
+      <div class="form-field"><label>Account number</label><input type="text" id="poAccountNumber" inputmode="numeric" maxlength="10" required></div>
+      <div id="poVerifyResult" style="display:none; padding:10px 12px; border-radius:8px; background:rgba(47,93,90,0.12); margin-bottom:12px;">
+        Account name: <b id="poVerifiedName"></b>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closePayoutModal()">Cancel</button>
+        <button type="button" class="btn btn-outline" id="poVerifyBtn" onclick="verifyPayoutAccountClick()">Verify account</button>
+        <button type="submit" class="btn btn-primary" id="poSaveBtn" disabled>Save payout account</button>
+      </div>
+    </form>
+
+    <div id="stripeSection" style="border-top:1px solid var(--border); margin-top:20px; padding-top:16px;">
+      <h4 style="margin-bottom:4px;">Stripe</h4>
+      <p class="muted" style="font-size:0.82rem; margin-bottom:10px;">
+        A separate provider from Paystack above, for guests paying by card through Stripe. Onboarding happens on Stripe's own hosted page, not here.
+        <br><b>Note:</b> Stripe Connect doesn't support payouts to Nigerian bank accounts &mdash; choose the country the branch's company is registered in, from the list Stripe supports.
+      </p>
+      <div id="stripeStatusBlock" style="margin-bottom:10px; font-size:0.86rem;">Checking status&hellip;</div>
+      <div class="form-row">
+        <div class="form-field"><label>Email for the Stripe account</label>
+          <input type="email" id="stripeConnectEmail" placeholder="finance@yourhotel.com"></div>
+        <div class="form-field"><label>Country</label>
+          <select id="stripeConnectCountry">
+            <option value="">United States (default)</option>
+            <option value="GB">United Kingdom</option><option value="CA">Canada</option><option value="AU">Australia</option>
+            <option value="IE">Ireland</option><option value="FR">France</option><option value="DE">Germany</option>
+            <option value="ES">Spain</option><option value="IT">Italy</option><option value="NL">Netherlands</option>
+            <option value="SG">Singapore</option><option value="AE">United Arab Emirates</option>
+          </select></div>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" id="stripeConnectBtn" onclick="connectStripeClick()">Connect / continue Stripe onboarding</button>
+    </div>
+  </div>
+</div>`;
+
+function ensurePayoutModal() {
+  if (document.getElementById("payoutModal")) return;
+  const wrap = document.createElement("div");
+  wrap.innerHTML = PAYOUT_MODAL_HTML;
+  document.body.appendChild(wrap.firstElementChild);
+}
+
+/** Accepts a branch object (Branches page) or just a branch id (Payouts page). */
+async function openPayoutModal(branchOrId, focus) {
+  ensurePayoutModal();
+  let branch = branchOrId && typeof branchOrId === "object" ? branchOrId : null;
+  const id = branch ? branch.id : branchOrId;
+  if (!branch) branch = (BRANCHES || []).find((b) => b.id === id) || null;
+  if (!branch) {
+    try { branch = ((await adminApi.listBranches()).branches || []).find((b) => b.id === id) || null; }
+    catch (err) { toast(err.message, "error"); return; }
+  }
+  if (!branch) { toast("Branch not found", "error"); return; }
+
   document.getElementById("payoutForm").reset();
+  document.getElementById("payoutNotice").innerHTML = "";
   document.getElementById("poBranchId").value = branch.id;
   document.getElementById("payoutBranchLabel").textContent = branch.name;
   document.getElementById("poVerifyResult").style.display = "none";
   document.getElementById("poSaveBtn").disabled = true;
+  document.getElementById("stripeConnectEmail").value = branch.email || "";
   _poVerified = null;
   _stripeConnectBranchId = branch.id;
+
+  document.getElementById("payoutCurrent").innerHTML = branch.paystackSubaccountCode
+    ? html`<span class="badge badge-active">Connected</span> <span class="mono">${branch.settlementBankName || "Bank"} ····${String(branch.settlementAccountNumber || "").slice(-4)}</span>${branch.settlementAccountName ? html` <span class="muted">— ${branch.settlementAccountName}</span>` : ""}`
+    : html`<span class="badge badge-warning">Not set</span> <span class="muted">Guest card payments for this branch can't settle to its own account until a payout account is saved.</span>`;
 
   const select = document.getElementById("poBankCode");
   select.innerHTML = html`<option value="">Loading banks&hellip;</option>`;
   document.getElementById("payoutModal").style.display = "flex";
   refreshStripeStatus(branch.id);
+  if (focus === "stripe") document.getElementById("stripeSection").scrollIntoView({ block: "center" });
 
   try {
     const { banks } = await adminApi.listPaystackBanks();
-    select.innerHTML = html`<option value="">Select a bank</option>` + html.join(banks.map((b) => html`<option value="${b.code}">${b.name}</option>`));
+    select.innerHTML = html`<option value="">Select a bank</option>` + html.join((banks || []).map((b) => html`<option value="${b.code}">${b.name}</option>`));
     if (branch.settlementBankCode) select.value = branch.settlementBankCode;
     if (branch.settlementAccountNumber) document.getElementById("poAccountNumber").value = branch.settlementAccountNumber;
   } catch (err) {
@@ -2259,11 +2314,12 @@ async function openPayoutModal(branch) {
     showNotice("payoutNotice", err.message);
   }
 }
-function closePayoutModal() { document.getElementById("payoutModal").style.display = "none"; }
+function closePayoutModal() { const m = document.getElementById("payoutModal"); if (m) m.style.display = "none"; }
 
 let _stripeConnectBranchId = null;
 async function refreshStripeStatus(branchId) {
   const block = document.getElementById("stripeStatusBlock");
+  if (!block) return;
   block.textContent = "Checking status…";
   try {
     const status = await adminApi.getStripeAccountStatus(branchId);
@@ -2272,21 +2328,27 @@ async function refreshStripeStatus(branchId) {
     } else if (status.chargesEnabled) {
       block.innerHTML = html`<span class="badge badge-active">Connected — ready to accept payments</span>`;
     } else {
-      block.innerHTML = html`<span class="badge badge-warning">Connected — onboarding incomplete</span> <span class="muted" style="font-size:0.8rem;">Stripe needs more info before this account can accept live payments.</span>`;
+      block.innerHTML = html`<span class="badge badge-warning">Connected — onboarding incomplete</span> <span class="muted" style="font-size:0.8rem;">Stripe needs more info before this account can accept live payments. Use the button below to continue.</span>`;
     }
   } catch (err) {
     block.innerHTML = html`<span class="muted">Couldn't check status — ${err.message}</span>`;
   }
 }
-async function connectStripeClick() {
-  const email = document.getElementById("stripeConnectEmail").value;
-  if (!email) return showNotice("payoutNotice", "Enter an email for the Stripe account first.");
+async function connectStripeClick(branchId) {
+  // Called from a table with a branch id: open the modal on the Stripe section instead of failing silently.
+  if (typeof branchId === "string" && branchId) { openPayoutModal(branchId, "stripe"); return; }
+  if (!_stripeConnectBranchId) { showNotice("payoutNotice", "Open a branch's payout account first."); return; }
+  const email = document.getElementById("stripeConnectEmail").value.trim();
+  const country = document.getElementById("stripeConnectCountry").value;
+  if (!/^\S+@\S+\.\S+$/.test(email)) return showNotice("payoutNotice", "Enter a valid email for the Stripe account first.");
   const btn = document.getElementById("stripeConnectBtn");
   btn.disabled = true;
   try {
-    const { onboardingUrl } = await adminApi.connectStripeAccount(_stripeConnectBranchId, { email });
-    goTo(onboardingUrl, "_blank");
-    showNotice("payoutNotice", "Continue in the new tab — come back here and reopen this branch's Payout modal afterward to see the updated status.", "success");
+    const out = await adminApi.connectStripeAccount(_stripeConnectBranchId, { email, country: country || undefined });
+    if (!out || !out.onboardingUrl) throw new Error("Stripe didn't return an onboarding link — please try again.");
+    goTo(out.onboardingUrl, "_blank");
+    // Pop-up blockers can swallow window.open after an await, so keep a real link on screen as well.
+    document.getElementById("stripeStatusBlock").innerHTML = html`<span class="badge badge-warning">Onboarding started</span> <a href="${out.onboardingUrl}" target="_blank" rel="noopener">Open Stripe onboarding</a> <span class="muted" style="font-size:0.8rem;">— when you're done, reopen this window to see the updated status.</span>`;
   } catch (err) {
     showNotice("payoutNotice", err.message);
   } finally {
@@ -2326,9 +2388,10 @@ document.addEventListener("submit", async (e) => {
     const bankName = document.getElementById("poBankCode").selectedOptions[0].textContent;
     const accountNumber = document.getElementById("poAccountNumber").value;
     await adminApi.setBranchPayoutAccount(branchId, { bankCode, bankName, accountNumber });
-    showNotice("branchesNotice", "Payout account saved — this branch's guest payments will now settle there.", "success");
+    toast("Payout account saved — this branch's guest payments will now settle there.");
     closePayoutModal();
-    refreshBranchesTable();
+    if (CURRENT_PAGE === "payouts") loadPayoutsPage();
+    else if (document.getElementById("branchesBody")) refreshBranchesTable();
   } catch (err) {
     showNotice("payoutNotice", err.message);
     btn.disabled = false;
@@ -3446,8 +3509,8 @@ async function refreshBookingsTable() {
     const { bookings } = await adminApi.listBookings();
     document.getElementById("bookingsBody").innerHTML = bookings.length ? html.join(bookings.map((b) => html`
       <tr>
-        <td>${b.guest.name}<br><span style="color:var(--text-muted); font-size:0.78rem;">${b.guest.email}</span></td>
-        <td>${b.room.name} — ${b.room.roomNumber}</td>
+        <td>${(b.guest && b.guest.name) || "Guest"}<br><span style="color:var(--text-muted); font-size:0.78rem;">${(b.guest && b.guest.email) || ""}</span></td>
+        <td>${b.roomLabel || (b.room ? `${b.room.name} — ${b.room.roomNumber}` : "Room not yet assigned")}</td>
         <td>${b.checkIn.slice(0,10)} → ${b.checkOut.slice(0,10)}</td>
         <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
         <td>
@@ -3710,9 +3773,13 @@ async function submitPaymentForm(e) {
 }
 
 async function refundTransactionRow(id) {
-  if (!confirm("Refund this transaction?")) return;
+  const asked = prompt("Refund this transaction?\n\nGive a short reason (kept in the audit log):");
+  if (asked === null) return;
+  const reason = asked.trim();
+  if (reason.length < 3) { showNotice("transactionsNotice", "A refund needs a reason — please try again."); return; }
   try {
-    await adminApi.refundTransaction(id, {});
+    const out = await adminApi.refundTransaction(id, { reason });
+    showNotice("transactionsNotice", (out && out.message) || "Transaction refunded.", "success");
     refreshTransactionsTable();
   } catch (err) {
     showNotice("transactionsNotice", err.message);
@@ -6238,25 +6305,96 @@ async function fdCheckOut(bookingId) {
 }
 
 async function fdTransfer(bookingId) {
+  openModal(html`<div class="loading-state">Loading booking…</div>`);
+  let booking, rooms = [], targets = [];
+  try {
+    booking = (await adminApi.getBooking(bookingId)).booking;
+    const branchId = booking.branchId;
+    const [r, t] = await Promise.all([
+      adminApi.managerRooms(branchId).catch(() => ({ rooms: [] })),
+      adminApi.transferTargets(branchId).catch(() => ({ branches: [] })),
+    ]);
+    rooms = (r.rooms || []).filter((x) => x.status === "ACTIVE" && x.id !== booking.roomId);
+    targets = t.branches || [];
+  } catch (err) {
+    openModal(html`<div class="notice error">${err.message}</div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Close</button></div>`);
+    return;
+  }
+  const guestName = (booking.guest && booking.guest.name) || "the guest";
   openModal(html`
-    <h3>Transfer room</h3>
-    <div class="form-field"><label>New room number</label><input id="fdTrRoom" required></div>
-    <div class="form-field"><label>Reason</label><input id="fdTrReason" placeholder="Fault, upgrade, guest request"></div>
-    <div class="checkbox-item"><input type="checkbox" id="fdTrRate"><label for="fdTrRate">Keep the original rate</label></div>
+    <h3>Transfer ${guestName}</h3>
+    <div class="chip-row" style="margin-bottom:12px;">
+      <span class="chip active" id="fdTrTabRoom" onclick="fdTrMode('room')">Another room here</span>
+      <span class="chip" id="fdTrTabBranch" onclick="fdTrMode('branch')">Another branch</span>
+    </div>
+    <div id="fdTrNotice"></div>
+    <div id="fdTrRoomPane">
+      <div class="form-field"><label>Move to room</label>
+        <select id="fdTrRoom">${rooms.length ? html.join(rooms.map((x) => html`<option value="${x.id}">${x.roomNumber} — ${x.name}</option>`)) : html`<option value="">No other active rooms at this branch</option>`}</select></div>
+      <div class="checkbox-item"><input type="checkbox" id="fdTrRate"><label for="fdTrRate">Keep the original rate (don't re-price if the room type differs)</label></div>
+    </div>
+    <div id="fdTrBranchPane" style="display:none;">
+      <div class="form-field"><label>Destination branch</label>
+        <select id="fdTrBranch" onchange="fdTrBranchChanged()">${targets.length ? html.join(targets.map((b) => html`<option value="${b.id}">${b.name}${b.city ? ` — ${b.city}` : ""}</option>`)) : html`<option value="">No other active branch</option>`}</select></div>
+      <div class="form-field"><label>Room type there</label><select id="fdTrType"></select></div>
+      <div class="form-field"><label>Who pays any price difference?</label>
+        <select id="fdTrAbsorb"><option value="HOTEL">The hotel (guest pays no more than before)</option><option value="GUEST">The guest (re-price at the new branch's rate)</option></select></div>
+      <p class="muted" style="font-size:0.8rem;">The booking is recreated at the new branch and the original is cancelled. Payments already taken are not moved automatically — settle them from the Payments page.</p>
+    </div>
+    <div class="form-field"><label>Reason (required)</label><input id="fdTrReason" placeholder="Fault, upgrade, guest request"></div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="fdTrBtn">Transfer</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>
   `);
+  window.__fdTr = { mode: "room", targets, booking };
+  document.getElementById("fdTrRate").checked = true;
+  fdTrBranchChanged();
   document.getElementById("fdTrBtn").onclick = async (e) => {
-    const payload = {
-      roomNumber: document.getElementById("fdTrRoom").value.trim(),
-      reason: document.getElementById("fdTrReason").value.trim() || undefined,
-      keepRate: document.getElementById("fdTrRate").checked,
-    };
-    const res = await runAction(e.currentTarget, () => adminApi.transferRoom(bookingId, payload), "Room transferred");
-    if (res) { closeModal(); if (CURRENT_PAGE === "inhouse") loadInHousePage(); else fdRefresh(); }
+    const btn = e.currentTarget;
+    const reason = document.getElementById("fdTrReason").value.trim();
+    if (reason.length < 3) return showNotice("fdTrNotice", "Give a reason for the transfer.");
+    let call;
+    if (window.__fdTr.mode === "room") {
+      const roomId = document.getElementById("fdTrRoom").value;
+      if (!roomId) return showNotice("fdTrNotice", "Choose the room to move the guest into.");
+      call = () => adminApi.moveRoom(bookingId, { branchId: booking.branchId, roomId, reason, keepRate: document.getElementById("fdTrRate").checked });
+    } else {
+      const toBranchId = document.getElementById("fdTrBranch").value;
+      if (!toBranchId) return showNotice("fdTrNotice", "Choose the destination branch.");
+      call = () => adminApi.transferToBranch(bookingId, {
+        branchId: booking.branchId, toBranchId, reason,
+        toRoomTypeId: document.getElementById("fdTrType").value || undefined,
+        absorbedBy: document.getElementById("fdTrAbsorb").value,
+      });
+    }
+    btn.disabled = true;
+    try {
+      const out = await call();
+      toast((out && out.message) || "Guest transferred");
+      closeModal();
+      if (CURRENT_PAGE === "inhouse") loadInHousePage(); else fdRefresh();
+    } catch (err) {
+      showNotice("fdTrNotice", err.message);
+      btn.disabled = false;
+    }
   };
+}
+function fdTrMode(mode) {
+  window.__fdTr.mode = mode;
+  document.getElementById("fdTrTabRoom").classList.toggle("active", mode === "room");
+  document.getElementById("fdTrTabBranch").classList.toggle("active", mode === "branch");
+  document.getElementById("fdTrRoomPane").style.display = mode === "room" ? "" : "none";
+  document.getElementById("fdTrBranchPane").style.display = mode === "branch" ? "" : "none";
+}
+function fdTrBranchChanged() {
+  const sel = document.getElementById("fdTrBranch"), typeSel = document.getElementById("fdTrType");
+  if (!sel || !typeSel) return;
+  const b = (window.__fdTr.targets || []).find((x) => x.id === sel.value);
+  const types = (b && b.roomTypes) || [];
+  typeSel.innerHTML = types.length
+    ? '<option value="">Cheapest that fits the party</option>' + html.join(types.map((t) => html`<option value="${t.id}">${t.name}</option>`))
+    : '<option value="">No room types</option>';
 }
 
 async function fdPostCharge(bookingId) {
@@ -6702,6 +6840,7 @@ function mtNewWorkOrder(roomId) {
 let RATE_TYPE = null;
 let RATE_FROM = todayISO();
 let RATE_TO = todayISO(29);
+let RATE_TYPES = [];
 
 async function loadRoomTypesPage() {
   render(html`
@@ -6910,6 +7049,7 @@ async function loadRatesPage() {
   try { types = (await adminApi.listRoomTypes()).roomTypes || []; }
   catch (err) { renderInto("rateGrid", html`<div class="notice error">${err.message}</div>`); return; }
   if (!types.length) { renderInto("rateGrid", html`<div class="empty-state">No room types on this branch yet.</div>`); return; }
+  RATE_TYPES = types;
   RATE_TYPE = RATE_TYPE && types.some((t) => t.id === RATE_TYPE) ? RATE_TYPE : types[0].id;
   document.getElementById("rateType").innerHTML = html.join(types.map((t) => html`<option value="${t.id}" ${t.id === RATE_TYPE ? "selected" : ""}>${t.name}</option>`));
   rateLoad();
@@ -6920,49 +7060,89 @@ async function rateLoad() {
   RATE_FROM = document.getElementById("rateFrom").value;
   RATE_TO = document.getElementById("rateTo").value;
   const grid = document.getElementById("rateGrid");
+  const DAY = 86400000;
+  const t0 = Date.parse(RATE_FROM + "T00:00:00Z"), t1 = Date.parse(RATE_TO + "T00:00:00Z");
+  if (!isFinite(t0) || !isFinite(t1)) { grid.innerHTML = html`<div class="notice warning">Pick a valid from and to date.</div>`; return; }
+  if (t1 < t0) { grid.innerHTML = html`<div class="notice warning">The "to" date must not be before the "from" date.</div>`; return; }
+  const MAX_DAYS = 92;
+  const nights = Math.round((t1 - t0) / DAY) + 1;
+  const shownTo = new Date(Math.min(t1, t0 + (MAX_DAYS - 1) * DAY)).toISOString().slice(0, 10);
   grid.innerHTML = html`<div class="loading-state">Loading rates…</div>`;
   let rates = [];
-  try { rates = (await adminApi.getRates(RATE_TYPE, RATE_FROM, RATE_TO)).rates || []; }
+  try { rates = (await adminApi.getRates(RATE_TYPE, RATE_FROM, shownTo)).rates || []; }
   catch (err) { grid.innerHTML = html`<div class="notice error">${err.message}</div>`; return; }
-  if (!rates.length) { grid.innerHTML = html`<div class="empty-state">No overrides in this range — the base rate applies every night.</div>`; return; }
-  grid.innerHTML = html`<div class="cal-grid" style="grid-template-columns: repeat(7, minmax(96px,1fr));">
-    ${html.join(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => html`<div class="cal-cell head">${d}</div>`))}
-    ${html.join(rates.map((r) => html`<div class="cal-cell ${r.closed || r.stopSell ? "stop" : ""}">
-      <div class="cal-date">${fmtShortDate(r.date)}</div>
-      <div class="cal-price">${r.price !== undefined ? fmtMoney(r.price) : fmtMoney(r.rate)}</div>
-      ${r.minStay ? html`<div class="faint">min ${r.minStay}n</div>` : ""}
-      ${r.closed || r.stopSell ? html`<div class="faint">stop sell</div>` : ""}
-    </div>`))}
-  </div>`;
+
+  const type = RATE_TYPES.find((t) => t.id === RATE_TYPE) || {};
+  const base = Number(type.basePrice);
+  const byDate = {};
+  rates.forEach((r) => { if (!r.ratePlanId) byDate[String(r.date).slice(0, 10)] = r; });
+
+  const shownDays = Math.min(nights, MAX_DAYS);
+  const lead = (new Date(t0).getUTCDay() + 6) % 7; // Monday-first grid
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push(html`<div class="cal-cell" style="visibility:hidden;"></div>`);
+  for (let i = 0; i < shownDays; i++) {
+    const d = new Date(t0 + i * DAY);
+    const key = d.toISOString().slice(0, 10);
+    const r = byDate[key];
+    const stop = !!(r && r.stopSell);
+    const label = d.toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" });
+    const price = r && r.price != null ? Number(r.price) : base;
+    cells.push(html`<div class="cal-cell ${stop ? "stop" : r ? "override" : ""}">
+      <div class="cal-date">${label}</div>
+      <div class="cal-price">${isFinite(price) ? fmtMoney(price) : "—"}</div>
+      ${r && Number(r.minNights) > 1 ? html`<div class="faint">min ${r.minNights}n</div>` : ""}
+      ${stop ? html`<div class="faint">stop sell</div>` : r ? "" : html`<div class="faint">base</div>`}
+    </div>`);
+  }
+  grid.innerHTML = html`<style>.cal-cell.override{background:rgba(47,93,90,0.12);}</style>
+    ${nights > MAX_DAYS ? html`<div class="notice info" style="margin-bottom:10px;">Showing the first ${MAX_DAYS} nights — narrow the range to see the rest.</div>` : ""}
+    <div class="faint" style="margin-bottom:8px; font-size:0.8rem;">Highlighted nights have a rate you've set. Other nights use the room type's base price${isFinite(base) ? ` (${fmtMoney(base)})` : ""}.</div>
+    <div class="cal-grid" style="grid-template-columns: repeat(7, minmax(96px,1fr));">
+      ${html.join(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => html`<div class="cal-cell head">${d}</div>`))}
+      ${html.join(cells)}
+    </div>`;
 }
 
 function rateBulkModal() {
+  const days = [["Mon", 1], ["Tue", 2], ["Wed", 3], ["Thu", 4], ["Fri", 5], ["Sat", 6], ["Sun", 0]];
   openModal(html`
     <h3>Set nightly rate</h3>
-    <p class="muted" style="font-size:0.84rem;">Applies to every night in the range for the selected room type.</p>
+    <p class="muted" style="font-size:0.84rem;">Applies to the chosen nights in the range for the selected room type.</p>
+    <div id="rbNotice"></div>
     <div class="form-row">
       <div class="form-field"><label>From</label><input type="date" id="rbFrom" value="${RATE_FROM}"></div>
       <div class="form-field"><label>To</label><input type="date" id="rbTo" value="${RATE_TO}"></div>
     </div>
     <div class="form-row">
       <div class="form-field"><label>Price per night</label><input type="number" id="rbPrice" min="0" step="0.01"></div>
-      <div class="form-field"><label>Minimum stay (nights)</label><input type="number" id="rbMin" min="1" value="1"></div>
+      <div class="form-field"><label>Minimum stay (nights)</label><input type="number" id="rbMin" min="1" step="1" value="1"></div>
     </div>
+    <div class="form-field"><label>Apply on</label>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">${html.join(days.map(([name, n]) => html`<label style="display:flex; gap:4px; align-items:center;"><input type="checkbox" class="rb-day" value="${n}" checked> ${name}</label>`))}</div></div>
     <div class="checkbox-item"><input type="checkbox" id="rbStop"><label for="rbStop">Stop sell (close these dates)</label></div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="rbBtn">Apply rates</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>
   `);
+  document.getElementById("rbStop").checked = false;
   document.getElementById("rbBtn").onclick = async (e) => {
-    const res = await runAction(e.currentTarget, () => adminApi.setRates(RATE_TYPE, {
-      from: document.getElementById("rbFrom").value,
-      to: document.getElementById("rbTo").value,
-      price: Number(document.getElementById("rbPrice").value),
-      minStay: Number(document.getElementById("rbMin").value) || 1,
-      closed: document.getElementById("rbStop").checked,
-    }));
-    if (res) { toast(res.message || `Rates updated for ${res.nights || ""} nights`); closeModal(); rateLoad(); }
+    const from = document.getElementById("rbFrom").value, to = document.getElementById("rbTo").value;
+    const priceRaw = document.getElementById("rbPrice").value;
+    const price = priceRaw === "" ? undefined : Number(priceRaw);
+    const stop = document.getElementById("rbStop").checked;
+    const minNights = Number(document.getElementById("rbMin").value) || 1;
+    const picked = Array.from(document.querySelectorAll(".rb-day:checked")).map((x) => Number(x.value));
+    if (!from || !to) return showNotice("rbNotice", "Choose a from and to date.");
+    if (to < from) return showNotice("rbNotice", 'The "to" date must not be before the "from" date.');
+    if (!stop && !(price > 0)) return showNotice("rbNotice", "Enter a price per night greater than zero (or tick Stop sell).");
+    if (!Number.isInteger(minNights) || minNights < 1) return showNotice("rbNotice", "Minimum stay must be a whole number of 1 or more.");
+    if (!picked.length) return showNotice("rbNotice", "Choose at least one day of the week.");
+    const payload = { from, to, price, minNights, stopSell: stop };
+    if (picked.length < 7) payload.daysOfWeek = picked;
+    const res = await runAction(e.currentTarget, () => adminApi.setRates(RATE_TYPE, payload));
+    if (res) { toast(res.message || `Rates updated${res.nights ? ` for ${res.nights} nights` : ""}`); closeModal(); rateLoad(); }
   };
 }
 
@@ -6974,11 +7154,23 @@ function rateClear() {
 }
 
 /* ---------- Channels ---------- */
+let CH_ROWS = [];
+const CH_LABELS = { BOOKING_COM: "Booking.com", AIRBNB: "Airbnb", EXPEDIA: "Expedia", ICAL: "Generic iCal" };
+
+/** The server returns a path when PUBLIC_BASE_URL isn't set; make it absolute so it can be pasted into another site. */
+function chAbsUrl(u) { return /^https?:\/\//i.test(u) ? u : API_BASE.replace(/\/api\/?$/, "") + u; }
+async function chCopy(text) {
+  try { await navigator.clipboard.writeText(text); toast("Copied"); }
+  catch { prompt("Copy this link:", text); }
+}
+function chCopyExport(id) { const c = CH_ROWS.find((x) => x.id === id); if (c && c.exportUrl) chCopy(chAbsUrl(c.exportUrl)); }
+
 async function loadChannelsPage() {
   render(html`
-    ${pageHeader("Channel Connections", "Booking.com, Airbnb and iCal feeds mapped to your room types.", html`
+    ${pageHeader("Channel Connections", "Booking.com, Airbnb and iCal feeds mapped to your room types, so availability stays in step on every channel.", html`
       <button class="btn btn-primary" onclick="chNewModal()"><i class="fas fa-plus"></i> Connect channel</button>
     `)}
+    <div id="chNotice"></div>
     <div class="panel flush"><div class="table-wrap" id="chTable"><div class="loading-state">Loading…</div></div></div>
   `);
   chRefresh();
@@ -6986,20 +7178,23 @@ async function loadChannelsPage() {
 
 async function chRefresh() {
   let rows = [];
-  try { rows = (await adminApi.listChannels()).channels || []; }
+  try { const d = await adminApi.listChannels(); rows = d.channels || d.mappings || []; }
   catch (err) { renderInto("chTable", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
+  CH_ROWS = rows;
   renderInto("chTable", rows.length ? html`
-    <table><thead><tr><th>Channel</th><th>Room type</th><th>External ID</th><th>Last sync</th><th></th></tr></thead>
+    <table><thead><tr><th>Channel</th><th>Room type</th><th>External ID</th><th>Last sync</th><th>Status</th><th></th></tr></thead>
     <tbody>${html.join(rows.map((c) => html`<tr>
-      <td><b>${c.channel}</b></td>
+      <td><b>${CH_LABELS[c.channel] || c.channel}</b></td>
       <td>${(c.roomType && c.roomType.name) || c.roomTypeId || "—"}</td>
       <td class="mono truncate">${c.externalId || "—"}</td>
       <td class="faint">${c.lastSyncedAt ? fmtDateTime(c.lastSyncedAt) : "Never"}</td>
+      <td>${c.lastError ? html`<span class="badge badge-failed" title="${c.lastError}">Sync error</span><div class="faint" style="font-size:0.75rem; max-width:220px;">${c.lastError}</div>` : c.syncEnabled === false ? html`<span class="badge badge-muted">Paused</span>` : html`<span class="badge badge-active">OK</span>`}</td>
       <td><div class="row-actions">
+        ${c.exportUrl ? html`<button class="btn btn-sm btn-outline" onclick="chCopyExport('${c.id}')">Copy iCal link</button>` : ""}
         <button class="btn btn-sm btn-outline" onclick="chSync('${c.id}')">Sync now</button>
         <button class="btn btn-sm btn-danger" onclick="chDelete('${c.id}')">Disconnect</button>
       </div></td>
-    </tr>`))}</tbody></table>` : html`<div class="empty-state">No channels connected.</div>`);
+    </tr>`))}</tbody></table>` : html`<div class="empty-state">No channels connected yet.</div>`);
 }
 
 async function chSync(id) {
@@ -7007,7 +7202,7 @@ async function chSync(id) {
   if (res) chRefresh();
 }
 function chDelete(id) {
-  confirmAction("Disconnect this channel?", async () => {
+  confirmAction("Disconnect this channel? Its calendar link stops working.", async () => {
     const res = await runAction(null, () => adminApi.deleteChannel(id), "Channel disconnected");
     if (res) chRefresh();
   });
@@ -7015,29 +7210,49 @@ function chDelete(id) {
 
 async function chNewModal() {
   let types = [];
-  try { types = (await adminApi.listRoomTypes()).roomTypes || []; } catch { /* optional */ }
+  try { types = (await adminApi.listRoomTypes()).roomTypes || []; }
+  catch (err) { toast(err.message, "error"); return; }
+  if (!types.length) { toast("Create a room type first — channels are connected per room type.", "error"); return; }
   openModal(html`
     <h3>Connect a channel</h3>
+    <div id="chNewNotice"></div>
     <div class="form-field"><label>Room type</label>
       <select id="chType">${html.join(types.map((t) => html`<option value="${t.id}">${t.name}</option>`))}</select></div>
     <div class="form-field"><label>Channel</label>
       <select id="chChannel"><option value="BOOKING_COM">Booking.com</option><option value="AIRBNB">Airbnb</option>
         <option value="EXPEDIA">Expedia</option><option value="ICAL">Generic iCal</option></select></div>
-    <div class="form-field"><label>External listing ID</label><input id="chExternal"></div>
-    <div class="form-field"><label>iCal import URL</label><input id="chIcal" placeholder="https://…"></div>
+    <div class="form-field"><label>External listing ID (optional)</label><input id="chExternal"></div>
+    <div class="form-field"><label>iCal import URL (optional)</label><input id="chIcal" placeholder="https://…">
+      <div class="faint" style="font-size:0.78rem;">The channel's calendar link — we read it to block dates booked elsewhere.</div></div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="chBtn">Connect</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>
   `);
   document.getElementById("chBtn").onclick = async (e) => {
-    const res = await runAction(e.currentTarget, () => adminApi.createChannel({
+    const icalImportUrl = document.getElementById("chIcal").value.trim();
+    if (icalImportUrl && !/^https?:\/\//i.test(icalImportUrl)) return showNotice("chNewNotice", "The iCal link must start with https://");
+    const out = await runAction(e.currentTarget, () => adminApi.createChannel({
       roomTypeId: document.getElementById("chType").value,
       channel: document.getElementById("chChannel").value,
       externalId: document.getElementById("chExternal").value.trim() || undefined,
-      icalImportUrl: document.getElementById("chIcal").value.trim() || undefined,
+      icalImportUrl: icalImportUrl || undefined,
     }), "Channel connected");
-    if (res) { closeModal(); chRefresh(); }
+    if (!out) return;
+    chRefresh();
+    if (out.exportUrl) {
+      const url = chAbsUrl(out.exportUrl);
+      openModal(html`
+        <h3>Channel connected</h3>
+        <p class="muted" style="font-size:0.86rem;">Paste this link into the channel's "import calendar" setting so it sees your bookings:</p>
+        <input readonly value="${url}" style="width:100%;" onclick="this.select()">
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="chCopyBtn">Copy link</button>
+          <button class="btn btn-outline" onclick="closeModal()">Done</button>
+        </div>
+      `);
+      document.getElementById("chCopyBtn").onclick = () => chCopy(url);
+    } else { closeModal(); }
   };
 }
 /* ============================================================
@@ -7179,16 +7394,22 @@ async function loadJobsPage() {
     <div class="stat-grid">
       <div class="stat-card"><b>${d.leader === true ? "Yes" : d.leader === false ? "No" : "—"}</b><span>This server runs the jobs</span></div>
       <div class="stat-card"><b>${failed.length}</b><span>Failed runs (recent)</span></div>
+      <div class="stat-card"><b>${health.length}</b><span>Jobs registered</span></div>
       <div class="stat-card"><b>${runs.length}</b><span>Runs on record</span></div>
     </div>
     ${failed.length ? html`<div class="notice error" style="margin:16px 0;">${failed.length} recent run${failed.length === 1 ? "" : "s"} failed — see the Failed tab below.</div>` : ""}
-    <div class="panel flush" style="margin-top:16px;"><h3 style="padding:14px 18px 0;">Jobs on this server</h3><div class="table-wrap">${health.length ? html`
-      <table><thead><tr><th>Job</th><th class="num">Runs</th><th class="num">Failures</th><th class="num">In a row</th><th>Last run</th><th>Status</th></tr></thead>
+    <div class="panel flush" style="margin-top:16px;"><h3 style="padding:14px 18px 0;">All scheduled jobs</h3>
+      <p class="muted" style="padding:0 18px; font-size:0.84rem;">Every job registered on the server. "Waiting" means it hasn't come due since the server last started.</p>
+      <div class="table-wrap">${health.length ? html`
+      <table><thead><tr><th>Job</th><th>Type</th><th>Schedule</th><th class="num">Runs</th><th class="num">Failures</th><th class="num">In a row</th><th>Last run</th><th>Status</th></tr></thead>
       <tbody>${html.join(health.map((h) => html`<tr>
-        <td>${h.name}</td><td class="num">${fmtNum(h.runs)}</td><td class="num">${fmtNum(h.failures)}</td>
+        <td>${h.name}</td>
+        <td class="faint">${h.kind === "branch" ? "Per branch" : h.kind === "ledger" ? "Once a day" : h.kind === "frequent" ? "Frequent" : h.kind || "—"}</td>
+        <td class="faint">${h.schedule || "—"}</td>
+        <td class="num">${fmtNum(h.runs || 0)}</td><td class="num">${fmtNum(h.failures || 0)}</td>
         <td class="num">${h.consecutiveFailures ? html`<b style="color:var(--danger,#a3392a);">${fmtNum(h.consecutiveFailures)}</b>` : "0"}</td>
-        <td class="faint">${h.lastRunAt || h.lastFinishedAt || h.lastSuccessAt ? fmtDateTime(h.lastRunAt || h.lastFinishedAt || h.lastSuccessAt) : "—"}</td>
-        <td>${h.running ? badge("RUNNING") : h.consecutiveFailures ? badge("FAILED") : badge("SUCCESS")}</td></tr>`))}</tbody></table>` : html`<div class="empty-state">No job has run on this server since it started.</div>`}</div></div>
+        <td class="faint">${h.lastRunAt || h.lastFinishedAt || h.lastSuccessAt ? fmtDateTime(h.lastRunAt || h.lastFinishedAt || h.lastSuccessAt) : "—"}${h.lastError ? html`<div style="font-size:0.75rem; color:var(--danger,#a3392a);">${h.lastError}</div>` : ""}</td>
+        <td>${h.running ? badge("RUNNING") : h.consecutiveFailures ? badge("FAILED") : (h.runs || h.lastRunAt || h.lastStatus) ? badge(h.lastStatus === "FAILED" ? "FAILED" : "SUCCESS") : html`<span class="badge badge-muted">Waiting</span>`}</td></tr>`))}</tbody></table>` : html`<div class="empty-state">No jobs are registered on this server.</div>`}</div></div>
     <div class="panel flush" style="margin-top:16px;"><h3 style="padding:14px 18px 0;">Run history</h3>
       <div class="chip-row" style="padding:8px 18px;"><span class="chip active" id="jobsTabAll" onclick="jobsTab('all')">All</span><span class="chip" id="jobsTabFailed" onclick="jobsTab('failed')">Failed</span></div>
       <div class="table-wrap" id="jobsRuns"></div></div>
@@ -7213,35 +7434,54 @@ function jobsTab(which) {
 
 /* ---------- Refunds ---------- */
 let RF_FILTER = "";
+let RF_VIEW = "open"; // on the Manual tab: "open" = needs action, "resolved" = already dealt with
+let RF_ROWS = [];
+const RF_TABS = [["", "All"], ["PENDING", "Pending"], ["PROCESSING", "Processing"], ["COMPLETED", "Successful"], ["FAILED", "Failed"], ["MANUAL", "Manual"]];
 
 async function loadRefundsPage() {
   render(html`
-    ${pageHeader("Refunds", "Refunds requested against bookings and orders, with gateway state and retries.")}
+    ${pageHeader("Refunds", "Refunds requested against bookings and orders, with gateway state, retries and manual resolution.")}
+    <div id="rfNotice"></div>
     <div class="chip-row">
-      ${html.join(["", "PENDING", "PROCESSING", "SUCCESSFUL", "FAILED", "MANUAL"].map((s) => html`<span class="chip ${RF_FILTER === s ? "active" : ""}" onclick="rfSetFilter('${s}')">${s ? s : "All"}</span>`))}
+      ${html.join(RF_TABS.map(([v, label]) => html`<span class="chip ${RF_FILTER === v ? "active" : ""}" onclick="rfSetFilter('${v}')">${label}</span>`))}
     </div>
-    ${RF_FILTER === "MANUAL" ? html`<div class="notice info" style="margin-bottom:12px;">Needs a person. These are payments that reached us but could not be applied automatically — the wrong amount, a booking that was already cancelled, or a reference we can't match. Refund or reconcile each one in the payment provider's dashboard using the reference shown.</div>` : ""}
+    ${RF_FILTER === "MANUAL" ? html`
+      <div class="chip-row">
+        <span class="chip ${RF_VIEW === "open" ? "active" : ""}" onclick="rfSetView('open')">Needs action</span>
+        <span class="chip ${RF_VIEW === "resolved" ? "active" : ""}" onclick="rfSetView('resolved')">Resolved</span>
+      </div>
+      <div class="notice info" style="margin-bottom:12px;">Needs a person. These are payments that reached us but could not be applied automatically — the wrong amount, a booking that was already cancelled, or a reference we can't match. Open <b>Resolve</b> to send the money back through the payment provider, record that you already refunded it, or keep it once you've applied it by hand.</div>` : ""}
     <div class="panel flush"><div class="table-wrap" id="rfTable"><div class="loading-state">Loading…</div></div></div>
   `);
   rfRefresh();
 }
 function rfSetFilter(s) { RF_FILTER = s; loadRefundsPage(); }
+function rfSetView(v) { RF_VIEW = v; loadRefundsPage(); }
 
 async function rfRefresh() {
   let rows = [];
-  try { rows = (await adminApi.listRefunds({ status: RF_FILTER || undefined, limit: 100 })).refunds || []; }
-  catch (err) { renderInto("rfTable", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
+  try {
+    const params = { status: RF_FILTER || undefined, limit: 200 };
+    if (RF_FILTER === "MANUAL") params.resolved = RF_VIEW;
+    rows = (await adminApi.listRefunds(params)).refunds || [];
+  } catch (err) { renderInto("rfTable", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
+  RF_ROWS = rows;
+  const director = isDirector();
   renderInto("rfTable", rows.length ? html`
     <table><thead><tr><th>Requested</th><th>Guest / booking</th><th>Reason</th><th>Gateway</th><th>Status</th><th class="num">Amount</th><th></th></tr></thead>
     <tbody>${html.join(rows.map((r) => html`<tr>
       <td class="faint">${fmtDateTime(r.createdAt)}</td>
-      <td>${r.guestName || (r.booking && r.booking.guestName) || r.bookingId || "—"}</td>
-      <td class="truncate">${rfReason(r)}</td>
+      <td>${r.guestName || "—"}${r.guestEmail ? html`<div class="faint" style="font-size:0.78rem;">${r.guestEmail}</div>` : ""}${r.bookingId ? html`<div class="mono faint" style="font-size:0.75rem;">#${String(r.bookingId).slice(0, 8)}</div>` : ""}</td>
+      <td class="truncate">${rfReason(r)}${r.resolved ? html`<div class="faint" style="font-size:0.78rem;">${rfResolutionText(r)}</div>` : ""}</td>
       <td class="faint">${r.provider || r.gateway || "—"}${r.providerRef ? html`<div class="faint" style="font-size:0.75rem;">${r.providerRef}</div>` : ""}</td>
       <td>${statusBadge(r.status)}</td>
       <td class="num">${fmtMoney(r.amount, r.currency)}</td>
-      <td><div class="row-actions">${r.status === "FAILED" ? html`<button class="btn btn-sm btn-outline" onclick="rfRetry('${r.id}')">Retry</button>` : ""}</div></td>
-    </tr>`))}</tbody></table>` : html`<div class="empty-state">No refunds in this state.</div>`);
+      <td><div class="row-actions">
+        ${r.status === "FAILED" && !r.resolved ? html`<button class="btn btn-sm btn-outline" onclick="rfRetry('${r.id}')">Retry</button>` : ""}
+        ${director && !r.resolved && (r.status === "MANUAL" || r.status === "FAILED") ? html`<button class="btn btn-sm btn-primary" onclick="rfResolveModal('${r.id}')">${r.status === "MANUAL" ? "Resolve" : "Mark refunded"}</button>` : ""}
+        ${r.resolved ? html`<span class="badge badge-active">Resolved</span>` : ""}
+      </div></td>
+    </tr>`))}</tbody></table>` : html`<div class="empty-state">${RF_FILTER === "MANUAL" && RF_VIEW === "open" ? "Nothing needs action." : "No refunds in this state."}</div>`);
 }
 
 /** Plain-words reason; unmatched payments carry their own explanation and the expected/received amounts. */
@@ -7257,74 +7497,202 @@ function rfReason(r) {
   return r.reason || fr || "—";
 }
 
+function rfResolutionText(r) {
+  const x = r.resolution || {};
+  const what = x.action === "REFUND_VIA_PROVIDER" ? "Refunded through the provider"
+    : x.action === "RECONCILE" ? "Kept — applied by hand"
+    : "Recorded as already refunded";
+  return `${what}${x.at ? ` · ${fmtDateTime(x.at)}` : ""}${x.note ? ` — ${x.note}` : ""}`;
+}
+
 async function rfRetry(id) {
   const res = await runAction(null, () => adminApi.retryRefund(id), "Refund retried");
   if (res) rfRefresh();
 }
 
+function rfResolveModal(id) {
+  const r = RF_ROWS.find((x) => x.id === id);
+  if (!r) return;
+  const unmatched = !!r.unmatched;
+  const prov = String(r.provider || "").toUpperCase();
+  const amount = fmtMoney(r.amount, r.currency);
+  const opts = [];
+  if (unmatched && r.status === "MANUAL" && (prov === "PAYSTACK" || prov === "STRIPE")) {
+    opts.push({ v: "REFUND_VIA_PROVIDER", title: `Refund ${amount} to the guest now (via ${prov === "PAYSTACK" ? "Paystack" : "Stripe"})`, sub: "Sends the money back through the payment provider. This cannot be undone." });
+  }
+  opts.push({ v: "MARK_REFUNDED", title: unmatched ? "I already refunded this outside the system" : "I already paid the guest back", sub: "Bank transfer, cash or the provider's dashboard. Nothing is sent — this just records it. Add the reference below if you have one." });
+  if (unmatched) opts.push({ v: "RECONCILE", title: "Keep the payment — I've applied it by hand", sub: "For example you've credited the booking or order yourself. No money moves; the item is closed." });
+
+  openModal(html`
+    <h3>${r.status === "MANUAL" ? "Resolve this payment" : "Mark refund as paid"}</h3>
+    <div class="panel" style="margin:0 0 12px; font-size:0.86rem;">
+      <div><b>${amount}</b> · ${r.provider || "—"}${r.providerRef ? html` · <span class="mono">${r.providerRef}</span>` : ""}</div>
+      <div class="muted">${rfReason(r)}</div>
+      ${r.guestName ? html`<div class="muted">${r.guestName}${r.guestEmail ? ` · ${r.guestEmail}` : ""}</div>` : ""}
+    </div>
+    <div id="rfResolveNotice"></div>
+    <div class="form-field"><label>What are you doing?</label>
+      ${html.join(opts.map((o) => html`<label class="checkbox-item" style="display:flex; gap:10px; align-items:flex-start; margin-bottom:8px;">
+        <input type="radio" name="rfAction" value="${o.v}" style="margin-top:4px;">
+        <span><b>${o.title}</b><br><span class="muted" style="font-size:0.8rem;">${o.sub}</span></span></label>`))}
+    </div>
+    <div class="form-field"><label>Reference (optional)</label><input id="rfRef" placeholder="Bank transfer reference, receipt number…"></div>
+    <div class="form-field"><label>Note (required)</label><textarea id="rfNote" placeholder="What you did and where — kept in the audit log"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="rfResolveBtn">Confirm</button>
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+    </div>
+  `);
+  const first = document.querySelector('input[name="rfAction"]');
+  if (first) first.checked = true; // set after render: conditional boolean attributes are fragile in the template
+  document.getElementById("rfResolveBtn").onclick = async (e) => {
+    const btn = e.currentTarget;
+    const picked = document.querySelector('input[name="rfAction"]:checked');
+    const action = picked ? picked.value : "";
+    const note = document.getElementById("rfNote").value.trim();
+    const providerRef = document.getElementById("rfRef").value.trim();
+    if (!action) return showNotice("rfResolveNotice", "Choose what you are doing.");
+    if (note.length < 5) return showNotice("rfResolveNotice", "Add a note of at least 5 characters — what you did and where.");
+    if (action === "REFUND_VIA_PROVIDER" && !confirm(`Send ${amount} back to the guest through ${prov}? This cannot be undone.`)) return;
+    btn.disabled = true;
+    try {
+      const out = await adminApi.resolveRefund(id, { action, note, providerRef: providerRef || undefined });
+      toast((out && out.message) || "Resolved");
+      closeModal();
+      rfRefresh();
+    } catch (err) {
+      showNotice("rfResolveNotice", err.message);
+      btn.disabled = false;
+    }
+  };
+}
+
 /* ---------- Exchange rates ---------- */
+let FX = { rates: {}, supported: [], baseCurrency: "USD" };
+let _fxNames = null;
+function fxName(code) {
+  try { if (!_fxNames) _fxNames = new Intl.DisplayNames(undefined, { type: "currency" }); return _fxNames.of(code) || code; }
+  catch { return code; }
+}
+/** How many of `to` you get for 1 `from`. Every rate is stored per 1 USD, so cross rates divide. */
+function fxRate(from, to) {
+  const a = FX.rates[from], b = FX.rates[to];
+  return a > 0 && b > 0 ? b / a : NaN;
+}
+function fxFmt(n) {
+  if (!isFinite(n)) return "—";
+  const abs = Math.abs(n);
+  const max = abs >= 1000 ? 2 : abs >= 1 ? 4 : abs >= 0.01 ? 5 : 8;
+  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: max });
+}
+
 async function loadExchangeRatesPage() {
   render(html`
-    ${pageHeader("Exchange Rates", "Rates used when a guest pays in a foreign currency.", html`
-      <button class="btn btn-primary" id="fxRefreshBtn"><i class="fas fa-rotate"></i> Pull latest rates</button>
-    `)}
-    <div class="panel flush"><div class="table-wrap" id="fxTable"><div class="loading-state">Loading…</div></div></div>
+    ${pageHeader("Exchange Rates", "Live conversion between every currency we hold a rate for. Foreign-currency prices shown to guests use these rates.", isDirector() ? html`
+      <button class="btn btn-primary" id="fxRefreshBtn"><i class="fas fa-rotate"></i> Pull latest rates</button>` : "")}
+    <div id="fxBanner"></div>
+    <div id="fxBody"><div class="loading-state">Loading…</div></div>
   `);
-  document.getElementById("fxRefreshBtn").onclick = async (e) => {
-    const res = await runAction(e.currentTarget, () => adminApi.refreshExchangeRates(), "Rates refreshed");
-    if (res) fxRefresh();
+  const btn = document.getElementById("fxRefreshBtn");
+  if (btn) btn.onclick = async (e) => {
+    const res = await runAction(e.currentTarget, () => adminApi.refreshExchangeRates());
+    if (res) { toast(`Rates refreshed${res.currencies ? ` — ${res.currencies} currencies` : ""}`); fxRefresh(); }
   };
   fxRefresh();
 }
 
 async function fxRefresh() {
   let d = null;
-  try { d = await adminApi.listExchangeRates(); }
-  catch (err) { renderInto("fxTable", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
+  try { d = isDirector() ? await adminApi.listFxRates() : await adminApi.listExchangeRates(); }
+  catch (err) { renderInto("fxBody", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
 
-  // The backend sends a flat { USD: 1, NGN: 1600.5, ... } object, not an
-  // array — this is where that gets turned into rows. There's no
-  // per-currency name or timestamp in that object (it's a straight pass
-  // through from the live rate API), so every row shares the one
-  // top-level asOf.
-  const ratesObj = d.rates || {};
-  const rows = Object.entries(ratesObj).map(([currency, rate]) => ({ currency, rate }));
+  const rates = { ...(d.rates || {}) };
+  if (Object.keys(rates).length && !rates.USD) rates.USD = 1;
+  FX = { rates, supported: d.supported || [], baseCurrency: d.baseCurrency || BASE_CURRENCY || "USD" };
+  const codes = Object.keys(rates);
 
-  const banner = d.source === "disabled"
-    ? html`<div class="notice warning" style="margin:16px;">Live exchange rates aren't configured — showing 1:1 fallback only. Set <code>EXCHANGE_RATE_API_KEY</code> on the backend to enable real conversion.</div>`
-    : d.stale
-      ? html`<div class="notice warning" style="margin:16px;">These rates are stale (last refreshed ${fmtDateTime(d.asOf)}) — the last live fetch may have failed. Try "Pull latest rates."</div>`
-      : "";
+  const failure = d.lastError ? html` <span class="muted">(${d.lastError})</span>` : "";
+  renderInto("fxBanner", !codes.length
+    ? html`<div class="notice warning" style="margin-bottom:12px;">No exchange rates are available${failure}. ${isDirector() ? 'Try "Pull latest rates"; if it keeps failing the rate provider is unreachable from the server.' : "Ask a director to pull the latest rates."}</div>`
+    : d.source === "disabled"
+      ? html`<div class="notice warning" style="margin-bottom:12px;">Live exchange rates aren't available — showing the last stored table only${failure}.</div>`
+      : d.stale
+        ? html`<div class="notice warning" style="margin-bottom:12px;">These rates are stale (last refreshed ${fmtDateTime(d.asOf)})${failure}. ${isDirector() ? 'Try "Pull latest rates."' : ""}</div>`
+        : html`<div class="notice info" style="margin-bottom:12px;">Live rates · updated ${fmtDateTime(d.asOf)} · ${codes.length} currencies${d.source ? ` · source: ${d.source}` : ""}</div>`);
 
-  renderInto("fxTable", banner + (rows.length ? html`
-    <table><thead><tr><th>Currency</th><th class="num">Rate (per USD)</th><th>As of</th></tr></thead>
-    <tbody>${html.join(rows.map((r) => html`<tr>
-      <td><b>${r.currency}</b></td>
-      <td class="num">${fmtNum(r.rate, 4)}</td>
-      <td class="faint">${fmtDateTime(d.asOf)}</td>
-    </tr>`))}</tbody></table>` : html`<div class="empty-state">No rates stored. Pull the latest to start.</div>`));
+  if (!codes.length) { renderInto("fxBody", html`<div class="empty-state">No rates stored. Pull the latest to start.</div>`); return; }
+
+  const focus = [...new Set([FX.baseCurrency, ...FX.supported, "USD"])].filter((c) => rates[c]);
+  const sorted = [...focus, ...codes.filter((c) => !focus.includes(c)).sort()];
+  const opt = (c) => html`<option value="${c}">${c} — ${fxName(c)}</option>`;
+
+  renderInto("fxBody", html`
+    ${focus.length > 1 ? html`
+    <div class="panel flush"><h3 style="padding:14px 18px 0;">Rates between your currencies</h3>
+      <p class="muted" style="padding:0 18px; font-size:0.84rem;">Read across: 1 unit of the row currency buys this much of the column currency.</p>
+      <div class="table-wrap"><table><thead><tr><th></th>${html.join(focus.map((c) => html`<th class="num">${c}</th>`))}</tr></thead>
+        <tbody>${html.join(focus.map((from) => html`<tr><td><b>${from}</b> <span class="faint">${fxName(from)}</span></td>
+          ${html.join(focus.map((to) => html`<td class="num">${from === to ? "—" : fxFmt(fxRate(from, to))}</td>`))}</tr>`))}</tbody></table></div>
+    </div>` : ""}
+    <div class="panel flush" style="margin-top:16px;"><h3 style="padding:14px 18px 0;">Convert any amount</h3>
+      <div class="filter-row" style="padding:10px 18px;">
+        <label>Amount</label><input type="number" id="fxAmt" value="1" min="0" step="any" oninput="fxTableRender()" style="width:140px;">
+        <label>From</label><select id="fxFrom" onchange="fxTableRender()">${html.join(sorted.map(opt))}</select>
+        <label>Search</label><input id="fxSearch" placeholder="Code or name" oninput="fxTableRender()" style="min-width:160px;">
+      </div>
+      <div class="table-wrap" id="fxTable"></div>
+    </div>
+  `);
+  document.getElementById("fxFrom").value = rates[FX.baseCurrency] ? FX.baseCurrency : "USD";
+  fxTableRender();
+}
+
+function fxTableRender() {
+  const from = document.getElementById("fxFrom").value;
+  const amt = Number(document.getElementById("fxAmt").value);
+  const q = document.getElementById("fxSearch").value.trim().toLowerCase();
+  const codes = Object.keys(FX.rates).filter((c) => c !== from);
+  const focus = [...new Set([FX.baseCurrency, ...FX.supported, "USD"])];
+  const rows = codes
+    .filter((c) => !q || c.toLowerCase().includes(q) || fxName(c).toLowerCase().includes(q))
+    .sort((a, b) => (focus.includes(b) - focus.includes(a)) || a.localeCompare(b));
+  renderInto("fxTable", rows.length ? html`
+    <table><thead><tr><th>Currency</th><th class="num">${isFinite(amt) ? fxFmt(amt) : "—"} ${from} =</th><th class="num">1 ${from} =</th><th class="num">1 unit =</th></tr></thead>
+    <tbody>${html.join(rows.map((c) => { const r = fxRate(from, c); return html`<tr>
+      <td><b>${c}</b> <span class="faint">${fxName(c)}</span></td>
+      <td class="num"><b>${isFinite(amt) ? fxFmt(amt * r) : "—"}</b> ${c}</td>
+      <td class="num">${fxFmt(r)} ${c}</td>
+      <td class="num">${fxFmt(1 / r)} ${from}</td>
+    </tr>`; }))}</tbody></table>` : html`<div class="empty-state">No currency matches "${q}".</div>`);
 }
 
 /* ---------- Payout accounts (director) ---------- */
 async function loadPayoutsPage() {
   if (!isDirector()) { loadComingSoon("Payout Accounts", "Only a director can manage payout accounts."); return; }
   render(html`
-    ${pageHeader("Payout Accounts", "Where each branch's card and transfer takings are settled.")}
+    ${pageHeader("Payout Accounts", "Where each branch's card and transfer takings are settled. Each branch has its own account, so balances never mix.")}
+    <div id="poSummary"></div>
     <div class="panel flush"><div class="table-wrap" id="poTable"><div class="loading-state">Loading…</div></div></div>
   `);
   let branches = [];
   try { branches = (await adminApi.listBranches()).branches || []; }
   catch (err) { renderInto("poTable", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
   BRANCHES = branches;
+  const withPaystack = branches.filter((b) => b.paystackSubaccountCode).length;
+  renderInto("poSummary", branches.length ? html`<div class="notice ${withPaystack === branches.length ? "info" : "warning"}" style="margin-bottom:12px;">${withPaystack} of ${branches.length} branch${branches.length === 1 ? "" : "es"} have a Paystack payout account.</div>` : "");
   renderInto("poTable", branches.length ? html`
-    <table><thead><tr><th>Branch</th><th>Paystack account</th><th>Stripe</th><th></th></tr></thead>
+    <table><thead><tr><th>Branch</th><th>Paystack settlement</th><th>Stripe</th><th></th></tr></thead>
     <tbody>${html.join(branches.map((b) => html`<tr>
       <td><b>${b.name}</b><div class="faint">${b.city || b.address || ""}</div></td>
-      <td>${b.payoutAccountNumber ? html`<span class="mono">${b.payoutBankName || ""} ····${String(b.payoutAccountNumber).slice(-4)}</span>` : html`<span class="badge badge-warning">Not set</span>`}</td>
-      <td>${b.stripeAccountId ? html`<span class="badge badge-active">Connected</span>` : html`<span class="badge badge-muted">Not connected</span>`}</td>
+      <td>${b.paystackSubaccountCode
+        ? html`<span class="badge badge-active">Connected</span><div class="mono" style="font-size:0.8rem;">${b.settlementBankName || "Bank"} ····${String(b.settlementAccountNumber || "").slice(-4)}</div>${b.settlementAccountName ? html`<div class="faint">${b.settlementAccountName}</div>` : ""}`
+        : html`<span class="badge badge-warning">Not set</span>`}</td>
+      <td>${b.stripeConnectedAccountId
+        ? (b.stripeOnboardingComplete ? html`<span class="badge badge-active">Connected</span>` : html`<span class="badge badge-warning">Onboarding incomplete</span>`)
+        : html`<span class="badge badge-muted">Not connected</span>`}</td>
       <td><div class="row-actions">
         <button class="btn btn-sm btn-outline" onclick="openPayoutModal('${b.id}')">Payout account</button>
-        <button class="btn btn-sm btn-outline" onclick="connectStripeClick('${b.id}')">Stripe</button>
+        <button class="btn btn-sm btn-outline" onclick="openPayoutModal('${b.id}', 'stripe')">Stripe</button>
       </div></td>
     </tr>`))}</tbody></table>` : html`<div class="empty-state">No branches yet.</div>`);
 }
@@ -7514,6 +7882,9 @@ async function cgUpdate(id, status) {
 
 /* ---------- Purchase orders ---------- */
 let PO_FILTER = "";
+let PO_ROWS = [];
+const PO_TABS = [["", "All"], ["DRAFT", "Draft"], ["SENT", "Sent"], ["PARTIALLY_RECEIVED", "Partially received"], ["RECEIVED", "Received"], ["CANCELLED", "Cancelled"]];
+const PO_INPUT_STYLE = "width:90px; padding:5px 8px; border:1px solid var(--border); border-radius:6px;";
 
 async function loadPurchaseOrdersPage() {
   render(html`
@@ -7521,8 +7892,9 @@ async function loadPurchaseOrdersPage() {
       <button class="btn btn-outline" onclick="stTransferModal()"><i class="fas fa-truck-arrow-right"></i> Transfer stock</button>
       <button class="btn btn-primary" onclick="poNewModal()"><i class="fas fa-plus"></i> New order</button>
     `)}
+    <div id="poNotice"></div>
     <div class="chip-row">
-      ${html.join(["", "DRAFT", "SUBMITTED", "PARTIAL", "RECEIVED", "CANCELLED"].map((s) => html`<span class="chip ${PO_FILTER === s ? "active" : ""}" onclick="poSetFilter('${s}')">${s ? s : "All"}</span>`))}
+      ${html.join(PO_TABS.map(([v, label]) => html`<span class="chip ${PO_FILTER === v ? "active" : ""}" onclick="poSetFilter('${v}')">${label}</span>`))}
     </div>
     <div class="panel flush"><div class="table-wrap" id="poListTable"><div class="loading-state">Loading…</div></div></div>
   `);
@@ -7534,16 +7906,34 @@ async function poRefresh() {
   let rows = [];
   try { rows = (await adminApi.listPurchaseOrders(PO_FILTER || undefined)).purchaseOrders || []; }
   catch (err) { renderInto("poListTable", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
+  PO_ROWS = rows;
   renderInto("poListTable", rows.length ? html`
     <table><thead><tr><th>Reference</th><th>Supplier</th><th>Raised</th><th>Status</th><th class="num">Value</th><th></th></tr></thead>
     <tbody>${html.join(rows.map((p) => html`<tr>
-      <td class="mono"><b>${p.reference || p.id.slice(0, 8)}</b></td>
+      <td class="mono"><b>${p.reference || p.number || String(p.id).slice(0, 8)}</b></td>
       <td>${p.supplierName || (p.supplier && p.supplier.name) || "—"}</td>
-      <td class="faint">${fmtDate(p.createdAt)}</td>
+      <td class="faint">${fmtDate(p.createdAt)}${p.expectedAt ? html`<div style="font-size:0.78rem;">Due ${fmtDate(p.expectedAt)}</div>` : ""}</td>
       <td>${statusBadge(p.status)}</td>
-      <td class="num">${fmtMoney(p.total ?? p.estimatedTotal)}</td>
-      <td><div class="row-actions"><button class="btn btn-sm btn-primary" onclick="poReceive('${p.id}')">Receive</button></div></td>
-    </tr>`))}</tbody></table>` : html`<div class="empty-state">No purchase orders.</div>`);
+      <td class="num">${fmtMoney(p.total ?? p.subtotal ?? 0, p.currency)}</td>
+      <td><div class="row-actions">
+        ${p.status === "DRAFT" ? html`<button class="btn btn-sm btn-outline" onclick="poSend('${p.id}')">Send</button>` : ""}
+        ${p.status !== "RECEIVED" && p.status !== "CANCELLED" ? html`<button class="btn btn-sm btn-primary" onclick="poReceive('${p.id}')">Receive</button>` : ""}
+        ${p.status === "DRAFT" || p.status === "SENT" ? html`<button class="btn btn-sm btn-danger" onclick="poCancel('${p.id}')">Cancel</button>` : ""}
+      </div></td>
+    </tr>`))}</tbody></table>` : html`<div class="empty-state">No purchase orders${PO_FILTER ? " in this state" : " yet"}.</div>`);
+}
+
+function poSend(id) {
+  confirmAction("Mark this order as sent to the supplier?", async () => {
+    const res = await runAction(null, () => adminApi.sendPurchaseOrder(id), "Order marked as sent");
+    if (res) poRefresh();
+  });
+}
+function poCancel(id) {
+  confirmAction("Cancel this purchase order? Nothing has been received against it.", async () => {
+    const res = await runAction(null, () => adminApi.cancelPurchaseOrder(id), "Order cancelled");
+    if (res) poRefresh();
+  });
 }
 
 async function poReceive(id) {
@@ -7555,74 +7945,112 @@ async function poReceive(id) {
   const po = data.purchaseOrder || data;
   const lines = po.lines || po.items || [];
   openModal(html`
-    <h3>Receive stock — ${po.reference || ""}</h3>
-    <p class="muted" style="font-size:0.84rem;">Enter what actually arrived and what it actually cost. Stock levels and unit costs update together.</p>
-    <div class="table-wrap"><table><thead><tr><th>Item</th><th class="num">Ordered</th><th class="num">Received</th><th class="num">Unit cost</th></tr></thead>
-      <tbody>${lines.length ? html.join(lines.map((l) => html`<tr>
-        <td>${(l.stockItem && l.stockItem.name) || l.name || "Item"}</td>
-        <td class="num">${fmtNum(l.quantity)}</td>
-        <td class="num"><input type="number" min="0" step="0.01" data-line="${l.id}" class="po-qty" value="${l.quantity}" style="width:90px; padding:5px 8px; border:1px solid var(--border); border-radius:6px;"></td>
+    <h3>Receive stock — ${po.reference || po.number || ""}</h3>
+    <p class="muted" style="font-size:0.84rem;">Enter what actually arrived this time (whole units) and what it actually cost. Stock levels and unit costs update together.</p>
+    <div id="poRecvNotice"></div>
+    <div class="table-wrap"><table><thead><tr><th>Item</th><th class="num">Ordered</th><th class="num">Already received</th><th class="num">Receiving now</th><th class="num">Unit cost</th></tr></thead>
+      <tbody>${lines.length ? html.join(lines.map((l) => {
+        const ordered = Number(l.quantityOrdered ?? l.quantity ?? 0), got = Number(l.quantityReceived || 0);
+        return html`<tr>
+        <td>${l.name || (l.stockItem && l.stockItem.name) || "Item"}</td>
+        <td class="num">${fmtNum(ordered)}</td>
+        <td class="num">${fmtNum(got)}</td>
+        <td class="num"><input type="number" min="0" step="1" data-line="${l.id}" class="po-qty" value="${Math.max(0, ordered - got)}" style="${PO_INPUT_STYLE}"></td>
         <td class="num"><input type="number" min="0" step="0.01" data-line="${l.id}" class="po-cost" value="${l.unitCost ?? ""}" style="width:100px; padding:5px 8px; border:1px solid var(--border); border-radius:6px;"></td>
-      </tr>`)) : emptyRow(4, "This order has no lines.")}</tbody></table></div>
+      </tr>`; })) : emptyRow(5, "This order has no lines.")}</tbody></table></div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="poRecvBtn">Receive stock</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>
   `, { wide: true });
   document.getElementById("poRecvBtn").onclick = async (e) => {
+    const btn = e.currentTarget;
     const payloadLines = Array.from(document.querySelectorAll(".po-qty")).map((input) => {
       const lineId = input.dataset.line;
       const costEl = document.querySelector(`.po-cost[data-line="${lineId}"]`);
-      return { lineId, quantityReceived: Number(input.value), unitCost: Number(costEl && costEl.value) || undefined };
+      const cost = costEl && costEl.value !== "" ? Number(costEl.value) : undefined;
+      return { lineId, quantityReceived: Number(input.value), unitCost: cost };
     });
-    const res = await runAction(e.currentTarget, () => adminApi.receivePurchaseOrder(id, { lines: payloadLines }));
+    if (payloadLines.some((l) => !Number.isInteger(l.quantityReceived) || l.quantityReceived < 0)) {
+      return showNotice("poRecvNotice", "Quantities must be whole numbers (0 or more).");
+    }
+    if (!payloadLines.some((l) => l.quantityReceived > 0)) return showNotice("poRecvNotice", "Enter a quantity for at least one line.");
+    const res = await runAction(btn, () => adminApi.receivePurchaseOrder(id, { lines: payloadLines }));
     if (res) { toast(res.message || "Stock received and costs updated"); closeModal(); poRefresh(); }
   };
 }
 
+function poLineRowHtml(items) {
+  return html`<div class="form-row po-line" style="align-items:flex-end;">
+    <div class="form-field" style="flex:2;"><label>Item</label>
+      <select class="po-item">${html.join(items.map((i) => html`<option value="${i.id}">${i.name}${i.unit ? ` (${i.unit})` : ""}</option>`))}</select></div>
+    <div class="form-field"><label>Quantity</label><input type="number" class="po-qty-new" min="1" step="1" value="1"></div>
+    <div class="form-field"><label>Unit cost</label><input type="number" class="po-cost-new" min="0" step="0.01" placeholder="Item's current cost"></div>
+    <button type="button" class="btn btn-sm btn-outline" title="Remove line" onclick="this.closest('.po-line').remove()"><i class="fas fa-xmark"></i></button>
+  </div>`;
+}
+let _poItems = [];
+function poAddLine() { document.getElementById("poLines").insertAdjacentHTML("beforeend", String(poLineRowHtml(_poItems))); }
+
 async function poNewModal() {
+  const bid = getActiveBranchId();
+  if (!bid) { toast("Pick a branch in the top bar first — a purchase order belongs to one branch.", "error"); return; }
   let items = [];
-  try { items = (await adminApi.listStockItems(getActiveBranchId())).stockItems || []; } catch { /* optional */ }
+  try { items = (await adminApi.listStockItems(bid)).stockItems || []; }
+  catch (err) { toast(err.message, "error"); return; }
+  if (!items.length) { toast("This branch has no stock items yet — add them on the Stock page first.", "error"); return; }
+  _poItems = items;
   openModal(html`
     <h3>New purchase order</h3>
+    <div id="poNewNotice"></div>
     <div class="form-row">
       <div class="form-field"><label>Supplier</label><input id="poSupplier"></div>
       <div class="form-field"><label>Expected delivery</label><input type="date" id="poDate"></div>
     </div>
-    <div class="form-field"><label>Item</label>
-      <select id="poItem">${html.join(items.map((i) => html`<option value="${i.id}">${i.name}</option>`))}</select></div>
-    <div class="form-row">
-      <div class="form-field"><label>Quantity</label><input type="number" id="poQty" min="1" value="1"></div>
-      <div class="form-field"><label>Expected unit cost</label><input type="number" id="poCost" min="0" step="0.01"></div>
-    </div>
+    <div id="poLines">${poLineRowHtml(items)}</div>
+    <button type="button" class="btn btn-sm btn-outline" onclick="poAddLine()" style="margin-bottom:12px;"><i class="fas fa-plus"></i> Add another item</button>
     <div class="form-field"><label>Note</label><textarea id="poNote"></textarea></div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="poNewBtn">Create order</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>
-  `);
+  `, { wide: true });
   document.getElementById("poNewBtn").onclick = async (e) => {
+    const supplierName = document.getElementById("poSupplier").value.trim();
+    if (!supplierName) return showNotice("poNewNotice", "Enter the supplier's name.");
+    const lines = Array.from(document.querySelectorAll("#poLines .po-line")).map((row) => {
+      const cost = row.querySelector(".po-cost-new").value;
+      return { stockItemId: row.querySelector(".po-item").value, quantity: Number(row.querySelector(".po-qty-new").value), unitCost: cost === "" ? undefined : Number(cost) };
+    });
+    if (!lines.length) return showNotice("poNewNotice", "Add at least one item.");
+    if (lines.some((l) => !Number.isInteger(l.quantity) || l.quantity < 1)) return showNotice("poNewNotice", "Quantities must be whole numbers of 1 or more.");
     const res = await runAction(e.currentTarget, () => adminApi.createPurchaseOrder({
-      supplierName: document.getElementById("poSupplier").value.trim(),
+      supplierName,
       expectedAt: document.getElementById("poDate").value || undefined,
       note: document.getElementById("poNote").value.trim() || undefined,
-      lines: [{
-        stockItemId: document.getElementById("poItem").value,
-        quantity: Number(document.getElementById("poQty").value),
-        unitCost: Number(document.getElementById("poCost").value) || undefined,
-      }],
+      lines,
     }), "Purchase order created");
     if (res) { closeModal(); poRefresh(); }
   };
 }
 
-function stTransferModal() {
+async function stTransferModal() {
+  const bid = getActiveBranchId();
+  if (!bid) { toast("Pick the branch the stock is leaving from in the top bar first.", "error"); return; }
+  let items = [];
+  try { items = (await adminApi.listStockItems(bid)).stockItems || []; }
+  catch (err) { toast(err.message, "error"); return; }
+  const others = (BRANCHES || []).filter((b) => b.id !== bid && b.isActive !== false);
+  if (!items.length) { toast("This branch has no stock items to transfer.", "error"); return; }
+  if (!others.length) { toast("There is no other branch to transfer to.", "error"); return; }
   openModal(html`
     <h3>Transfer stock to another branch</h3>
-    <div class="form-field"><label>Stock item ID</label><input id="stItem" placeholder="Copy from the Stock page"></div>
+    <div id="stNotice"></div>
+    <div class="form-field"><label>Item</label>
+      <select id="stItem">${html.join(items.map((i) => html`<option value="${i.id}">${i.name} — ${fmtNum(i.quantity)} on hand</option>`))}</select></div>
     <div class="form-field"><label>Destination branch</label>
-      <select id="stTo">${html.join(BRANCHES.map((b) => html`<option value="${b.id}">${b.name}</option>`))}</select></div>
-    <div class="form-field"><label>Quantity</label><input type="number" id="stQty" min="1" value="1"></div>
+      <select id="stTo">${html.join(others.map((b) => html`<option value="${b.id}">${b.name}</option>`))}</select></div>
+    <div class="form-field"><label>Quantity</label><input type="number" id="stQty" min="1" step="1" value="1"></div>
     <div class="form-field"><label>Note</label><input id="stNote"></div>
     <div class="modal-actions">
       <button class="btn btn-primary" id="stBtn">Transfer</button>
@@ -7630,10 +8058,12 @@ function stTransferModal() {
     </div>
   `);
   document.getElementById("stBtn").onclick = async (e) => {
+    const quantity = Number(document.getElementById("stQty").value);
+    if (!Number.isInteger(quantity) || quantity < 1) return showNotice("stNotice", "Quantity must be a whole number of 1 or more.");
     const res = await runAction(e.currentTarget, () => adminApi.transferStock({
-      stockItemId: document.getElementById("stItem").value.trim(),
+      stockItemId: document.getElementById("stItem").value,
       toBranchId: document.getElementById("stTo").value,
-      quantity: Number(document.getElementById("stQty").value),
+      quantity,
       note: document.getElementById("stNote").value.trim() || undefined,
     }));
     if (res) { toast(res.message || "Stock transferred"); closeModal(); }
