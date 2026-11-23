@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <!-- PATCHED-BY-UYEH-FIX -->
+<!-- PATCH2-GUESTS-ROSTER-APPLIED -->
+<!-- PATCH3-GAPS-APPLIED -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1408,6 +1410,25 @@ Object.assign(adminApi, {
   requestRefund: (bookingId, payload) => POST(`/manager/bookings/${bookingId}/refund`, payload),
   retryRefund: (id) => POST(`/manager/refunds/${id}/retry`, {}),
   resolveRefund: (id, payload) => POST(`/manager/refunds/${id}/resolve`, payload),
+  // ---- patch 3: director oversight (read-only) ----
+  listLostFound: (status) => adminRequest(`/manager/lost-and-found${bqs({ status })}`),
+  listSuppliers: () => adminRequest(`/manager/suppliers${bqs()}`),
+  revenueForecast: (days) => adminRequest(`/manager/revenue/forecast${bqs({ days })}`),
+  revenuePace: (days) => adminRequest(`/manager/revenue/pace${bqs({ days })}`),
+  revenuePickup: (window, days) => adminRequest(`/manager/revenue/pickup${bqs({ window, days })}`),
+  revenueSuggestions: () => adminRequest(`/manager/revenue/suggestions${bqs()}`),
+  // guest accounts (director)
+  listGuestAccounts: (p) => adminRequest(`/director/guests${qs(p)}`),
+  exportGuestAccounts: (p) => adminRequest(`/director/guests/export${qs(p)}`),
+  getGuestAccount: (id) => adminRequest(`/director/guests/${id}`),
+  updateGuestAccount: (id, payload) => adminRequest(`/director/guests/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  guestAccountAction: (id, payload) => adminRequest(`/director/guests/${id}/action`, { method: "POST", body: JSON.stringify(payload) }),
+  // roster
+  updateShift: (id, payload) => PATCH(`/manager/roster/${id}`, payload),
+  deleteShift: (id) => DEL(`/manager/roster/${id}${bqs()}`),
+  shiftAttendance: (id, payload) => POST(`/manager/roster/${id}/attendance`, payload),
+  copyRoster: (payload) => POST("/manager/roster/copy", payload),
+  unpublishRoster: (payload) => POST("/manager/roster/unpublish", payload),
   listFxRates: () => adminRequest(`/director/exchange-rates`),
   sendPurchaseOrder: (id) => POST(`/manager/purchase-orders/${id}/send`, {}),
   cancelPurchaseOrder: (id) => POST(`/manager/purchase-orders/${id}/cancel`, {}),
@@ -1643,6 +1664,7 @@ const NAV_GROUPS = [
       { page: "roomtypes", label: "Room Types", icon: "fa-hotel", permission: "manage_rooms" },
       { page: "rates", label: "Rates & Availability", icon: "fa-calendar-days", permission: "manage_rooms" },
       { page: "channels", label: "Channels", icon: "fa-share-nodes", permission: "manage_rooms" },
+      { page: "lostfound", label: "Lost & Found", icon: "fa-suitcase", directorOnlyItem: true },
     ],
   },
   {
@@ -1673,6 +1695,7 @@ const NAV_GROUPS = [
     items: [
       { page: "stock", label: "Stock", icon: "fa-boxes-stacked", permission: "manage_stock" },
       { page: "purchaseorders", label: "Purchase Orders", icon: "fa-truck-ramp-box", permission: "manage_stock" },
+      { page: "suppliers", label: "Suppliers", icon: "fa-handshake", directorOnlyItem: true },
     ],
   },
   {
@@ -1680,6 +1703,7 @@ const NAV_GROUPS = [
     items: [
       { page: "staff", label: "Staff", icon: "fa-user-group", permission: "manage_staff" },
       { page: "roster", label: "Roster & Shifts", icon: "fa-calendar-week", permission: "manage_staff" },
+      { page: "guestaccounts", label: "Guest Accounts", icon: "fa-address-book", directorOnlyItem: true },
       { page: "managers", label: "Managers", icon: "fa-user-tie", directorOnlyItem: true },
       { page: "directors", label: "Directors", icon: "fa-user-shield", directorOnlyItem: true },
     ],
@@ -1697,6 +1721,7 @@ const NAV_GROUPS = [
     items: [
       { page: "reports", label: "Operating Reports", icon: "fa-file-lines" },
       { page: "performance", label: "Performance", icon: "fa-arrow-trend-up", directorOnlyItem: true },
+      { page: "revenue", label: "Revenue Management", icon: "fa-gauge-high", directorOnlyItem: true },
       { page: "analytics", label: "Analytics", icon: "fa-chart-pie", directorOnlyItem: true },
       { page: "nightaudit", label: "Night Audit", icon: "fa-moon" },
     ],
@@ -1836,6 +1861,7 @@ const PAGE_LOADERS = {
   bookings: loadBookingsPage,
   groupbookings: loadGroupBookingsPage,
   guests: loadGuestLookupPage,
+  guestaccounts: loadGuestAccountsPage,
   corporate: loadCorporateAccountsPage,
 
   // Rooms
@@ -1871,6 +1897,9 @@ const PAGE_LOADERS = {
   // People
   staff: loadStaffPage,
   roster: loadRosterPage,
+  lostfound: loadLostFoundPage,
+  suppliers: loadSuppliersPage,
+  revenue: loadRevenuePage,
   managers: loadManagersPage,
   directors: loadDirectorsPage,
 
@@ -3555,7 +3584,7 @@ async function refreshFolioModal(bookingId) {
       <p style="color:var(--text-muted); font-size:0.86rem; margin-bottom:12px;">${booking.guestName} — Room ${booking.roomNumber}</p>
       ${charges.length ? html`
         <table><thead><tr><th>Type</th><th>Placed</th><th style="text-align:right;">Amount</th></tr></thead>
-          <tbody>${html.join(charges.map((c) => html`<tr><td>${c.type.replace(/_/g, " ")}</td><td>${fmtDateTime(c.createdAt)}</td><td style="text-align:right;">${fmtMoney(c.totalAmount, c.currency || booking.currency)}</td></tr>`))}</tbody>
+          <tbody>${html.join(charges.map((c) => html`<tr><td>${folioChargeLabel(c)}</td><td>${fmtDateTime(c.createdAt)}</td><td style="text-align:right;">${fmtMoney(c.totalAmount, c.currency || booking.currency)}</td></tr>`))}</tbody>
         </table>
         <div class="summary-line total" style="margin-top:10px;"><span>Balance due</span><span>${fmtMoney(balance, booking.currency)}</span></div>
         <form id="folioSettleForm" style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
@@ -7880,6 +7909,205 @@ async function cgUpdate(id, status) {
   if (res) cgRefresh();
 }
 
+/* =====================================================================
+   Patch 3 pages (director oversight): Lost & Found, Suppliers, Revenue
+   ===================================================================== */
+function p3NoBranch(title, subtitle) {
+  if (isDirector() && !getActiveBranchId()) {
+    render(html`${pageHeader(title, subtitle)}
+      <div class="panel"><div class="empty-state">Pick a branch in the top bar first. This page works on one branch at a time.</div></div>`);
+    return true;
+  }
+  return false;
+}
+
+/* ---------- Lost & Found ---------- */
+let LF_FILTER = "STORED";
+let LF_ROWS = [];
+let LF_ROOMS = {};
+const LF_TABS = [["STORED", "In storage"], ["CLAIMED", "Claimed"], ["RETURNED", "Returned"], ["DISPOSED", "Disposed"], ["", "All"]];
+const LF_CATEGORIES = ["Electronics", "Clothing", "Jewellery", "Documents / ID", "Keys", "Bags & luggage", "Toiletries", "Other"];
+
+async function loadLostFoundPage() {
+  const sub = "Read-only oversight of what each branch has found and what became of it. Branch staff log and resolve items in their own panel.";
+  if (p3NoBranch("Lost & Found", sub)) return;
+  render(html`
+    ${pageHeader("Lost & Found", sub)}
+    <div id="lfNotice"></div>
+    <div class="chip-row">
+      ${html.join(LF_TABS.map(([v, label]) => html`<span class="chip ${LF_FILTER === v ? "active" : ""}" onclick="lfSetFilter('${v}')">${label}</span>`))}
+    </div>
+    <div class="panel flush"><div class="table-wrap" id="lfTable"><div class="loading-state">Loading…</div></div></div>
+  `);
+  lfRefresh();
+}
+function lfSetFilter(s) { LF_FILTER = s; loadLostFoundPage(); }
+
+async function lfRefresh() {
+  let items = [];
+  try {
+    const [r, rooms] = await Promise.all([
+      adminApi.listLostFound(LF_FILTER),
+      adminRequest(`/manager/rooms${bqs()}`).catch(() => ({ rooms: [] })),
+    ]);
+    items = r.items || [];
+    LF_ROOMS = {};
+    (rooms.rooms || []).forEach((x) => { LF_ROOMS[x.id] = x.roomNumber; });
+  } catch (err) { renderInto("lfTable", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
+  LF_ROWS = items;
+  renderInto("lfTable", items.length ? html`
+    <table><thead><tr><th>Found</th><th>Item</th><th>Where</th><th>Status</th></tr></thead>
+    <tbody>${html.join(items.map((i) => html`<tr>
+      <td class="faint">${fmtDate(i.foundAt)}</td>
+      <td><b>${i.description}</b>${i.category ? html`<div class="faint" style="font-size:0.78rem;">${i.category}</div>` : ""}
+        ${i.photoUrl ? html`<div><a href="${i.photoUrl}" target="_blank" rel="noopener" style="font-size:0.78rem;">View photo</a></div>` : ""}</td>
+      <td>${i.roomId && LF_ROOMS[i.roomId] ? "Room " + LF_ROOMS[i.roomId] : "—"}${i.storageLocation ? html`<div class="faint" style="font-size:0.78rem;">Stored: ${i.storageLocation}</div>` : ""}</td>
+      <td>${statusBadge(i.status)}${i.claimedByName ? html`<div class="faint" style="font-size:0.78rem;">${i.claimedByName}${i.claimedAt ? " · " + fmtDate(i.claimedAt) : ""}</div>` : ""}</td>
+    </tr>`))}</tbody></table>` : html`<div class="empty-state">Nothing here${LF_FILTER ? " in this state" : " yet"}.</div>`);
+}
+
+/* ---------- Suppliers ---------- */
+let SUP_ROWS = [];
+let SUP_Q = "";
+
+async function loadSuppliersPage() {
+  const sub = "Read-only view of who each branch buys stock from. Purchasing is managed in the branch panel.";
+  if (p3NoBranch("Suppliers", sub)) return;
+  render(html`
+    ${pageHeader("Suppliers", sub)}
+    <div id="supNotice"></div>
+    <div class="toolbar" style="margin-bottom:12px;"><input type="search" placeholder="Search suppliers…" value="${SUP_Q}" oninput="supSearch(this.value)" style="max-width:320px;"></div>
+    <div class="panel flush"><div class="table-wrap" id="supTable"><div class="loading-state">Loading…</div></div></div>
+  `);
+  try { SUP_ROWS = (await adminApi.listSuppliers()).suppliers || []; }
+  catch (err) { renderInto("supTable", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
+  supRender();
+}
+function supSearch(v) { SUP_Q = v || ""; supRender(); }
+function supRender() {
+  const q = SUP_Q.trim().toLowerCase();
+  const rows = SUP_ROWS.filter((s) => !q || [s.name, s.contactName, s.email, s.phone].some((x) => String(x || "").toLowerCase().includes(q)));
+  renderInto("supTable", rows.length ? html`
+    <table><thead><tr><th>Supplier</th><th>Contact</th><th>Phone</th><th>Email</th><th>Terms</th><th>Status</th></tr></thead>
+    <tbody>${html.join(rows.map((s) => html`<tr>
+      <td><b>${s.name}</b>${s.address ? html`<div class="faint" style="font-size:0.78rem;">${s.address}</div>` : ""}</td>
+      <td>${s.contactName || "—"}</td>
+      <td>${s.phone || "—"}</td>
+      <td>${s.email || "—"}</td>
+      <td>${s.paymentTerms || "—"}</td>
+      <td>${boolBadge(s.isActive)}</td>
+    </tr>`))}</tbody></table>` : html`<div class="empty-state">${SUP_ROWS.length ? "No supplier matches that search." : "No suppliers recorded for this branch yet."}</div>`);
+}
+/* ---------- Revenue management ---------- */
+let REV_TAB = "forecast";
+let REV_DAYS = 30;
+let REV_WINDOW = 7;
+const REV_TABS = [["forecast", "Forecast"], ["pace", "Pace vs last year"], ["pickup", "Pickup"], ["suggestions", "Rate suggestions"]];
+
+async function loadRevenuePage() {
+  const sub = "What is on the books, where occupancy is heading, and where to move rates.";
+  if (p3NoBranch("Revenue Management", sub)) return;
+  render(html`
+    ${pageHeader("Revenue Management", sub)}
+    <div class="chip-row">
+      ${html.join(REV_TABS.map(([v, label]) => html`<span class="chip ${REV_TAB === v ? "active" : ""}" onclick="revSetTab('${v}')">${label}</span>`))}
+      ${REV_TAB !== "suggestions" ? html`<span style="margin-left:auto;"><label class="faint" style="font-size:0.78rem;">Look ahead
+        <select onchange="revSetDays(this.value)">${html.join([30, 60, 90, 180].map((n) => html`<option value="${n}" ${REV_DAYS === n ? "selected" : ""}>${n} days</option>`))}</select></label></span>` : ""}
+      ${REV_TAB === "pickup" ? html`<span><label class="faint" style="font-size:0.78rem;">Compared with
+        <select onchange="revSetWindow(this.value)">${html.join([1, 3, 7, 14, 30].map((n) => html`<option value="${n}" ${REV_WINDOW === n ? "selected" : ""}>${n} day${n > 1 ? "s" : ""} ago</option>`))}</select></label></span>` : ""}
+    </div>
+    <div id="revBody"><div class="loading-state">Loading…</div></div>
+  `);
+  revLoad();
+}
+function revSetTab(t) { REV_TAB = t; loadRevenuePage(); }
+function revSetDays(n) { REV_DAYS = Number(n) || 30; loadRevenuePage(); }
+function revSetWindow(n) { REV_WINDOW = Number(n) || 7; loadRevenuePage(); }
+
+function revNote(text) { return text ? html`<div class="notice" style="margin-bottom:14px;">${text}</div>` : ""; }
+function revEmpty() {
+  return html`<div class="panel"><div class="empty-state">No on-the-books data for this branch yet. Snapshots are captured nightly, so this fills in after the first night's run.</div></div>`;
+}
+function revSigned(n) { const v = Number(n); return !isFinite(v) ? "—" : (v > 0 ? "+" : "") + fmtNum(v); }
+
+async function revLoad() {
+  const tab = REV_TAB;
+  try {
+    let out;
+    if (tab === "forecast") {
+      const d = await adminApi.revenueForecast(REV_DAYS);
+      const rows = d.days || [];
+      out = !rows.length ? revEmpty() : html`
+        <div class="stats-grid">
+          <div class="stat-card"><b>${fmtNum(d.totals.onTheBooks)}</b><span>Room nights on the books</span></div>
+          <div class="stat-card"><b>${fmtNum(d.totals.forecastRooms)}</b><span>Forecast room nights</span></div>
+          <div class="stat-card is-good"><b>${fmtMoney(d.totals.forecastRevenue)}</b><span>Forecast room revenue</span></div>
+        </div>
+        ${revNote(d.note)}
+        <p class="muted" style="font-size:0.8rem;">${d.method}</p>
+        <div class="panel flush"><div class="table-wrap"><table>
+          <thead><tr><th>Night</th><th class="num">Days out</th><th class="num">On the books</th><th class="num">Forecast rooms</th><th class="num">Forecast occupancy</th><th class="num">Forecast revenue</th><th>Confidence</th></tr></thead>
+          <tbody>${html.join(rows.map((r) => html`<tr>
+            <td>${fmtDate(r.stayDate)}</td><td class="num">${fmtNum(r.daysOut)}</td><td class="num">${fmtNum(r.onTheBooks)}</td>
+            <td class="num">${fmtNum(r.forecastRooms)}</td><td class="num">${fmtNum(r.forecastOccupancy, 1)}%</td>
+            <td class="num">${fmtMoney(r.forecastRevenue)}</td><td>${statusBadge(r.confidence)}</td></tr>`))}</tbody></table></div></div>`;
+    } else if (tab === "pace") {
+      const d = await adminApi.revenuePace(REV_DAYS);
+      const rows = d.days || [];
+      const s = d.summary || {};
+      out = !rows.length ? revEmpty() : html`
+        <div class="stats-grid">
+          <div class="stat-card"><b>${fmtNum(s.roomsOnBooks)}</b><span>Room nights on the books</span></div>
+          <div class="stat-card"><b>${fmtMoney(s.revenueOnBooks)}</b><span>Room revenue on the books</span></div>
+          <div class="stat-card"><b>${s.stlyRoomsOnBooks === null || s.stlyRoomsOnBooks === undefined ? "—" : fmtNum(s.stlyRoomsOnBooks)}</b><span>Same time last year</span></div>
+          <div class="stat-card"><b>${s.paceVsStlyPercent === null || s.paceVsStlyPercent === undefined ? "—" : (s.paceVsStlyPercent > 0 ? "+" : "") + fmtNum(s.paceVsStlyPercent, 1) + "%"}</b><span>Pace vs last year</span></div>
+        </div>
+        ${revNote(d.note)}
+        <div class="panel flush"><div class="table-wrap"><table>
+          <thead><tr><th>Night</th><th class="num">Days out</th><th class="num">Rooms sold</th><th class="num">Occupancy</th><th class="num">Revenue</th><th class="num">Last year</th><th class="num">Pace</th></tr></thead>
+          <tbody>${html.join(rows.map((r) => html`<tr>
+            <td>${fmtDate(r.stayDate)}</td><td class="num">${fmtNum(r.daysOut)}</td><td class="num">${fmtNum(r.roomsSold)}</td>
+            <td class="num">${fmtNum(r.occupancy, 1)}%</td><td class="num">${fmtMoney(r.revenue)}</td>
+            <td class="num">${r.stlyRoomsSold === null || r.stlyRoomsSold === undefined ? "—" : fmtNum(r.stlyRoomsSold)}</td>
+            <td class="num">${r.paceVariance === null || r.paceVariance === undefined ? "—" : revSigned(r.paceVariance)}</td></tr>`))}</tbody></table></div></div>`;
+    } else if (tab === "pickup") {
+      const d = await adminApi.revenuePickup(REV_WINDOW, REV_DAYS);
+      const rows = d.days || [];
+      out = !rows.length ? revEmpty() : html`
+        <div class="stats-grid">
+          <div class="stat-card ${d.totalPickup >= 0 ? "is-good" : ""}"><b>${revSigned(d.totalPickup)}</b><span>Net room nights picked up in ${d.windowDays} day${d.windowDays > 1 ? "s" : ""}</span></div>
+        </div>
+        <div class="panel flush"><div class="table-wrap"><table>
+          <thead><tr><th>Night</th><th class="num">Rooms on the books</th><th class="num">Picked up</th></tr></thead>
+          <tbody>${html.join(rows.map((r) => html`<tr><td>${fmtDate(r.stayDate)}</td><td class="num">${fmtNum(r.roomsSold)}</td>
+            <td class="num">${r.pickup === null || r.pickup === undefined ? "—" : revSigned(r.pickup)}</td></tr>`))}</tbody></table></div></div>`;
+    } else {
+      const d = await adminApi.revenueSuggestions();
+      const rows = d.suggestions || [];
+      out = !rows.length ? html`<div class="panel"><div class="empty-state">No rate suggestions right now. They appear when the forecast is confident and demand is clearly high or low.</div></div>` : html`
+        <p class="muted" style="font-size:0.84rem;">Suggestions are never applied automatically. Review each one, then change the rate on <a href="javascript:void(0)" onclick="switchPage('rates')">Rates &amp; Availability</a>.</p>
+        <div class="panel flush"><div class="table-wrap"><table>
+          <thead><tr><th>Night</th><th class="num">Days out</th><th class="num">Forecast occupancy</th><th>Suggestion</th><th>Why</th></tr></thead>
+          <tbody>${html.join(rows.map((r) => html`<tr>
+            <td>${fmtDate(r.stayDate)}</td><td class="num">${fmtNum(r.daysOut)}</td><td class="num">${fmtNum(r.forecastOccupancy, 1)}%</td>
+            <td><b>${r.action === "RAISE" ? "Raise" : "Lower"} ${fmtNum(Math.abs(r.suggestedChangePercent))}%</b></td><td class="faint">${r.why}</td></tr>`))}</tbody></table></div></div>`;
+    }
+    if (REV_TAB === tab) renderInto("revBody", out);
+  } catch (err) {
+    renderInto("revBody", html`<div class="notice error">${err.message}</div>`);
+  }
+}
+
+/* Folio lines: show what a charge actually was, not just its type. */
+function folioChargeLabel(c) {
+  const t = String(c.type || "").replace(/_/g, " ");
+  const base = t.charAt(0) + t.slice(1).toLowerCase();
+  const fromItems = (Array.isArray(c.items) ? c.items : []).map((i) => i && i.name).filter(Boolean);
+  const fromLines = (c.lines || []).filter((l) => l.status !== "VOIDED").map((l) => l.itemName).filter(Boolean);
+  const detail = (fromItems.length ? fromItems : fromLines).join(", ");
+  return detail ? `${base} - ${detail}` : base;
+}
+
 /* ---------- Purchase orders ---------- */
 let PO_FILTER = "";
 let PO_ROWS = [];
@@ -8070,83 +8298,435 @@ async function stTransferModal() {
   };
 }
 
-/* ---------- Roster ---------- */
-let ROSTER_FROM = todayISO();
-let ROSTER_TO = todayISO(6);
+/* ---------- Guest accounts (director) ---------- */
+let GA = { kind: "all", sort: "recent", page: 1, q: "", pages: 1 };
+let GA_CURRENT = null;
+const GA_KINDS = [["all", "Everyone"], ["accounts", "With an account"], ["booking_only", "Booking only"], ["unverified", "Unverified email"], ["blocked", "Blocked"]];
 
-async function loadRosterPage() {
+async function loadGuestAccountsPage() {
+  if (!isDirector()) { loadComingSoon("Guest Accounts", "Only a director can manage guest accounts."); return; }
   render(html`
-    ${pageHeader("Roster & Shifts", "Who works when, by department — with attendance once the shift has run.", html`
-      <button class="btn btn-outline" onclick="rosterAddShift()"><i class="fas fa-plus"></i> Add shift</button>
-      <button class="btn btn-primary" id="rosterPublishBtn"><i class="fas fa-paper-plane"></i> Publish</button>
-    `)}
+    ${pageHeader("Guest Accounts", "Everyone who has registered or booked — with an account, or just an email on a booking.", html`
+      <button class="btn btn-outline" id="gaExportBtn"><i class="fas fa-file-csv"></i> Export CSV</button>`)}
+    <div id="gaNotice"></div>
+    <div id="gaStats" class="stats-grid"></div>
+    <div class="chip-row">${html.join(GA_KINDS.map(([v, label]) => html`<span class="chip ${GA.kind === v ? "active" : ""}" onclick="gaSetKind('${v}')">${label}</span>`))}</div>
     <div class="panel">
       <div class="filter-row">
-        <label>From</label><input type="date" id="rosterFrom" value="${ROSTER_FROM}">
-        <label>To</label><input type="date" id="rosterTo" value="${ROSTER_TO}">
-        <button class="btn btn-outline" onclick="rosterRefresh()">Show</button>
+        <input id="gaSearch" placeholder="Search name, email or phone…" value="${GA.q}" style="flex:1; min-width:240px;">
+        <label>Sort</label>
+        <select id="gaSort" onchange="gaSetSort(this.value)">
+          <option value="recent">Newest first</option><option value="name">Name A–Z</option>
+          <option value="bookings">Most bookings</option><option value="login">Last login</option>
+        </select>
       </div>
-      <div class="table-wrap" id="rosterTable"><div class="loading-state">Loading…</div></div>
+    </div>
+    <div class="panel flush"><div class="table-wrap" id="gaTable"><div class="loading-state">Loading…</div></div><div id="gaPager" style="padding:10px 16px;"></div></div>
+  `);
+  document.getElementById("gaSort").value = GA.sort;
+  document.getElementById("gaExportBtn").onclick = gaExport;
+  let t;
+  const input = document.getElementById("gaSearch");
+  input.oninput = () => { clearTimeout(t); t = setTimeout(() => { GA.q = input.value.trim(); GA.page = 1; gaRefresh(); }, 350); };
+  gaRefresh();
+}
+function gaSetKind(k) { GA.kind = k; GA.page = 1; loadGuestAccountsPage(); }
+function gaSetSort(v) { GA.sort = v; GA.page = 1; gaRefresh(); }
+function gaPage(n) { GA.page = Math.min(Math.max(1, n), GA.pages); gaRefresh(); }
+
+async function gaRefresh() {
+  let d;
+  try { d = await adminApi.listGuestAccounts({ kind: GA.kind, sort: GA.sort, page: GA.page, q: GA.q || undefined, limit: 25 }); }
+  catch (err) { renderInto("gaTable", html`<div class="notice error" style="margin:16px;">${err.message}</div>`); return; }
+  GA.pages = d.pages;
+  const st = d.stats || {};
+  renderInto("gaStats", html`
+    <div class="stat-card"><b>${fmtNum(st.totalContacts)}</b><span>Total contacts</span></div>
+    <div class="stat-card"><b>${fmtNum(st.accounts)}</b><span>With an account</span></div>
+    <div class="stat-card"><b>${fmtNum(st.bookingOnly)}</b><span>Booking only (no account)</span></div>
+    <div class="stat-card"><b>${fmtNum(st.verifiedAccounts)}</b><span>Verified emails</span></div>
+    <div class="stat-card"><b>${fmtNum(st.newLast30Days)}</b><span>New in 30 days (${fmtNum(st.newLast7Days)} this week)</span></div>
+    <div class="stat-card"><b>${fmtNum(st.repeatGuests)}</b><span>Repeat guests</span></div>
+    <div class="stat-card"><b>${fmtNum(st.blocked)}</b><span>Blocked accounts</span></div>
+    <div class="stat-card"><b>${fmtNum(st.erased)}</b><span>Erased on request</span></div>`);
+  renderInto("gaTable", d.guests.length ? html`
+    <table><thead><tr><th>Guest</th><th>Phone</th><th>Type</th><th>Email</th><th class="num">Bookings</th><th>Joined</th><th>Last login</th><th>Status</th><th></th></tr></thead>
+    <tbody>${html.join(d.guests.map((g) => html`<tr>
+      <td><b>${g.name}</b><div class="faint" style="font-size:0.78rem;">${g.email}</div></td>
+      <td class="faint">${g.phone || "—"}</td>
+      <td>${g.hasAccount ? html`<span class="badge badge-active">Account</span>` : html`<span class="badge badge-muted">Booking only</span>`}</td>
+      <td>${g.hasAccount ? (g.emailVerified ? html`<span class="badge badge-active">Verified</span>` : html`<span class="badge badge-warning">Unverified</span>`) : html`<span class="faint">—</span>`}</td>
+      <td class="num">${fmtNum(g.bookingsCount)}</td>
+      <td class="faint">${fmtDate(g.createdAt)}</td>
+      <td class="faint">${g.lastLogin ? fmtDateTime(g.lastLogin) : "—"}</td>
+      <td>${g.blocked ? html`<span class="badge badge-failed">Blocked</span>` : g.locked ? html`<span class="badge badge-warning">Locked</span>` : g.hasAccount ? html`<span class="badge badge-active">Active</span>` : html`<span class="faint">—</span>`}</td>
+      <td><div class="row-actions"><button class="btn btn-sm btn-outline" onclick="gaOpen('${g.id}')">Manage</button></div></td>
+    </tr>`))}</tbody></table>` : html`<div class="empty-state">${GA.q || GA.kind !== "all" ? "No guest matches this filter." : "No guests yet."}</div>`);
+  renderInto("gaPager", d.pages > 1 ? html`
+    <div style="display:flex; gap:10px; align-items:center; justify-content:flex-end;">
+      <span class="faint">Page ${d.page} of ${d.pages} · ${fmtNum(d.total)} guests</span>
+      <button class="btn btn-sm btn-outline" onclick="gaPage(${d.page - 1})" ${d.page <= 1 ? "disabled" : ""}>Previous</button>
+      <button class="btn btn-sm btn-outline" onclick="gaPage(${d.page + 1})" ${d.page >= d.pages ? "disabled" : ""}>Next</button>
+    </div>` : html`<span class="faint">${fmtNum(d.total)} guest${d.total === 1 ? "" : "s"}</span>`);
+}
+
+async function gaExport(e) {
+  const out = await runAction(e.currentTarget, () => adminApi.exportGuestAccounts({ kind: GA.kind, q: GA.q || undefined }));
+  if (!out) return;
+  downloadCsv(`guests-${todayISO()}.csv`, [
+    ["Name", "Email", "Phone", "Type", "Email verified", "Bookings", "Loyalty points", "Tier", "Joined", "Last login", "Blocked"],
+    ...out.guests.map((g) => [g.name, g.email, g.phone || "", g.hasAccount ? "Account" : "Booking only", g.hasAccount ? (g.emailVerified ? "Yes" : "No") : "", g.bookingsCount, g.loyaltyPoints, g.tier || "", String(g.createdAt || "").slice(0, 10), g.lastLogin ? String(g.lastLogin).slice(0, 10) : "", g.blocked ? "Yes" : ""]),
+  ]);
+  toast(out.truncated ? "Exported the first 20,000 contacts only." : `Exported ${out.guests.length} contacts`, out.truncated ? "error" : "success");
+}
+
+const GA_ACTIONS = {
+  BLOCK: { title: "Block this account", text: "The guest is signed out on every device and cannot log in until you unblock them. Staff can still make bookings for them.", reason: true, danger: true, button: "Block account" },
+  UNBLOCK: { title: "Unblock this account", text: "The guest will be able to log in again.", button: "Unblock" },
+  SEND_PASSWORD_RESET: { title: "Send a password reset link", text: "Emails the guest a link, valid for one hour, to choose a new password.", button: "Send link" },
+  RESEND_VERIFICATION: { title: "Resend verification email", text: "Emails the guest a fresh link to confirm their address.", button: "Send email" },
+  MARK_EMAIL_VERIFIED: { title: "Mark email as verified", text: "Use only when you have confirmed the address is theirs (for example by phone).", reason: true, button: "Mark verified" },
+  DISABLE_2FA: { title: "Turn off two-factor sign-in", text: "For a guest who has lost their authenticator. They are signed out and can set it up again.", reason: true, danger: true, button: "Turn off 2FA" },
+  SIGN_OUT_EVERYWHERE: { title: "Sign out everywhere", text: "Ends every session this guest has, on every device.", button: "Sign out" },
+  ADJUST_POINTS: { title: "Adjust loyalty points", text: "A positive number adds points; a negative number deducts. Every change is logged and the guest is notified.", reason: true, points: true, button: "Apply" },
+  ERASE: { title: "Erase personal data", text: "Removes the name, email, phone, ID details and notes for good. Bookings and payments stay on the books without the name. This cannot be undone.", reason: true, confirm: true, danger: true, button: "Erase permanently" },
+};
+
+async function gaOpen(id) {
+  openDrawer(html`<div class="loading-state">Loading guest…</div>`, { wide: true });
+  let d;
+  try { d = await adminApi.getGuestAccount(id); }
+  catch (err) { openDrawer(html`<div class="notice error">${err.message}</div><div class="modal-actions"><button class="btn btn-outline" onclick="closeModal()">Close</button></div>`); return; }
+  GA_CURRENT = d;
+  const g = d.guest, c = d.counts;
+  const btn = (action, label, extra = "") => html`<button class="btn btn-sm ${extra || "btn-outline"}" onclick="gaStartAction('${action}')">${label}</button>`;
+  openDrawer(html`
+    <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+      <div><h3 style="margin-bottom:2px;">${g.name}</h3><div class="faint">${g.email}</div></div>
+      <button class="btn btn-sm btn-outline" onclick="closeModal()">Close</button>
+    </div>
+    <div style="margin:10px 0;">
+      ${g.hasAccount ? html`<span class="badge badge-active">Account</span>` : html`<span class="badge badge-muted">Booking only</span>`}
+      ${g.blocked ? html` <span class="badge badge-failed">Blocked</span>` : g.locked ? html` <span class="badge badge-warning">Temporarily locked</span>` : ""}
+      ${g.hasAccount ? (g.emailVerified ? html` <span class="badge badge-active">Email verified</span>` : html` <span class="badge badge-warning">Email not verified</span>`) : ""}
+      ${g.twoFactorEnabled ? html` <span class="badge badge-active">2FA on</span>` : ""}
+      ${g.tier ? html` <span class="badge badge-muted">${g.tier}</span>` : ""}
+    </div>
+    <div id="gaDrawerNotice"></div>
+    <div class="panel" style="margin:0 0 14px;">
+      <div class="summary-line"><span class="muted">Joined</span><span>${fmtDate(g.createdAt)}</span></div>
+      <div class="summary-line"><span class="muted">Last login</span><span>${g.lastLogin ? fmtDateTime(g.lastLogin) : "Never"}</span></div>
+      <div class="summary-line"><span class="muted">Active sessions</span><span>${fmtNum(g.activeSessions)}</span></div>
+      <div class="summary-line"><span class="muted">Loyalty points</span><span class="mono">${fmtNum(g.loyaltyPoints)}</span></div>
+      <div class="summary-line"><span class="muted">Bookings · orders · tickets · reviews</span><span>${fmtNum(c.bookings)} · ${fmtNum(c.orders)} · ${fmtNum(c.tickets)} · ${fmtNum(c.reviews)}</span></div>
+    </div>
+
+    <h4>Actions</h4>
+    ${g.hasAccount ? "" : html`<p class="muted" style="font-size:0.84rem;">This contact has no account — they only gave their email when booking. Sign-in actions don't apply.</p>`}
+    <div class="row-actions" style="justify-content:flex-start; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+      ${g.hasAccount ? (g.blocked || g.locked ? btn("UNBLOCK", "Unblock") : btn("BLOCK", "Block account", "btn-danger")) : ""}
+      ${g.hasAccount && !g.blocked ? btn("SEND_PASSWORD_RESET", "Send password reset") : ""}
+      ${g.hasAccount && !g.emailVerified ? btn("RESEND_VERIFICATION", "Resend verification") : ""}
+      ${g.hasAccount && !g.emailVerified ? btn("MARK_EMAIL_VERIFIED", "Mark email verified") : ""}
+      ${g.hasAccount && g.twoFactorEnabled ? btn("DISABLE_2FA", "Turn off 2FA") : ""}
+      ${g.hasAccount ? btn("SIGN_OUT_EVERYWHERE", "Sign out everywhere") : ""}
+      ${btn("ADJUST_POINTS", "Adjust points")}
+      ${btn("ERASE", "Erase personal data", "btn-danger")}
+    </div>
+    <div id="gaActionBox"></div>
+
+    <h4 style="margin-top:18px;">Details</h4>
+    <div class="form-row">
+      <div class="form-field"><label>Name</label><input id="gaName" value="${g.name}"></div>
+      <div class="form-field"><label>Phone</label><input id="gaPhone" value="${g.phone || ""}"></div>
+    </div>
+    <div class="form-field"><label>Dietary notes</label><textarea id="gaDiet">${g.dietaryNotes || ""}</textarea></div>
+    <div class="form-field"><label>Standing requests</label><textarea id="gaReq">${g.specialRequests || ""}</textarea></div>
+    <div class="modal-actions" style="justify-content:flex-start;"><button class="btn btn-primary" id="gaSaveBtn">Save details</button></div>
+
+    <h4 style="margin-top:18px;">Recent bookings</h4>
+    ${d.bookings.length ? html`<div class="table-wrap"><table><thead><tr><th>Stay</th><th>Branch</th><th>Room type</th><th>Status</th><th class="num">Total</th></tr></thead>
+      <tbody>${html.join(d.bookings.map((b) => html`<tr>
+        <td>${fmtShortDate(b.checkIn)} → ${fmtShortDate(b.checkOut)}</td><td>${b.branchName || "—"}</td><td>${b.roomTypeName || "—"}</td>
+        <td>${statusBadge(b.status)}</td><td class="num">${fmtMoney(b.totalAmount, b.currency)}</td></tr>`))}</tbody></table></div>` : html`<div class="empty-state">No bookings.</div>`}
+
+    <h4 style="margin-top:18px;">Loyalty history</h4>
+    ${d.loyalty.length ? html`<div class="table-wrap"><table><thead><tr><th>When</th><th>Reason</th><th class="num">Points</th></tr></thead>
+      <tbody>${html.join(d.loyalty.map((l) => html`<tr><td class="faint">${fmtDateTime(l.createdAt)}</td><td>${l.reason}</td><td class="num">${l.points > 0 ? "+" : ""}${fmtNum(l.points)}</td></tr>`))}</tbody></table></div>` : html`<div class="empty-state">No loyalty activity.</div>`}
+  `, { wide: true });
+
+  document.getElementById("gaSaveBtn").onclick = async (e) => {
+    const b = e.currentTarget;
+    b.disabled = true;
+    try {
+      await adminApi.updateGuestAccount(g.id, {
+        name: document.getElementById("gaName").value,
+        phone: document.getElementById("gaPhone").value.trim() || null,
+        dietaryNotes: document.getElementById("gaDiet").value,
+        specialRequests: document.getElementById("gaReq").value,
+      });
+      toast("Guest details saved");
+      gaRefresh();
+      gaOpen(g.id);
+    } catch (err) { showNotice("gaDrawerNotice", err.message); b.disabled = false; }
+  };
+}
+
+function gaStartAction(action) {
+  const g = GA_CURRENT.guest, cfg = GA_ACTIONS[action];
+  const box = document.getElementById("gaActionBox");
+  box.innerHTML = html`
+    <div class="panel" style="margin:0 0 8px; border-left:3px solid ${cfg.danger ? "#a3392a" : "#2f5d5a"};">
+      <h4 style="margin-bottom:4px;">${cfg.title}</h4>
+      <p class="muted" style="font-size:0.84rem;">${cfg.text}</p>
+      <div id="gaBoxNotice"></div>
+      ${cfg.points ? html`<div class="form-field"><label>Points (current balance ${fmtNum(g.loyaltyPoints)})</label><input type="number" id="gaPoints" step="1" placeholder="e.g. 200 or -50"></div>` : ""}
+      ${cfg.reason ? html`<div class="form-field"><label>Reason (kept in the audit log)</label><textarea id="gaReason"></textarea></div>` : ""}
+      ${cfg.confirm ? html`<div class="form-field"><label>Type the guest's email to confirm: <b>${g.email}</b></label><input id="gaConfirmEmail" autocomplete="off"></div>` : ""}
+      <div class="modal-actions" style="justify-content:flex-start;">
+        <button class="btn ${cfg.danger ? "btn-danger" : "btn-primary"}" id="gaConfirmBtn">${cfg.button}</button>
+        <button class="btn btn-outline" onclick="document.getElementById('gaActionBox').innerHTML=''">Cancel</button>
+      </div>
+    </div>`;
+  document.getElementById("gaConfirmBtn").onclick = () => gaConfirmAction(action);
+  box.scrollIntoView({ block: "nearest" });
+}
+
+async function gaConfirmAction(action) {
+  const g = GA_CURRENT.guest, cfg = GA_ACTIONS[action];
+  const payload = { action };
+  if (cfg.reason) {
+    payload.reason = document.getElementById("gaReason").value.trim();
+    if (payload.reason.length < 5) return showNotice("gaBoxNotice", "Give a reason of at least 5 characters.");
+  }
+  if (cfg.points) {
+    payload.points = Number(document.getElementById("gaPoints").value);
+    if (!Number.isInteger(payload.points) || payload.points === 0) return showNotice("gaBoxNotice", "Enter a whole number of points, other than zero.");
+  }
+  if (cfg.confirm) payload.confirmEmail = document.getElementById("gaConfirmEmail").value.trim();
+  const btn = document.getElementById("gaConfirmBtn");
+  btn.disabled = true;
+  try {
+    const out = await adminApi.guestAccountAction(g.id, payload);
+    toast((out && out.message) || "Done");
+    gaRefresh();
+    if (action === "ERASE") closeModal(); else gaOpen(g.id);
+  } catch (err) {
+    showNotice("gaBoxNotice", err.message);
+    btn.disabled = false;
+  }
+}
+
+/* ---------- Roster ---------- */
+let ROSTER_WEEK = null; // the Monday of the week on screen (YYYY-MM-DD)
+let ROSTER_DATA = { shifts: [], staff: [], departments: [] };
+
+function rosterAdd(iso, n) { return new Date(Date.parse(iso + "T00:00:00Z") + n * 86400000).toISOString().slice(0, 10); }
+function rosterMonday(iso) { const dow = (new Date(iso + "T00:00:00Z").getUTCDay() + 6) % 7; return rosterAdd(iso, -dow); }
+function rosterDayLabel(iso, withWeekday = true) {
+  return new Date(iso + "T00:00:00Z").toLocaleDateString(undefined, { ...(withWeekday ? { weekday: "short" } : {}), day: "numeric", month: "short", timeZone: "UTC" });
+}
+function rosterCard(s) {
+  const dept = s.department && s.department.name;
+  return html`<div class="ro-chip ${s.publishedAt ? "" : "draft"} ${s.status === "ABSENT" ? "absent" : s.status === "COMPLETED" ? "done" : ""}" onclick="rosterEditShift('${s.id}')">
+    <b>${s.startTime}–${s.endTime}</b>${s.publishedAt ? "" : html` <span class="faint">draft</span>`}${s.status === "ABSENT" ? html` <span>absent</span>` : s.status === "COMPLETED" ? html` <span>✓</span>` : ""}
+    ${s.role || dept ? html`<div class="faint">${s.role || dept}</div>` : ""}
+  </div>`;
+}
+
+async function loadRosterPage() {
+  if (!getActiveBranchId()) {
+    render(html`${pageHeader("Roster & Shifts", "Plan who works when.")}<div class="notice info">Pick a branch in the top bar to plan its roster.</div>`);
+    return;
+  }
+  if (!ROSTER_WEEK) ROSTER_WEEK = rosterMonday(todayISO());
+  render(html`
+    <style>
+      .ro-chip{display:block;padding:4px 6px;margin:2px 0;border:1px solid var(--border);border-left:3px solid #2f5d5a;border-radius:6px;font-size:0.78rem;cursor:pointer;background:rgba(47,93,90,0.08);}
+      .ro-chip.draft{border-style:dashed;border-left-style:dashed;background:transparent;}
+      .ro-chip.absent{border-left-color:#a3392a;background:rgba(163,57,42,0.10);}
+      .ro-chip.done{border-left-color:#4a7c59;background:rgba(74,124,89,0.12);}
+      .ro-add{color:var(--text-muted);cursor:pointer;font-size:0.75rem;opacity:0.55;}
+      .ro-add:hover{opacity:1;}
+      .ro-table td,.ro-table th{vertical-align:top;min-width:112px;}
+      .ro-table td.ro-name{min-width:150px;}
+    </style>
+    ${pageHeader("Roster & Shifts", "Plan who works when. Draft shifts (dashed) stay invisible to staff until you publish.", html`
+      <button class="btn btn-outline" id="rosterCopyBtn"><i class="fas fa-copy"></i> Copy last week</button>
+      <button class="btn btn-outline" onclick="rosterAddShift()"><i class="fas fa-plus"></i> Add shifts</button>
+      <button class="btn btn-outline" id="rosterUnpubBtn">Unpublish</button>
+      <button class="btn btn-primary" id="rosterPublishBtn"><i class="fas fa-paper-plane"></i> Publish week</button>
+    `)}
+    <div id="rosterNotice"></div>
+    <div class="panel">
+      <div class="filter-row">
+        <button class="btn btn-outline btn-sm" onclick="rosterGo(-7)">‹ Previous</button>
+        <b id="rosterLabel"></b>
+        <button class="btn btn-outline btn-sm" onclick="rosterGo(7)">Next ›</button>
+        <button class="btn btn-outline btn-sm" onclick="rosterGo(0)">This week</button>
+        <div class="spacer"></div>
+        <span class="faint" id="rosterSummary"></span>
+      </div>
+      <div class="cal-scroll" id="rosterGrid"><div class="loading-state">Loading…</div></div>
     </div>
   `);
+  const range = () => ({ from: ROSTER_WEEK, to: rosterAdd(ROSTER_WEEK, 6) });
   document.getElementById("rosterPublishBtn").onclick = async (e) => {
-    const res = await runAction(e.currentTarget, () => adminApi.publishRoster({ from: ROSTER_FROM, to: ROSTER_TO }), "Roster published");
-    if (res) rosterRefresh();
+    const res = await runAction(e.currentTarget, () => adminApi.publishRoster(range()));
+    if (res) { toast(res.message || "Roster published"); rosterRefresh(); }
   };
+  document.getElementById("rosterUnpubBtn").onclick = () => confirmAction("Move this week's published shifts back to draft? Staff will stop seeing them until you publish again.", async () => {
+    const res = await runAction(null, () => adminApi.unpublishRoster(range()));
+    if (res) { toast(res.message || "Moved to draft"); rosterRefresh(); }
+  }, { danger: false, confirmLabel: "Unpublish" });
+  document.getElementById("rosterCopyBtn").onclick = () => confirmAction("Copy last week's shifts into this week as drafts? Anything already rostered is left alone.", async () => {
+    const res = await runAction(null, () => adminApi.copyRoster({ from: rosterAdd(ROSTER_WEEK, -7), to: rosterAdd(ROSTER_WEEK, -1), toStart: ROSTER_WEEK }));
+    if (res) { toast(res.message || "Copied"); rosterRefresh(); }
+  }, { danger: false, confirmLabel: "Copy" });
   rosterRefresh();
 }
+function rosterGo(days) { ROSTER_WEEK = days === 0 ? rosterMonday(todayISO()) : rosterAdd(ROSTER_WEEK, days); rosterRefresh(); }
 
 async function rosterRefresh() {
-  ROSTER_FROM = document.getElementById("rosterFrom").value;
-  ROSTER_TO = document.getElementById("rosterTo").value;
-  let shifts = [];
-  try { shifts = (await adminApi.getRoster(ROSTER_FROM, ROSTER_TO)).shifts || []; }
-  catch (err) { renderInto("rosterTable", html`<div class="notice error">${err.message}</div>`); return; }
-  renderInto("rosterTable", shifts.length ? html`
-    <table><thead><tr><th>Date</th><th>Department</th><th>Role</th><th>Hours</th><th>Published</th><th>Attendance</th></tr></thead>
-    <tbody>${html.join(shifts.map((s) => html`<tr>
-      <td>${fmtShortDate(s.date)}</td>
-      <td>${(s.department && s.department.name) || "—"}</td>
-      <td>${s.role || "—"}<div class="faint">${(s.staff && s.staff.name) || ""}</div></td>
-      <td class="mono">${s.startTime || ""}–${s.endTime || ""}</td>
-      <td>${s.publishedAt ? html`<span class="badge badge-published">Published</span>` : html`<span class="badge badge-draft">Draft</span>`}</td>
-      <td>${s.attendance ? statusBadge(s.attendance.status || s.attendance) : html`<span class="faint">—</span>`}</td>
-    </tr>`))}</tbody></table>` : html`<div class="empty-state">No shifts in this window.</div>`);
+  const label = document.getElementById("rosterLabel");
+  if (label) label.textContent = `${rosterDayLabel(ROSTER_WEEK, false)} – ${rosterDayLabel(rosterAdd(ROSTER_WEEK, 6), false)}`;
+  let d;
+  try { d = await adminApi.getRoster(ROSTER_WEEK, rosterAdd(ROSTER_WEEK, 6)); }
+  catch (err) { renderInto("rosterGrid", html`<div class="notice error">${err.message}</div>`); return; }
+  ROSTER_DATA = { shifts: d.shifts || [], staff: d.staff || [], departments: d.departments || [] };
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => rosterAdd(ROSTER_WEEK, i));
+  const withShifts = new Set(ROSTER_DATA.shifts.map((s) => s.staffId));
+  const people = ROSTER_DATA.staff.filter((p) => p.isActive || withShifts.has(p.id));
+  const totalHours = ROSTER_DATA.shifts.filter((s) => s.status !== "ABSENT").reduce((a, s) => a + (s.hours || 0), 0);
+  const drafts = ROSTER_DATA.shifts.filter((s) => !s.publishedAt).length;
+  renderInto("rosterSummary", `${ROSTER_DATA.shifts.length} shift${ROSTER_DATA.shifts.length === 1 ? "" : "s"} · ${fmtNum(totalHours, 1)} h${drafts ? ` · ${drafts} draft` : ""}`);
+  if (!people.length) { renderInto("rosterGrid", html`<div class="empty-state">No staff at this branch yet — add them on the Staff page first.</div>`); return; }
+  renderInto("rosterGrid", html`<table class="ro-table"><thead><tr><th>Staff</th>${html.join(days.map((day) => html`<th>${rosterDayLabel(day)}</th>`))}<th class="num">Hours</th></tr></thead>
+    <tbody>${html.join(people.map((p) => {
+      const mine = ROSTER_DATA.shifts.filter((s) => s.staffId === p.id);
+      const hours = mine.filter((s) => s.status !== "ABSENT").reduce((a, s) => a + (s.hours || 0), 0);
+      return html`<tr>
+        <td class="ro-name"><b>${p.name}</b>${p.isActive ? "" : html` <span class="badge badge-inactive">inactive</span>`}<div class="faint" style="font-size:0.75rem;">${p.roleTitle || p.department || p.role || ""}</div></td>
+        ${html.join(days.map((day) => html`<td>${html.join(mine.filter((s) => s.date === day).map(rosterCard))}${p.isActive ? html`<div class="ro-add" onclick="rosterAddShift('${p.id}', '${day}')">+ add</div>` : ""}</td>`))}
+        <td class="num">${fmtNum(hours, 1)}</td>
+      </tr>`;
+    }))}</tbody></table>`);
 }
 
-async function rosterAddShift() {
-  let departments = [];
-  try { departments = (await adminApi.listDepartments()).departments || []; } catch { /* optional */ }
+/** Runs a roster write; shows the server's reason inside the open dialog if it is refused. */
+async function rosterCall(btn, fn, okMsg, noticeId) {
+  btn.disabled = true;
+  try { const out = await fn(); toast((out && out.message) || okMsg); return out || true; }
+  catch (err) { showNotice(noticeId, err.message); return null; }
+  finally { btn.disabled = false; }
+}
+
+function rosterAddShift(staffId, day) {
+  const people = ROSTER_DATA.staff.filter((p) => p.isActive);
+  if (!people.length) { toast("No active staff at this branch yet.", "error"); return; }
+  const days = [0, 1, 2, 3, 4, 5, 6].map((i) => rosterAdd(ROSTER_WEEK, i));
+  const preset = day ? [day] : days.slice(0, 5); // from the header button: Monday–Friday
   openModal(html`
-    <h3>Add a shift</h3>
-    <div class="form-row">
-      <div class="form-field"><label>Date</label><input type="date" id="shDate" value="${ROSTER_FROM}"></div>
-      <div class="form-field"><label>Department</label>
-        <select id="shDept">${html.join(departments.map((d) => html`<option value="${d.code || d.name}">${d.name}</option>`))}</select></div>
-    </div>
+    <h3>Add shifts</h3>
+    <div id="roNotice"></div>
+    <div class="form-field"><label>Staff member</label>
+      <select id="shStaff">${html.join(people.map((p) => html`<option value="${p.id}">${p.name}${p.roleTitle ? ` — ${p.roleTitle}` : ""}</option>`))}</select></div>
+    <div class="form-field"><label>Days</label>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">${html.join(days.map((dd) => html`<label style="display:flex; gap:4px; align-items:center;"><input type="checkbox" class="sh-day" value="${dd}"> ${rosterDayLabel(dd)}</label>`))}</div></div>
     <div class="form-row">
       <div class="form-field"><label>Start</label><input type="time" id="shStart" value="08:00"></div>
       <div class="form-field"><label>End</label><input type="time" id="shEnd" value="16:00"></div>
     </div>
     <div class="form-row">
+      <div class="form-field"><label>Department</label>
+        <select id="shDept"><option value="">—</option>${html.join(ROSTER_DATA.departments.map((d) => html`<option value="${d.id}">${d.name}</option>`))}</select></div>
       <div class="form-field"><label>Role</label><input id="shRole" placeholder="Front desk, room attendant"></div>
-      <div class="form-field"><label>Staff ID (optional)</label><input id="shStaff"></div>
     </div>
+    <div class="form-field"><label>Note (optional)</label><input id="shNotes"></div>
+    <p class="muted" style="font-size:0.8rem;">An end time earlier than the start means the shift runs past midnight. Shifts are saved as drafts until you publish.</p>
     <div class="modal-actions">
-      <button class="btn btn-primary" id="shBtn">Add shift</button>
+      <button class="btn btn-primary" id="shBtn">Add shifts</button>
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
     </div>
   `);
+  if (staffId) document.getElementById("shStaff").value = staffId;
+  document.querySelectorAll(".sh-day").forEach((cb) => { cb.checked = preset.includes(cb.value); });
   document.getElementById("shBtn").onclick = async (e) => {
-    const res = await runAction(e.currentTarget, () => adminApi.saveRoster([{
-      date: document.getElementById("shDate").value,
-      departmentCode: document.getElementById("shDept").value,
-      startTime: document.getElementById("shStart").value,
-      endTime: document.getElementById("shEnd").value,
-      role: document.getElementById("shRole").value.trim(),
-      staffId: document.getElementById("shStaff").value.trim() || undefined,
-    }]), "Shift added");
-    if (res) { closeModal(); rosterRefresh(); }
+    const picked = Array.from(document.querySelectorAll(".sh-day:checked")).map((cb) => cb.value);
+    if (!picked.length) return showNotice("roNotice", "Tick at least one day.");
+    const start = document.getElementById("shStart").value, end = document.getElementById("shEnd").value;
+    if (!start || !end) return showNotice("roNotice", "Choose a start and end time.");
+    if (start === end) return showNotice("roNotice", "Start and end can't be the same time.");
+    const out = await rosterCall(e.currentTarget, () => adminApi.saveRoster(picked.map((date) => ({
+      staffId: document.getElementById("shStaff").value, date, startTime: start, endTime: end,
+      departmentId: document.getElementById("shDept").value || undefined,
+      role: document.getElementById("shRole").value.trim() || undefined,
+      notes: document.getElementById("shNotes").value.trim() || undefined,
+    }))), "Shifts added", "roNotice");
+    if (out) { closeModal(); rosterRefresh(); }
+  };
+}
+
+function rosterEditShift(id) {
+  const s = ROSTER_DATA.shifts.find((x) => x.id === id);
+  if (!s) return;
+  const people = ROSTER_DATA.staff.filter((p) => p.isActive || p.id === s.staffId);
+  const worked = !!(s.attendance && s.attendance.clockInAt);
+  const att = s.attendance;
+  openModal(html`
+    <h3>Shift — ${(s.staff && s.staff.name) || "Staff"}</h3>
+    <div id="roNotice"></div>
+    ${worked ? html`<div class="notice info" style="margin-bottom:10px;">Already worked: in ${fmtDateTime(att.clockInAt)}${att.clockOutAt ? `, out ${fmtDateTime(att.clockOutAt)}` : " (not clocked out yet)"}${att.lateMinutes ? ` · ${att.lateMinutes} min late` : ""}. Date, time and person are locked.</div>` : ""}
+    <div class="form-row">
+      <div class="form-field"><label>Staff member</label><select id="seStaff" ${worked ? "disabled" : ""}>${html.join(people.map((p) => html`<option value="${p.id}">${p.name}</option>`))}</select></div>
+      <div class="form-field"><label>Date</label><input type="date" id="seDate" ${worked ? "disabled" : ""}></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Start</label><input type="time" id="seStart" ${worked ? "disabled" : ""}></div>
+      <div class="form-field"><label>End</label><input type="time" id="seEnd" ${worked ? "disabled" : ""}></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Department</label>
+        <select id="seDept"><option value="">—</option>${html.join(ROSTER_DATA.departments.map((d) => html`<option value="${d.id}">${d.name}</option>`))}</select></div>
+      <div class="form-field"><label>Role</label><input id="seRole"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Status</label>
+        <select id="seStatus">${html.join(["SCHEDULED", "CONFIRMED", "SWAPPED", "ABSENT", "COMPLETED"].map((st) => html`<option value="${st}">${st.charAt(0) + st.slice(1).toLowerCase()}</option>`))}</select></div>
+      <div class="form-field"><label>Note</label><input id="seNotes"></div>
+    </div>
+    <p class="muted" style="font-size:0.8rem;">${s.publishedAt ? "Published — the person is told when you change or remove it." : "Draft — not visible to staff yet."}</p>
+    <div class="modal-actions" style="flex-wrap:wrap;">
+      <button class="btn btn-primary" id="seSave">Save changes</button>
+      ${worked ? "" : html`<button class="btn btn-outline" id="seWorked">Mark worked as scheduled</button>`}
+      ${s.status === "ABSENT" ? html`<button class="btn btn-outline" id="seUndoAbsent">Undo absent</button>` : worked ? "" : html`<button class="btn btn-outline" id="seAbsent">Mark absent</button>`}
+      ${worked ? "" : html`<button class="btn btn-danger" id="seDelete">Delete</button>`}
+      <button class="btn btn-outline" onclick="closeModal()">Close</button>
+    </div>
+  `);
+  document.getElementById("seStaff").value = s.staffId;
+  document.getElementById("seDate").value = s.date;
+  document.getElementById("seStart").value = s.startTime;
+  document.getElementById("seEnd").value = s.endTime;
+  document.getElementById("seDept").value = (s.department && s.department.id) || "";
+  document.getElementById("seRole").value = s.role || "";
+  document.getElementById("seStatus").value = s.status || "SCHEDULED";
+  document.getElementById("seNotes").value = s.notes || "";
+  const done = (out) => { if (out) { closeModal(); rosterRefresh(); } };
+  document.getElementById("seSave").onclick = async (e) => done(await rosterCall(e.currentTarget, () => adminApi.updateShift(id, {
+    staffId: document.getElementById("seStaff").value, date: document.getElementById("seDate").value,
+    startTime: document.getElementById("seStart").value, endTime: document.getElementById("seEnd").value,
+    departmentId: document.getElementById("seDept").value || null, role: document.getElementById("seRole").value.trim() || null,
+    status: document.getElementById("seStatus").value, notes: document.getElementById("seNotes").value.trim() || null,
+  }), "Shift updated", "roNotice"));
+  const attend = (action, okMsg) => async (e) => done(await rosterCall(e.currentTarget, () => adminApi.shiftAttendance(id, { action }), okMsg, "roNotice"));
+  const w = document.getElementById("seWorked"); if (w) w.onclick = attend("WORKED", "Recorded as worked");
+  const a = document.getElementById("seAbsent"); if (a) a.onclick = attend("ABSENT", "Marked absent");
+  const u = document.getElementById("seUndoAbsent"); if (u) u.onclick = attend("UNDO_ABSENT", "Absence removed");
+  const del = document.getElementById("seDelete");
+  if (del) del.onclick = async (e) => {
+    if (!confirm("Delete this shift?")) return;
+    done(await rosterCall(e.currentTarget, () => adminApi.deleteShift(id), "Shift deleted", "roNotice"));
   };
 }
 
