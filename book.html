@@ -190,7 +190,7 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmtMoney = (amount, currency) => {
-    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "USD", maximumFractionDigits: 0 }).format(amount); }
+    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: currency || "NGN", maximumFractionDigits: 0 }).format(amount); }
     catch { return `${currency || ""} ${Number(amount).toLocaleString()}`.trim(); }
   };
   const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -510,5 +510,6 @@ footer{background:var(--ink);color:rgba(237,230,214,.5);padding:40px 0;text-alig
 })();
 </script>
 <script src="chat-widget.js"></script>
+<script src="guest-link.js" defer></script>
 </body>
 </html>

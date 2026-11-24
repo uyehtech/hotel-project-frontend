@@ -88,7 +88,7 @@
     const whole = Number.isInteger(n);
     try {
       return new Intl.NumberFormat(intlLocale(), {
-        style: "currency", currency: currency || "", // throws when missing -> plain number below
+        style: "currency", currency: currency || "", currencyDisplay: currency === "NGN" ? "narrowSymbol" : "symbol", // throws when missing -> plain number below
         ...(whole ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {}),
       }).format(n);
     } catch (_) {

@@ -82,6 +82,7 @@ section{padding:56px 0}
 .eyebrow{font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);margin-bottom:12px;display:inline-flex;align-items:center;gap:8px}
 .eyebrow::before{content:"";width:24px;height:1px;background:var(--teal)}
 
+.gallery-main video,.gallery-main iframe{display:block;width:100%;height:100%}
 .gallery-main{aspect-ratio:16/9;border-radius:var(--radius);overflow:hidden;background:linear-gradient(135deg,var(--teal) 0%,var(--teal-light) 60%,var(--brass) 140%);background-size:cover;background-position:center;margin-bottom:12px}
 .gallery-thumbs{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px}
 .gallery-thumbs button{flex:0 0 100px;height:70px;border-radius:2px;border:2px solid transparent;background-size:cover;background-position:center;cursor:pointer;padding:0;background-color:var(--ivory-dim)}
@@ -221,6 +222,7 @@ h3.section-title{font-size:1.2rem;margin-bottom:16px}
 <div id="siteFooter"></div>
 <script src="footer.js"></script>
 
+<script src="room-media.js"></script>
 <script>
 (function () {
   "use strict";
@@ -279,21 +281,9 @@ h3.section-title{font-size:1.2rem;margin-bottom:16px}
     $("stateArea").innerHTML = `<div class="wrap"><p class="error-note">${esc(msg)} — <a href="index.html#locations" style="text-decoration:underline;">browse locations</a> instead.</p></div>`;
   }
 
+  // PATCH12-ROOM-VIDEO: video first, then photos (see room-media.js)
   function renderGallery(images, name) {
-    const imgs = (images && images.length) ? images : [null];
-    const main = $("galleryMain");
-    const setMain = (url) => { main.style.backgroundImage = url ? `url('${url}')` : ""; };
-    setMain(imgs[0]);
-    $("galleryThumbs").innerHTML = imgs.map((url, i) => `
-      <button type="button" class="${i === 0 ? "active" : ""}" data-i="${i}" style="${url ? `background-image:url('${esc(url)}')` : ""}" aria-label="${esc(name)} photo ${i + 1}"></button>
-    `).join("");
-    $("galleryThumbs").querySelectorAll("button").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        $("galleryThumbs").querySelectorAll("button").forEach((b) => b.classList.remove("active"));
-        btn.classList.add("active");
-        setMain(imgs[Number(btn.dataset.i)]);
-      });
-    });
+    UyehMedia.gallery({ main: $("galleryMain"), thumbs: $("galleryThumbs"), images: images, videoUrl: roomType && roomType.videoUrl, name: name });
   }
 
   function renderRoom() {
@@ -409,5 +399,6 @@ h3.section-title{font-size:1.2rem;margin-bottom:16px}
 })();
 </script>
 <script src="/chat-widget.js"></script>
+<script src="guest-link.js" defer></script>
 </body>
 </html>

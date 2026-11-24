@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- PATCH5-VENUE-ENQUIRIES-APPLIED -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -126,6 +127,10 @@ tr:last-child td { border-bottom: none; }
 .badge-inactive, .badge-cancelled, .badge-refunded, .badge-delete { background: rgba(163,57,42,0.1); color: var(--danger); }
 .badge-pending, .badge-open, .badge-maintenance, .badge-update { background: rgba(179,140,43,0.14); color: var(--brass-dark); }
 .badge-in_progress, .badge-cleaning, .badge-occupied { background: rgba(59,110,165,0.12); color: var(--info); }
+.badge-new, .badge-quoted { background: rgba(179,140,43,0.14); color: var(--brass-dark); }
+.badge-in_review { background: rgba(59,110,165,0.12); color: var(--info); }
+.badge-accepted { background: rgba(47,93,90,0.12); color: var(--teal); }
+.badge-declined, .badge-withdrawn { background: rgba(163,57,42,0.1); color: var(--danger); }
 
 .btn { font-family: var(--font-body); font-size: 0.84rem; font-weight: 600; padding: 10px 18px; border-radius: var(--radius); border: none; cursor: pointer; transition: opacity 0.15s; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -4946,6 +4951,119 @@ async function gbSetStatus(id) {
 }
 
 /* ============================================================
+   VENUE ENQUIRIES (manage_events) — guests asking to rent a hall,
+   garden or restaurant for their own event. Review -> quote -> decide.
+   The guest is notified at every step; a Support ticket with the same
+   reference carries the conversation.
+   ============================================================ */
+Object.assign(managerApi, {
+  listVenueEnquiries: (status) => adminRequest(`/manager/venue-enquiries${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  updateVenueEnquiry: (id, payload) => adminRequest(`/manager/venue-enquiries/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+});
+const VENUE_STATUS_LIST = ["NEW", "IN_REVIEW", "QUOTED", "ACCEPTED", "DECLINED", "WITHDRAWN"];
+let _venueRows = [];
+function venueDay(iso) { return iso ? new Date(iso).toLocaleDateString(undefined, { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" }) : "—"; }
+
+async function venueBadgeRefresh() {
+  if (!getToken() || !hasPermission("manage_events")) return;
+  try {
+    const { counts } = await managerApi.listVenueEnquiries();
+    const open = counts.NEW || 0;
+    const b = document.getElementById("venueNavBadge");
+    if (b) { b.textContent = open; b.style.display = open ? "" : "none"; }
+  } catch (_) { /* badge only */ }
+}
+
+async function loadVenueEnquiriesPage() {
+  document.getElementById("pageContent").innerHTML = html`
+    ${pageHeader("Venue Enquiries", "Guests asking to rent your halls, gardens or restaurant. Review, send a quote, and confirm.")}
+    <div id="venueStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;"></div>
+    <div class="panel">
+      <div class="panel-header">
+        <select id="veStatus" onchange="venueRefresh()" style="max-width:220px;"><option value="">All statuses</option>${mp8Options(VENUE_STATUS_LIST)}</select>
+      </div>
+      <div id="veNotice"></div>
+      <div id="veBody"><div class="loading-state">Loading…</div></div>
+    </div>`;
+  await venueRefresh();
+}
+async function venueRefresh() {
+  try {
+    const status = mp8Val("veStatus") || undefined;
+    const { enquiries, counts } = await managerApi.listVenueEnquiries(status);
+    _venueRows = enquiries || [];
+    const stats = document.getElementById("venueStats");
+    if (stats) stats.innerHTML = html.join(["NEW", "IN_REVIEW", "QUOTED", "ACCEPTED"].map((k) => html`<div class="stat-card"><b>${counts[k] || 0}</b><span>${k.replace("_", " ").toLowerCase()}</span></div>`));
+    const nb = document.getElementById("venueNavBadge"); if (nb) { nb.textContent = counts.NEW || 0; nb.style.display = counts.NEW ? "" : "none"; }
+    document.getElementById("veBody").innerHTML = html`
+      <div class="table-wrap"><table>
+        <thead><tr><th>Reference</th><th>Guest</th><th>Event</th><th>Date</th><th>Guests</th><th>Status</th><th>Quote</th><th>Received</th><th style="text-align:right;">Actions</th></tr></thead>
+        <tbody>${_venueRows.length ? html.join(_venueRows.map((e) => html`<tr>
+          <td><b>${e.reference}</b></td>
+          <td>${e.guest?.name || "—"}<div class="form-hint" style="margin:0;">${e.contactPhone}</div></td>
+          <td>${e.eventType}${e.spacePreference ? html`<div class="form-hint" style="margin:0;">${e.spacePreference}</div>` : ""}</td>
+          <td>${venueDay(e.preferredDate)}</td><td>${e.guestsCount}</td><td>${mp8Badge(e.status)}</td>
+          <td>${e.quoteAmount != null ? mp8Money(e.quoteAmount, e.quoteCurrency) : "—"}</td><td>${mp8Date(e.createdAt)}</td>
+          <td style="text-align:right;"><button class="btn btn-outline btn-sm" onclick="venueOpen('${e.id}')">Open</button></td></tr>`)) : mp8Empty(9, "No venue enquiries yet.")}</tbody>
+      </table></div>`;
+  } catch (err) { mp8Error("veBody", err); }
+}
+
+function venueOpen(id) {
+  const e = _venueRows.find((x) => x.id === id); if (!e) return;
+  const open = ["NEW", "IN_REVIEW", "QUOTED"].includes(e.status);
+  mp8OpenModal(`${e.reference} · ${e.eventType}`, html`
+    <div class="summary-line"><span>Status</span><span>${mp8Badge(e.status)}</span></div>
+    <div class="summary-line"><span>Guest</span><span>${e.guest?.name || "—"} · ${e.guest?.email || ""}</span></div>
+    <div class="summary-line"><span>Phone / WhatsApp</span><span>${e.contactPhone}</span></div>
+    <div class="summary-line"><span>Preferred date</span><span>${venueDay(e.preferredDate)}${e.backupDate ? html` (backup ${venueDay(e.backupDate)})` : ""}</span></div>
+    ${e.startTime || e.endTime ? html`<div class="summary-line"><span>Time</span><span>${e.startTime || "?"} – ${e.endTime || "?"}</span></div>` : ""}
+    <div class="summary-line"><span>Expected guests</span><span>${e.guestsCount}</span></div>
+    ${e.spacePreference ? html`<div class="summary-line"><span>Space</span><span>${e.spacePreference}</span></div>` : ""}
+    ${(e.services || []).length ? html`<div class="summary-line"><span>Wants</span><span>${e.services.join(", ")}</span></div>` : ""}
+    ${e.budget ? html`<div class="summary-line"><span>Budget</span><span>${e.budget}</span></div>` : ""}
+    ${e.notes ? html`<div class="form-field" style="margin-top:12px;"><label>Guest notes</label><div style="white-space:pre-wrap;">${e.notes}</div></div>` : ""}
+    ${e.status === "DECLINED" && e.declineReason ? html`<div class="summary-line"><span>Decline reason</span><span>${e.declineReason}</span></div>` : ""}
+    ${e.quoteAmount != null ? html`<div class="summary-line"><span>Quote</span><span><b>${mp8Money(e.quoteAmount, e.quoteCurrency)}</b>${e.quoteValidUntil ? html` · valid until ${venueDay(e.quoteValidUntil)}` : ""}</span></div>` : ""}
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0;">
+    ${open ? html`
+      <div class="form-row"><div class="form-field"><label for="veQuote">Quote amount</label><input type="number" id="veQuote" min="0" step="0.01" value="${e.quoteAmount ?? ""}" placeholder="e.g. 2500000"></div>
+        <div class="form-field"><label for="veCur">Currency</label><input type="text" id="veCur" maxlength="3" value="${e.quoteCurrency || ""}" placeholder="branch default" style="text-transform:uppercase;"></div>
+        <div class="form-field"><label for="veValid">Valid until</label><input type="date" id="veValid" value="${e.quoteValidUntil ? String(e.quoteValidUntil).slice(0, 10) : ""}"></div></div>
+      <div class="form-field"><label for="veQNotes">What the quote includes <span class="form-hint">(shown to the guest)</span></label><textarea id="veQNotes" rows="2">${e.quoteNotes || ""}</textarea></div>
+      <div class="form-field"><label for="veReason">Reason if declining <span class="form-hint">(shown to the guest)</span></label><input type="text" id="veReason" maxlength="500"></div>` : ""}
+    <div class="form-field"><label for="veNote">Internal notes <span class="form-hint">(never shown to the guest)</span></label><textarea id="veNote" rows="2">${e.internalNotes || ""}</textarea></div>
+    ${e.handledByName ? html`<p class="form-hint">Last handled by ${e.handledByName}.</p>` : ""}`,
+    html`<button class="btn btn-outline" onclick="mp8CloseModal()">Close</button>
+      <button class="btn btn-outline" onclick="switchPage('tickets'); mp8CloseModal();" title="Reply in the Support thread titled ${e.reference}">Open conversation</button>
+      <button class="btn btn-outline" onclick="venueAct('${e.id}', null)">Save notes</button>
+      ${open ? html`${e.status === "NEW" ? html`<button class="btn btn-outline" onclick="venueAct('${e.id}', 'IN_REVIEW')">Mark in review</button>` : ""}
+        <button class="btn btn-danger" onclick="venueAct('${e.id}', 'DECLINED')">Decline</button>
+        <button class="btn btn-outline" onclick="venueAct('${e.id}', 'ACCEPTED')" title="Use when the guest confirmed outside the app">Confirm booking</button>
+        <button class="btn btn-primary" onclick="venueAct('${e.id}', 'QUOTED')">Send quote</button>` : ""}`, 780);
+}
+
+async function venueAct(id, status) {
+  const payload = { internalNotes: mp8Val("veNote") };
+  if (status) {
+    payload.status = status;
+    if (status === "QUOTED") {
+      const amt = Number(mp8Val("veQuote"));
+      if (!(amt > 0)) return mp8ModalNotice("Enter the quote amount first.");
+      payload.quoteAmount = amt; payload.quoteNotes = mp8Val("veQNotes");
+      if (mp8Val("veCur")) payload.quoteCurrency = mp8Val("veCur").toUpperCase();
+      if (mp8Val("veValid")) payload.quoteValidUntil = mp8Val("veValid");
+    }
+    if (status === "DECLINED") payload.declineReason = mp8Val("veReason");
+  }
+  try {
+    await managerApi.updateVenueEnquiry(id, payload);
+    mp8CloseModal(); await venueRefresh();
+    mp8Notice("veNotice", status ? "Saved. The guest has been notified." : "Notes saved.", "success");
+  } catch (err) { mp8ModalNotice(err.message); }
+}
+
+/* ============================================================
    NAV + ROUTER WIRING
    ============================================================ */
 function mp8NavInsert(groupId, items, afterPage) {
@@ -4976,6 +5094,9 @@ mp8NavInsert("operations", [
 mp8NavInsert("operations", [
   { page: "ticketdesk", label: "Ticket Desk", icon: "fa-qrcode", permission: "manage_events" },
 ], "events");
+mp8NavInsert("operations", [
+  { page: "venueenquiries", label: "Venue Enquiries", icon: "fa-champagne-glasses", permission: "manage_events", badgeId: "venueNavBadge" },
+], "events");
 mp8NavInsert("finance", [
   { page: "invoices", label: "Invoices", icon: "fa-file-invoice-dollar", permission: "manage_payments" },
   { page: "refunds", label: "Refunds", icon: "fa-rotate-left", permission: "manage_payments" },
@@ -5000,6 +5121,7 @@ Object.assign(PAGE_LOADERS, {
   orderdesk: loadOrderDeskPage,
   stocklogistics: loadStockLogisticsPage,
   ticketdesk: loadTicketScanPage,
+  venueenquiries: loadVenueEnquiriesPage,
   invoices: loadInvoicesPage,
   refunds: loadRefundsPage,
   roster: loadRosterPage,
@@ -5061,7 +5183,8 @@ function renderSidebar() {
 
 // This layer loads after the original boot line, so re-render the shell for a
 // session that was already restored from storage.
-if (getToken() && getStaff()) { renderSidebar(); switchPage("dashboard"); }
+if (getToken() && getStaff()) { renderSidebar(); switchPage("dashboard"); venueBadgeRefresh(); }
+setInterval(venueBadgeRefresh, 120000);
 
 </script>
 </body>

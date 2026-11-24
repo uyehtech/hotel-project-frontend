@@ -475,7 +475,8 @@
     const supported = cfg.supported?.length ? cfg.supported : [cfg.base];
     supportedCurrencies = supported;
     const saved = localStorage.getItem(KEY.currency);
-    currency = supported.includes(saved) ? saved : guessCurrency(supported) || cfg.base;
+    // Default = the hotel's own currency. Never guess from the browser language; only the visitor's own choice overrides.
+    currency = supported.includes(saved) ? saved : (supported.includes(cfg.base) ? cfg.base : supported[0]);
 
     if (supported.length > 1 && !rates && !fromCache) {
       try {
@@ -483,8 +484,22 @@
         if (res.ok) rates = await res.json();
       } catch (_) { /* show native prices */ }
     }
+    ensureNavCurrencyPicker(supported);
     renderPrices();
     renderCurrencySelect(supported);
+  }
+
+  // A visible currency picker in the top menu (the footer one stays). Only when >1 currency is enabled.
+  function ensureNavCurrencyPicker(supported) {
+    if (supported.length < 2) return;
+    const nav = document.getElementById("navLinks") || document.querySelector(".nav-links");
+    if (!nav || nav.querySelector("[data-currency-select]")) return;
+    const sel = document.createElement("select");
+    sel.setAttribute("data-currency-select", "");
+    sel.setAttribute("aria-label", "Currency");
+    sel.style.cssText = "background:transparent;color:inherit;border:1px solid rgba(237,230,214,.35);border-radius:999px;padding:6px 10px;font:inherit;font-size:.82rem;cursor:pointer";
+    const cta = nav.querySelector(".nav-cta");
+    if (cta) nav.insertBefore(sel, cta); else nav.appendChild(sel);
   }
 
   function guessCurrency(supported) {
@@ -507,7 +522,7 @@
   function formatMoney(amount, cur, { approx = false } = {}) {
     const n = Number(amount);
     const whole = Number.isInteger(n) || (approx && Math.abs(n) >= 100);
-    try { return new Intl.NumberFormat(locale, { style: "currency", currency: cur, ...(whole ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {}) }).format(n); }
+    try { return new Intl.NumberFormat(locale, { style: "currency", currency: cur, currencyDisplay: cur === "NGN" ? "narrowSymbol" : "symbol", ...(whole ? { minimumFractionDigits: 0, maximumFractionDigits: 0 } : {}) }).format(n); }
     catch (_) { return `${cur} ${n.toFixed(2)}`; }
   }
 
@@ -518,7 +533,7 @@
       const from = el.getAttribute("data-currency") || (settings && settings.baseCurrency) || "NGN";
       if (!isFinite(raw)) return;
       const c = convert(raw, from, currency || from);
-      el.textContent = formatMoney(c.amount, c.currency, { approx: c.converted });
+      el.textContent = (c.converted ? "\u2248 " : "") + formatMoney(c.amount, c.currency, { approx: c.converted });
       // The charge is always in the property's own currency — say so.
       if (c.converted) el.title = tr("price.indicative", "Approximate. You'll be charged {amount} at booking.", { amount: formatMoney(raw, from) });
       else el.removeAttribute("title");

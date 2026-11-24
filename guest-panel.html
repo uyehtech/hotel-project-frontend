@@ -357,6 +357,12 @@ td { padding: 13px 12px; border-bottom: 1px solid var(--border-soft); vertical-a
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
 @media print { .navbar, .tabbar, #toastStack, .btn { display: none !important; } body { background: #fff; } }
 
+.nav-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.bell { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.06); color: #ede6d6; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.bell:hover { background: rgba(255,255,255,0.12); } .bell .nav-badge { position: absolute; top: -4px; right: -4px; }
+.chip input[type=checkbox] { accent-color: var(--brass-dark); }
+.chip:has(input:checked) { background: var(--ink); border-color: var(--ink); color: #fff; }
+
 [hidden] { display: none !important; }
 .room-card.clickable { cursor: pointer; } .room-card.clickable:hover { box-shadow: var(--shadow); }
 .prose { line-height: 1.75; } .prose p { margin-bottom: 12px; } .prose img { border-radius: 10px; margin: 8px 0; } .prose h2, .prose h3 { margin: 18px 0 8px; } .prose ul, .prose ol { margin: 0 0 12px 22px; } .prose a { color: var(--brass-dark); text-decoration: underline; }
@@ -439,9 +445,12 @@ td { padding: 13px 12px; border-bottom: 1px solid var(--border-soft); vertical-a
   <header class="navbar">
     <button class="nav-brand" onclick="switchPage('search')" aria-label="Home"><div class="logo-icon" id="navBrandIcon">H</div><span id="navBrandText">Our Hotel</span></button>
     <nav class="nav-links" id="navLinks" aria-label="Main"></nav>
+    <div class="nav-right">
+    <button type="button" class="bell" id="bellBtn" aria-label="Notifications" onclick="openNotifications()"><i class="fas fa-bell"></i><span class="nav-badge" id="notifBadge">0</span></button>
     <div class="nav-user">
       <button class="avatar-btn" id="userMenuBtn" aria-haspopup="true" aria-expanded="false" onclick="toggleUserMenu(event)"><span class="avatar" id="navAvatar">?</span><span class="nm" id="navUserName"></span><i class="fas fa-chevron-down" style="font-size:.6rem;opacity:.6"></i></button>
       <div class="menu" id="userMenu" role="menu"></div>
+    </div>
     </div>
   </header>
   <div id="globalBanner"></div>
@@ -1205,7 +1214,7 @@ const NAV_PRIMARY = [
   { page: "search", label: "Stay", icon: "fa-bed" },
   { page: "bookings", label: "My Trips", icon: "fa-suitcase-rolling" },
   { page: "order", label: "Dine & Spa", icon: "fa-utensils", alias: ["myorders"] },
-  { page: "upcomingevents", label: "Events", icon: "fa-champagne-glasses", alias: ["events"] },
+  { page: "upcomingevents", label: "Events", icon: "fa-champagne-glasses", alias: ["events", "hostevent"] },
   { page: "blog", label: "Journal", icon: "fa-newspaper" },
   { page: "support", label: "Support", icon: "fa-headset", badgeId: "supportNavBadge" },
 ];
@@ -1270,6 +1279,7 @@ const PAGE_LOADERS = {
   order: () => loadOrderPage(),
   blog: () => loadBlogPage(),
   events: () => loadEventsPage(),
+  hostevent: () => loadHostEventPage(),
   upcomingevents: () => loadUpcomingEventsPage(),
   loyalty: () => loadLoyaltyPage(),
   wishlist: () => loadWishlistPage(),
@@ -1359,8 +1369,8 @@ async function loadSearchPage() {
     </section>
     <form class="search-panel" id="searchForm" onsubmit="event.preventDefault(); runRoomSearch();">
       <div class="search-grid">
-        <div class="search-field"><label for="seBranch">Where</label>
-          <select id="seBranch" ${branchErr || !branches.length ? "disabled" : ""}>
+        <div class="search-field"><label for="seBranch">Where <button type="button" class="link-btn small" id="nearBtn" onclick="findNearestBranch()" style="margin-left:6px;"><i class="fas fa-location-crosshairs"></i> Nearest to me</button></label>
+          <select id="seBranch" onchange="renderBranchReviews()" ${branchErr || !branches.length ? "disabled" : ""}>
             ${branchErr ? html`<option value="">Couldn't load branches</option>` : !branches.length ? html`<option value="">No branches available</option>`
               : html.join(branches.map((b) => html`<option value="${b.id}" ${b.id === branchId ? "selected" : ""}>${b.name}${b.city ? " — " + b.city : ""}</option>`))}
           </select></div>
@@ -1377,9 +1387,9 @@ async function loadSearchPage() {
     <div id="searchNotice"></div>
     <div id="nextStay"></div>
     <div id="searchResults">${branchErr ? errorState("We couldn't load our branches. Check your connection.", "switchPage('search')") : ""}</div>
-    <div id="searchExtras"></div>`;
+    <div id="searchExtras"></div><div id="branchReviews"></div>`;
   onSearchDatesChange();
-  renderSearchExtras();
+  renderSearchExtras(); renderBranchReviews();
   renderNextStay();
   if (_searchContext && _availableRoomsCache.length && _searchContext.branchId === branchId && $("seBranch").value === branchId) renderRoomResults();
 }
@@ -1435,7 +1445,7 @@ async function runRoomSearch() {
     if (CURRENT_PAGE !== "search") return;
     _availableRoomsCache = availableRooms || [];
     renderRoomResults();
-    resultsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    resultsEl.scrollIntoView?.({ behavior: "smooth", block: "start" });
   } catch (err) {
     resultsEl.innerHTML = "";
     showNotice("searchNotice", err.message);
@@ -1473,6 +1483,7 @@ function renderRoomResults() {
           ${html.join([["recommended", "Recommended"], ["low", "Price: low to high"], ["high", "Price: high to low"], ["capacity", "Sleeps most"]].map(([v, l]) => html`<option value="${v}" ${_searchView.sort === v ? "selected" : ""}>${l}</option>`))}</select></label>
     </div>
     ${topAmenities.length ? html`<div class="chips scroll" style="margin-bottom:14px;">${html.join(topAmenities.map((a) => html`<button type="button" class="chip ${_searchView.amenities.has(a) ? "active" : ""}" onclick="toggleAmenityFilter(${refJs(a)})">${a}</button>`))}</div>` : ""}
+    ${all.length > 1 ? html`<div class="notice info"><span><i class="fas fa-people-roof"></i> Travelling as a group? <button type="button" class="link-btn" onclick="openGroupBooking()">Reserve several rooms together</button></span></div>` : ""}
     ${hidden > 0 && !_searchView.showAll ? html`<div class="notice info"><span>${plural(hidden, "room")} hidden because they sleep fewer than ${ctx.guests} guests. <button type="button" class="link-btn" onclick="showAllRooms()">Show anyway</button></span></div>` : ""}
     ${rooms.length ? html`<div class="room-grid">${html.join(rooms.map((r) => roomCard(r, ctx, nights)))}</div>`
       : html`<div class="empty-state"><div class="ei"><i class="fas fa-filter"></i></div><h3>No rooms match those filters</h3><p>Clear a filter to see more rooms.</p><button class="btn btn-outline" onclick="clearRoomFilters()">Clear filters</button></div>`}
@@ -1539,6 +1550,7 @@ function openBookingModal(room) {
   const nights = Math.max(1, nightsBetween(ctx.checkIn, ctx.checkOut));
   const subtotal = Number(room.basePrice) * nights;
   const imgs = (room.images || []).filter(Boolean);
+  window._bkRoom = room;
   openModal(html`
     ${imgs.length ? html`<img src="${imgs[0]}" alt="" style="width:100%;height:150px;object-fit:cover;border-radius:12px;margin-bottom:14px;">` : ""}
     <h3>${room.name}</h3>
@@ -1550,9 +1562,9 @@ function openBookingModal(room) {
         <div class="form-field"><label for="bkPhone">Phone <span class="opt">(optional)</span></label><input type="tel" id="bkPhone" value="${guest.phone || ""}" autocomplete="tel"></div>
       </div>
       <div class="form-field"><label for="bkRequests">Special requests <span class="opt">(optional)</span></label><textarea id="bkRequests" rows="2" placeholder="Late arrival, extra pillows, quiet room…"></textarea></div>
-      <div class="form-field"><label for="bkPromo">Promo code <span class="opt">(optional)</span></label><input type="text" id="bkPromo" placeholder="e.g. LOYALTY-AB12CD" autocapitalize="characters" autocomplete="off"></div>
+      <div class="form-field"><label for="bkPromo">Promo code <span class="opt">(optional)</span></label><div class="row" style="gap:8px;"><input type="text" id="bkPromo" placeholder="e.g. LOYALTY-AB12CD" autocapitalize="characters" autocomplete="off" style="flex:1"><button type="button" class="btn btn-outline" id="bkPromoBtn" onclick="applyBookingPromo()">Apply</button></div><div id="bkPromoResult" class="hint" aria-live="polite"></div></div>
       <div class="summary-line"><span>${plural(nights, "night")} × ${money(room.basePrice, room.currency)}</span><span>${money(subtotal, room.currency)}</span></div>
-      <div class="summary-line total"><span>Room total</span><span>${money(subtotal, room.currency)}</span></div>
+      <div class="summary-line total"><span>Room total</span><span id="bkTotal">${money(subtotal, room.currency)}</span></div>
       <p class="hint">Any promo discount is applied when you pay. You'll see the payment options available for this room's currency on the next step.</p>
       <div id="bkPolicy"></div>
       <div class="modal-actions">
@@ -1686,8 +1698,9 @@ async function loadMyBookingsPage() {
     <div class="tabs" role="tablist">
       ${html.join([["stays", "Stays"], ["spa", "Spa & wellness"], ["waitlist", "Waitlist"]].map(([k, l]) => html`<button class="tab-btn ${_tripsTab === k ? "active" : ""}" role="tab" onclick="setTripsTab('${k}')">${l}</button>`))}
     </div>
-    <div id="myBookingsNotice"></div>
+    <div id="myBookingsNotice"></div><div id="lostFoundBox"></div>
     <div id="myBookingsList">${skeletonList(2)}</div>`;
+  if (_tripsTab === "stays") showLostFound();
   await renderTripsTab(page);
 }
 function setTripsTab(t) { _tripsTab = t; loadMyBookingsPage(); }
@@ -1785,7 +1798,15 @@ function openTripDetails(b) {
 }
 
 async function cancelMyBooking(branchId, id) {
-  const ok = await confirmDialog({ title: "Cancel this booking?", message: "This can't be undone. Any refund follows the branch's cancellation policy.", confirmLabel: "Yes, cancel booking", cancelLabel: "Keep booking", danger: true });
+  let message = "This can't be undone. Any refund follows the branch's cancellation policy.";
+  try {
+    const q = await guestApi.cancellationQuote(branchId, id);
+    const bits = [q.explanation];
+    if (Number(q.amountPaid) > 0) bits.push(`You've paid ${money(q.amountPaid, q.currency)}. Refund: ${money(q.refundAmount, q.currency)}${Number(q.penaltyAmount) > 0 ? ` (${money(q.penaltyAmount, q.currency)} is kept under the policy)` : ""}.`);
+    bits.push("This can't be undone.");
+    message = bits.filter(Boolean).join(" ");
+  } catch { /* fall back to the generic wording */ }
+  const ok = await confirmDialog({ title: "Cancel this booking?", message, confirmLabel: "Yes, cancel booking", cancelLabel: "Keep booking", danger: true });
   if (!ok) return;
   try { await guestApi.cancelBooking(branchId, id); toast("Booking cancelled.", "success"); loadMyBookingsPage(); }
   catch (err) { showNotice("myBookingsNotice", err.message); }
@@ -1970,6 +1991,85 @@ async function leaveWaitlist(id) {
   try { await guestApi.cancelWaitlist(id); toast("Removed from the waitlist.", "success"); renderWaitlist("bookings"); } catch (err) { showNotice("myBookingsNotice", err.message); }
 }
 
+
+/* ---------------- Nearest branch + public reviews ---------------- */
+Object.assign(guestApi, {
+  nearbyBranches: (lat, lng, limit = 3) => guestRequest(`/branches/nearby?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}&limit=${limit}`),
+  branchReviews: (branchId) => guestRequest(`/branches/${encodeURIComponent(branchId)}/reviews`),
+  createGroupBooking: (branchId, payload) => guestRequest(`/branches/${encodeURIComponent(branchId)}/group-bookings`, { method: "POST", body: JSON.stringify(payload) }),
+});
+function findNearestBranch() {
+  if (!navigator.geolocation) return showNotice("searchNotice", "Your browser can't share your location. Pick a branch from the list.");
+  const btn = $("nearBtn"); if (btn) btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try {
+      const { branches } = await guestApi.nearbyBranches(pos.coords.latitude, pos.coords.longitude, 3);
+      const best = (branches || []).find((b) => b.distanceKm != null) || (branches || [])[0];
+      if (!best) throw new Error("No branches found.");
+      const sel = $("seBranch");
+      if (sel && [...sel.options].some((o) => o.value === best.id)) { sel.value = best.id; renderBranchReviews(); }
+      const km = best.distanceKm != null ? ` (${best.distanceKm < 10 ? best.distanceKm.toFixed(1) : Math.round(best.distanceKm)} km away)` : "";
+      showNotice("searchNotice", `Nearest branch: ${best.name}${best.city ? ", " + best.city : ""}${km}.`, "success");
+    } catch (err) { showNotice("searchNotice", err.message); }
+    if ($("nearBtn")) $("nearBtn").disabled = false;
+  }, () => { showNotice("searchNotice", "We couldn't get your location. Allow location access, or pick a branch from the list."); if ($("nearBtn")) $("nearBtn").disabled = false; }, { timeout: 10000, maximumAge: 300000 });
+}
+async function renderBranchReviews() {
+  const el = $("branchReviews"), sel = $("seBranch"); if (!el || !sel || !sel.value) return;
+  const id = sel.value;
+  try {
+    const { reviews } = await guestApi.branchReviews(id);
+    if (!$("branchReviews") || $("seBranch").value !== id) return;
+    if (!reviews || !reviews.length) { el.innerHTML = ""; return; }
+    const avg = reviews.reduce((a, r) => a + (Number(r.ratingValue) || 0), 0) / reviews.length;
+    el.innerHTML = html`<h2 class="section-title" style="margin-top:34px;">What guests say <span class="muted small" style="font-weight:500;"><span class="stars">${stars(Math.round(avg))}</span> ${avg.toFixed(1)} · ${plural(reviews.length, "review")}</span></h2>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">${html.join(reviews.slice(0, 6).map((r) => html`<div class="panel" style="margin:0;">
+        <div class="stars">${stars(r.ratingValue)}</div>${r.title ? html`<b>${r.title}</b>` : ""}
+        ${r.body ? html`<p class="small" style="margin:6px 0;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;">${r.body}</p>` : ""}
+        <div class="small muted">${(r.guest && r.guest.name || "Guest").split(" ")[0]} · ${fmtD(r.createdAt)}</div></div>`))}</div>`;
+  } catch { if ($("branchReviews")) $("branchReviews").innerHTML = ""; /* decoration only */ }
+}
+
+/* ---------------- Group booking: several rooms, one group ---------------- */
+function openGroupBooking() {
+  const ctx = _searchContext; if (!ctx || !_availableRoomsCache.length) return;
+  const nights = nightsBetween(ctx.checkIn, ctx.checkOut), g = getGuest() || {};
+  const m = openModal(html`<h3>Group booking</h3><p class="modal-sub">${fmtDay(ctx.checkIn)} → ${fmtDay(ctx.checkOut)} · ${plural(nights, "night")}. Each room is held for you and paid for separately from My stays.</p>
+    <div id="groupNotice"></div>
+    <form id="groupForm" novalidate>
+      <div class="form-field"><label for="grName">Group name</label><input type="text" id="grName" maxlength="120" placeholder="e.g. Okon wedding party" required></div>
+      <div class="form-field"><label>Choose rooms</label><div id="grRooms">${html.join(_availableRoomsCache.map((r) => html`<div class="row between" style="gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <label class="row" style="gap:10px;cursor:pointer;flex:1;"><input type="checkbox" name="grRoom" value="${r.id}" data-cap="${r.maxOccupancy}" data-price="${r.basePrice}" data-cur="${r.currency || ""}"> <span><b>${r.name}</b> <span class="small muted">Room ${r.roomNumber} · sleeps ${r.maxOccupancy}</span></span></label>
+        <span class="small">${money(r.basePrice, r.currency)}<span class="muted">/night</span></span>
+        <input type="number" class="grGuests" data-room="${r.id}" min="1" max="${r.maxOccupancy}" value="1" aria-label="Guests in ${r.name}" style="width:64px;" disabled></div>`))}</div>
+        <p class="form-hint">The box on the right is how many guests sleep in that room.</p></div>
+      <div class="summary-line total"><span id="grCount">No rooms chosen</span><span id="grTotal"></span></div>
+      <div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal(this)">Cancel</button><button type="submit" class="btn btn-primary" id="grBtn">Reserve rooms</button></div>
+    </form>`, { id: "groupModal" });
+  const checks = () => [...m.querySelectorAll('input[name="grRoom"]')];
+  const upd = () => {
+    const sel = checks().filter((c) => c.checked); const cur = new Set(sel.map((c) => c.dataset.cur));
+    m.querySelectorAll(".grGuests").forEach((i) => { i.disabled = !sel.some((c) => c.value === i.dataset.room); });
+    $("grCount").textContent = sel.length ? plural(sel.length, "room") : "No rooms chosen";
+    $("grTotal").textContent = sel.length && cur.size === 1 ? money(sel.reduce((a, c) => a + Number(c.dataset.price) * nights, 0), [...cur][0]) : "";
+  };
+  m.addEventListener("change", upd);
+  $("groupForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const sel = checks().filter((c) => c.checked), name = $("grName").value.trim();
+    if (!name) return showNotice("groupNotice", "Give your group a name.");
+    if (!sel.length) return showNotice("groupNotice", "Choose at least one room.");
+    const rooms = sel.map((c) => { const gi = m.querySelector(`.grGuests[data-room="${c.value}"]`); return { roomId: c.value, guestsCount: Math.min(Number(c.dataset.cap) || 1, Math.max(1, Math.floor(Number(gi.value) || 1))) }; });
+    await withBusy($("grBtn"), async () => {
+      try {
+        const body = { groupName: name, checkIn: ctx.checkIn, checkOut: ctx.checkOut, rooms, guest: { name: g.name, email: g.email, phone: g.phone } };
+        await guestApi.createGroupBooking(ctx.branchId, body);
+        closeModal(m); toast(`Group "${name}" reserved. Pay for each room in My stays to confirm it.`, "success"); switchPage("bookings");
+      } catch (err) { showNotice("groupNotice", err.message); }
+    }, "Reserving…");
+  });
+}
+
 /* ============================================================
    DINE & SPA — ordering, cart, spa booking, My Orders
    ============================================================ */
@@ -2152,24 +2252,48 @@ async function submitOrder(btn) {
   }, "Processing…");
 }
 
-/* ---------------- Spa booking ---------------- */
+/* ---------------- Spa booking (real open slots from the branch) ---------------- */
 function bookSpaTreatment(id) {
   const t = _catalogItems.get(id); if (!t) return;
-  const rb = roomChargeBooking();
-  const minLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000 + 3600000).toISOString().slice(0, 16);
+  const rb = roomChargeBooking(); const today = todayLocalISO();
   const m = openModal(html`
     <h3>Book ${t.name}</h3>
     <p class="modal-sub">${t.durationMinutes} minutes · ${money(t.price, t.currency)}</p>
     <div id="spaModalNotice"></div>
-    <form id="spaForm">
-      <div class="form-field"><label for="spTime">Date &amp; time</label><input type="datetime-local" id="spTime" min="${minLocal}" required></div>
+    <form id="spaForm" novalidate>
+      <div class="form-field"><label for="spDate">Choose a day</label><input type="date" id="spDate" min="${today}" value="${today}"></div>
+      <div class="form-field"><label>Available times</label><div id="spaSlots" class="chips" aria-live="polite"></div><input type="hidden" id="spChosen"></div>
       ${rb ? html`<label class="checkbox-item"><input type="checkbox" id="spChargeToRoom" value="${rb.id}" onchange="$('spSubmitBtn').textContent = this.checked ? 'Charge to room' : 'Book & pay'"> Charge to Room ${rb.room?.roomNumber || ""} instead of paying now</label>` : ""}
-      <div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal(this)">Cancel</button><button type="submit" class="btn btn-primary" id="spSubmitBtn">Book &amp; pay</button></div>
+      <div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeModal(this)">Cancel</button><button type="submit" class="btn btn-primary" id="spSubmitBtn" disabled>Book &amp; pay</button></div>
     </form>`, { id: "spaModal" });
+  let manual = false;
+  const loadSlots = async () => {
+    const box = $("spaSlots"); if (!box) return; $("spChosen").value = ""; $("spSubmitBtn").disabled = true;
+    const date = $("spDate").value; if (!date) { box.innerHTML = ""; return; }
+    box.innerHTML = `<span class="small muted">Checking availability…</span>`;
+    try {
+      const r = await guestApi.spaSlots(_orderBranchId, t.id, date);
+      if (!$("spaSlots")) return;
+      const slots = r.slots || [];
+      if (!slots.length) { box.innerHTML = html`<span class="small muted">${r.reason || "No times left on this day. Try another date."}</span>`; return; }
+      box.innerHTML = html.join(slots.map((s) => html`<button type="button" class="chip" data-start="${s.startsAt}" aria-pressed="false">${new Date(s.startsAt).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</button>`));
+      box.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => {
+        box.querySelectorAll(".chip").forEach((x) => { x.classList.remove("active"); x.setAttribute("aria-pressed", "false"); });
+        c.classList.add("active"); c.setAttribute("aria-pressed", "true"); $("spChosen").value = c.dataset.start; $("spSubmitBtn").disabled = false;
+      }));
+    } catch {
+      // Slot service unavailable: let the guest propose a time and the branch will confirm.
+      manual = true;
+      $("spaSlots").innerHTML = `<input type="time" id="spManual" style="max-width:160px;"><div class="hint">We couldn't load open times. Pick a time and we'll confirm it.</div>`;
+      $("spManual").addEventListener("input", () => { $("spSubmitBtn").disabled = !$("spManual").value; });
+    }
+  };
+  $("spDate").addEventListener("change", loadSlots); loadSlots();
   $("spaForm").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const when = new Date($("spTime").value);
-    if (isNaN(when)) return showNotice("spaModalNotice", "Please choose a date and time.");
+    let when = $("spChosen").value ? new Date($("spChosen").value) : null;
+    if (manual && $("spManual") && $("spManual").value) when = new Date(`${$("spDate").value}T${$("spManual").value}`);
+    if (!when || isNaN(when)) return showNotice("spaModalNotice", "Please choose a time.");
     const cb = $("spChargeToRoom"); const chargeToRoom = !!(cb && cb.checked);
     await withBusy($("spSubmitBtn"), async () => {
       try {
@@ -2179,7 +2303,7 @@ function bookSpaTreatment(id) {
         closeModal(m);
         if (url) { toast("Taking you to secure payment…", "info"); goTo(url); }
         else toast("Spa appointment booked!", "success");
-      } catch (err) { showNotice("spaModalNotice", err.message); }
+      } catch (err) { showNotice("spaModalNotice", err.message); loadSlots(); }
     }, "Booking…");
   });
 }
@@ -2192,6 +2316,7 @@ function bookSpaTreatment(id) {
 const EVENT_KINDS = {
   upcoming: { page: "upcomingevents", label: "Upcoming events", list: (b) => guestApi.listUpcomingEvents(b).then((r) => r.upcomingEvents || []), title: (e) => e.title, price: (e) => e.ticketPrice, orderType: "UPCOMING_EVENT_TICKET", idField: "upcomingEventId", saveField: null, empty: "Nothing on the calendar at this branch right now." },
   hosted: { page: "events", label: "More at the hotel", list: (b) => guestApi.listEvents(b).then((r) => r.events || []), title: (e) => e.name, price: (e) => e.price, orderType: "EVENT_TICKET", idField: "eventId", saveField: "eventId", empty: "No events scheduled at this branch right now." },
+  host: { page: "hostevent", label: "Host your own event" },
 };
 let _eventsKind = "upcoming";
 let _eventsBranches = [];
@@ -2200,10 +2325,15 @@ let _eventList = new Map();
 
 function loadUpcomingEventsPage() { _eventsKind = "upcoming"; return loadEventsHub(); }
 function loadEventsPage() { _eventsKind = "hosted"; return loadEventsHub(); }
+function loadHostEventPage() { _eventsKind = "host"; return loadEventsHub(); }
+function eventsKindShow() {
+  const w = $("evBranchWrap"); if (w) w.hidden = _eventsKind === "host";
+  if (_eventsKind === "host") renderVenueEnquiry(); else loadEventsList();
+}
 
 async function loadEventsHub() {
   const page = EVENT_KINDS[_eventsKind].page;
-  setHtml("pageContent", html`${pageHeader("Events", "Hotel-hosted evenings and experiences. Buy a ticket and you're on the guest list.", "What's on")}<div id="eventsBody">${skeletonCards(3)}</div>`);
+  setHtml("pageContent", html`${pageHeader("Events", "Hotel-hosted evenings and experiences, or host your own with us.", "What's on")}<div id="eventsBody">${skeletonCards(3)}</div>`);
   try { _eventsBranches = (await guestApi.listBranches()).branches || []; }
   catch (err) { if (stillOn(page)) setHtml("eventsBody", errorState(err.message, "loadEventsHub()")); return; }
   if (!stillOn(page)) return;
@@ -2212,18 +2342,18 @@ async function loadEventsHub() {
   setHtml("eventsBody", html`
     <div class="row wrap between" style="margin-bottom:18px;gap:12px;">
       <div class="chips" id="eventsKinds">${html.join(Object.entries(EVENT_KINDS).map(([k, v]) => html`<button class="chip ${k === _eventsKind ? "active" : ""}" onclick="setEventsKind('${k}')">${v.label}</button>`))}</div>
-      <div class="form-field" style="margin:0;min-width:200px;"><label class="sr-only" for="evBranch">Branch</label>
-        <select id="evBranch" onchange="_eventsBranchId=this.value; loadEventsList()">${html.join(_eventsBranches.map((b) => html`<option value="${b.id}" ${b.id === _eventsBranchId ? raw("selected") : ""}>${b.name}</option>`))}</select></div>
+      <div class="form-field" id="evBranchWrap" style="margin:0;min-width:200px;"><label class="sr-only" for="evBranch">Branch</label>
+        <select id="evBranch" onchange="_eventsBranchId=this.value; eventsKindShow()">${html.join(_eventsBranches.map((b) => html`<option value="${b.id}" ${b.id === _eventsBranchId ? raw("selected") : ""}>${b.name}</option>`))}</select></div>
     </div>
     <div id="eventsNotice"></div><div id="eventsList"></div>
     <section style="margin-top:34px;"><h2 class="section-title">My tickets</h2><div id="myTicketsList">${skeletonList(1)}</div></section>`);
-  loadEventsList(); loadMyTickets();
+  eventsKindShow(); loadMyTickets();
 }
 function setEventsKind(k) {
   if (!EVENT_KINDS[k] || k === _eventsKind) return;
   _eventsKind = k;
   document.querySelectorAll("#eventsKinds .chip").forEach((el, i) => el.classList.toggle("active", Object.keys(EVENT_KINDS)[i] === k));
-  loadEventsList();
+  eventsKindShow();
 }
 
 async function loadEventsList() {
@@ -2234,7 +2364,7 @@ async function loadEventsList() {
     const events = await K.list(branchId);
     if (!$("eventsList") || kind !== _eventsKind || branchId !== _eventsBranchId) return;
     _eventList = new Map(events.map((e) => [e.id, e]));
-    if (!events.length) { el.innerHTML = emptyState({ icon: "fa-champagne-glasses", title: "Nothing scheduled yet", text: K.empty }); return; }
+    if (!events.length) { el.innerHTML = emptyState({ icon: "fa-champagne-glasses", title: "Nothing scheduled yet", text: K.empty }) + venueCta(); return; }
     el.innerHTML = html`<div class="room-grid">${html.join(events.map((ev) => {
       const price = Number(K.price(ev)) || 0; const img = (ev.images || [])[0];
       return html`<article class="room-card">
@@ -2247,7 +2377,7 @@ async function loadEventsList() {
           <div class="row between" style="margin-top:auto;padding-top:10px;"><div class="price"><b>${price ? money(price, ev.currency) : "Free"}</b></div>
             <button class="btn btn-primary btn-sm" onclick="openEventTicketModal('${ev.id}')">Get tickets</button></div>
         </div></article>`;
-    }))}</div>`;
+    }))}</div>${venueCta()}`;
   } catch (err) { if ($("eventsList")) el.innerHTML = errorState(err.message, "loadEventsList()"); }
 }
 
@@ -2278,21 +2408,6 @@ function openEventTicketModal(id) {
       } catch (err) { showNotice("eventTicketNotice", err.message); }
     }, "Working…");
   });
-}
-
-async function loadMyTickets() {
-  const el = $("myTicketsList"); if (!el) return;
-  try {
-    const { orders } = await guestApi.listMyOrders();
-    const tickets = orders.filter((o) => o.type === "UPCOMING_EVENT_TICKET" || o.type === "EVENT_TICKET");
-    if (!$("myTicketsList")) return;
-    el.innerHTML = tickets.length ? html`<div class="panel list" style="padding:0;">${html.join(tickets.map((o) => html`<div class="list-item">
-      <div class="list-icon"><i class="fas fa-ticket"></i></div>
-      <div class="grow"><b>${o.upcomingEvent?.title || o.event?.name || "Event ticket"}</b><div class="small muted">${o.items?.quantity ? plural(o.items.quantity, "ticket") + " · " : ""}${o.branch?.name || o.branchName || ""} · ${fmtD(o.createdAt)}</div></div>
-      <div style="text-align:right;">${statusBadge(o.status)}<div class="small muted">${orderPaymentLabel(o)}</div></div>
-      ${canPayOrder(o) ? html`<button class="btn btn-primary btn-sm" onclick="payPendingOrder('${o.id}', this)">Pay</button>` : ""}</div>`))}</div>`
-      : html`<p class="muted small">No tickets yet. They'll appear here once you book.</p>`;
-  } catch { if ($("myTicketsList")) el.innerHTML = ""; }
 }
 
 /* ============================================================
@@ -2639,12 +2754,18 @@ function renderProfileTab(tab) {
     panel.innerHTML = html`<form id="preferencesForm">
       <div class="form-field"><label for="pfDietary">Dietary notes <span class="opt">(allergies, restrictions)</span></label><textarea id="pfDietary" rows="2">${p.dietaryNotes || ""}</textarea></div>
       <div class="form-field"><label for="pfRequests">Standing requests <span class="opt">(room preferences, anything we should know ahead of time)</span></label><textarea id="pfRequests" rows="2">${p.specialRequests || ""}</textarea></div>
+      <p class="hint">Only the boxes you change are saved, so anything already on your profile stays as it is.</p>
       <button type="submit" class="btn btn-primary" id="pefSubmitBtn">Save preferences</button></form>
       <hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">
       ${languageField()}
       <h4 style="margin-bottom:6px;">Notifications on this device</h4>
       <p class="small muted" style="margin-bottom:12px;">Get order updates, booking confirmations and replies even when this tab is closed.</p>
-      <div id="pushToggleArea">${skeletonList(0)}<span class="small muted">Checking…</span></div>`;
+      <div id="pushToggleArea">${skeletonList(0)}<span class="small muted">Checking…</span></div>
+      <hr style="margin:24px 0;border:none;border-top:1px solid var(--border);">
+      <h4 style="margin-bottom:6px;">How we contact you</h4>
+      <p class="small muted" style="margin-bottom:12px;">Choose where booking updates and offers reach you.</p>
+      <div id="contactPrefsArea">${skeletonList(1)}</div>`;
+    renderContactPrefs();
     (async () => {
       let on = false; try { on = await isPushSubscribed(); } catch { /* unsupported */ }
       const area = $("pushToggleArea"); if (!area) return;
@@ -2652,11 +2773,14 @@ function renderProfileTab(tab) {
       area.innerHTML = !supported ? html`<span class="small muted">This browser doesn't support push notifications.</span>`
         : on ? html`<button class="btn btn-outline" onclick="handlePushToggle(false)">Turn off notifications</button>` : html`<button class="btn btn-primary" onclick="handlePushToggle(true)">Enable notifications</button>`;
     })();
+    ["pfDietary", "pfRequests"].forEach((i) => $(i).addEventListener("input", () => { $(i).dataset.d = "1"; }));
     $("preferencesForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const payload = {}; if ($("pfDietary").dataset.d) payload.dietaryNotes = $("pfDietary").value; if ($("pfRequests").dataset.d) payload.specialRequests = $("pfRequests").value;
+      if (!Object.keys(payload).length) return showNotice("profileNotice", "Nothing to save. Change a field first.", "info");
       await withBusy($("pefSubmitBtn"), async () => {
         try {
-          const { profile } = await guestApi.updatePreferences({ dietaryNotes: $("pfDietary").value, specialRequests: $("pfRequests").value });
+          const { profile } = await guestApi.updatePreferences(payload);
           window._guestProfile = { ...window._guestProfile, ...profile }; showNotice("profileNotice", "Preferences saved.", "success");
         } catch (err) { showNotice("profileNotice", err.message); }
       }, "Saving…");
@@ -2799,6 +2923,283 @@ async function requestAccountDeletion(btn) {
 }
 
 /* ============================================================
+   EXTRAS — venue-hire enquiry, event tickets (QR), notifications inbox,
+   contact preferences, promo check, lost & found
+   ============================================================ */
+Object.assign(guestApi, {
+  listEventTickets: () => guestRequest("/guest/event-tickets"),
+  listNotifications: (limit = 40) => guestRequest(`/guest/notifications?limit=${limit}`),
+  readNotification: (id) => guestRequest(`/guest/notifications/${encodeURIComponent(id)}/read`, { method: "POST" }),
+  getNotifPrefs: () => guestRequest("/guest/notification-preferences"),
+  updateNotifPrefs: (payload) => guestRequest("/guest/notification-preferences", { method: "PATCH", body: JSON.stringify(payload) }),
+  cancellationQuote: (branchId, id) => guestRequest(`/branches/${branchId}/bookings/${encodeURIComponent(id)}/cancellation-quote`),
+  spaSlots: (branchId, treatmentId, date) => guestRequest(`/branches/${branchId}/spa-slots?treatmentId=${encodeURIComponent(treatmentId)}&date=${encodeURIComponent(date)}`),
+  validatePromo: (branchId, code, subtotal, currency) => guestRequest(`/branches/${branchId}/promo-codes/${encodeURIComponent(code)}/validate?context=BOOKING&subtotal=${encodeURIComponent(subtotal)}&currency=${encodeURIComponent(currency || "")}`),
+  listLostFound: () => guestRequest("/guest/lost-and-found"),
+  createVenueEnquiry: (branchId, payload) => guestRequest(`/branches/${encodeURIComponent(branchId)}/venue-enquiries`, { method: "POST", body: JSON.stringify(payload) }),
+  listVenueEnquiries: () => guestRequest("/guest/venue-enquiries"),
+  acceptVenueQuote: (id) => guestRequest(`/guest/venue-enquiries/${encodeURIComponent(id)}/accept`, { method: "POST" }),
+  withdrawVenueEnquiry: (id) => guestRequest(`/guest/venue-enquiries/${encodeURIComponent(id)}/withdraw`, { method: "POST" }),
+});
+function plainText(s) { try { return (new DOMParser().parseFromString(String(s || ""), "text/html").body.textContent || "").replace(/\s+/g, " ").trim(); } catch { return String(s || ""); } }
+
+/* ---------------- Host an event (venue-hire enquiry) ----------------
+   Real pipeline: the enquiry goes to the branch's events team (NEW), who review it and send
+   a quote; the guest accepts or withdraws here. A Support thread with the same reference
+   carries the conversation. */
+const VENUE_TYPES = ["Wedding reception", "Wedding ceremony", "Birthday / anniversary", "Corporate event / conference", "Training / workshop", "Product launch", "Religious / community gathering", "Photo or film shoot", "Other"];
+const VENUE_SPACES = ["Event hall / ballroom", "Outdoor / garden", "Restaurant or bar buy-out", "Meeting room", "Not sure, please advise"];
+const VENUE_SERVICES = [["catering", "Food & catering"], ["bar", "Bar service"], ["decor", "Decor & setup"], ["av", "Sound, lighting & AV"], ["rooms", "Rooms for my guests"], ["security", "Parking & security"]];
+const VENUE_SERVICE_LABEL = Object.fromEntries(VENUE_SERVICES);
+
+function renderVenueEnquiry() {
+  const el = $("eventsList"); if (!el) return;
+  const g = getGuest() || {}; const prof = window._guestProfile || {};
+  const minDate = addDaysISO(todayLocalISO(), 1);
+  el.innerHTML = html`<div class="panel" style="max-width:760px;">
+    <h3>Host your event with us</h3>
+    <p class="muted small" style="margin:-6px 0 18px;">Tell us what you're planning. The branch will reply in your Support messages, usually within one working day, with availability and a quote, shown right here under My enquiries. Nothing is booked or charged until you agree.</p>
+    <div id="venueNotice"></div>
+    <form id="venueForm" novalidate>
+      <div class="form-row"><div class="form-field"><label for="vnBranch">Which branch?</label><select id="vnBranch">${html.join(_eventsBranches.map((b) => html`<option value="${b.id}" ${b.id === _eventsBranchId ? raw("selected") : ""}>${b.name}</option>`))}</select></div>
+        <div class="form-field"><label for="vnType">Type of event</label><select id="vnType">${html.join(VENUE_TYPES.map((t) => html`<option>${t}</option>`))}</select></div></div>
+      <div class="form-row"><div class="form-field"><label for="vnDate">Preferred date</label><input type="date" id="vnDate" min="${minDate}" required></div>
+        <div class="form-field"><label for="vnDate2">Backup date <span class="opt">(optional)</span></label><input type="date" id="vnDate2" min="${minDate}"></div></div>
+      <div class="form-row"><div class="form-field"><label for="vnStart">Start time <span class="opt">(optional)</span></label><input type="time" id="vnStart"></div>
+        <div class="form-field"><label for="vnEnd">End time <span class="opt">(optional)</span></label><input type="time" id="vnEnd"></div></div>
+      <div class="form-row"><div class="form-field"><label for="vnGuests">Expected guests</label><input type="number" id="vnGuests" min="1" max="5000" inputmode="numeric" placeholder="e.g. 150" required></div>
+        <div class="form-field"><label for="vnSpace">Space</label><select id="vnSpace">${html.join(VENUE_SPACES.map((t) => html`<option>${t}</option>`))}</select></div></div>
+      <div class="form-field"><label>What would you like us to provide?</label><div class="chips">${html.join(VENUE_SERVICES.map(([k, l]) => html`<label class="chip" style="cursor:pointer;"><input type="checkbox" name="vnServices" value="${k}" style="margin-right:6px;"> ${l}</label>`))}</div></div>
+      <div class="form-row"><div class="form-field"><label for="vnBudget">Budget <span class="opt">(optional)</span></label><input type="text" id="vnBudget" placeholder="e.g. NGN 3,000,000" maxlength="60"></div>
+        <div class="form-field"><label for="vnPhone">Phone / WhatsApp</label><input type="tel" id="vnPhone" value="${prof.phone || g.phone || ""}" autocomplete="tel" required></div></div>
+      <div class="form-field"><label for="vnNotes">Anything else we should know?</label><textarea id="vnNotes" rows="4" maxlength="2000" placeholder="Theme, layout, dietary needs, access requirements…"></textarea></div>
+      <button type="submit" class="btn btn-primary btn-lg" id="vnBtn"><i class="fas fa-paper-plane"></i> Send enquiry</button>
+    </form></div>
+    <section style="margin-top:34px;max-width:760px;"><h2 class="section-title">My enquiries</h2><div id="venueMine">${skeletonList(1)}</div></section>`;
+  $("venueForm").addEventListener("submit", submitVenueEnquiry);
+  loadMyVenueEnquiries();
+}
+async function submitVenueEnquiry(e) {
+  e.preventDefault();
+  const v = (id) => ($(id).value || "").trim();
+  const branchId = v("vnBranch"), date = v("vnDate"), guests = Math.floor(Number(v("vnGuests")));
+  if (!branchId) return showNotice("venueNotice", "Please choose a branch.");
+  if (!date) return showNotice("venueNotice", "Please choose your preferred date.");
+  if (date <= todayLocalISO()) return showNotice("venueNotice", "Please choose a date in the future.");
+  if (!(guests >= 1)) return showNotice("venueNotice", "Please tell us roughly how many guests to expect.");
+  if (!v("vnPhone")) return showNotice("venueNotice", "Please add a phone or WhatsApp number so we can reach you.");
+  if (v("vnStart") && v("vnEnd") && v("vnEnd") <= v("vnStart")) return showNotice("venueNotice", "The end time should be after the start time.");
+  const services = Array.from(document.querySelectorAll('input[name="vnServices"]:checked')).map((c) => VENUE_SERVICE_LABEL[c.value]);
+  const payload = { eventType: v("vnType"), preferredDate: date, guestsCount: guests, contactPhone: v("vnPhone"), spacePreference: v("vnSpace"), services };
+  if (v("vnDate2")) payload.backupDate = v("vnDate2");
+  if (v("vnStart")) payload.startTime = v("vnStart");
+  if (v("vnEnd")) payload.endTime = v("vnEnd");
+  if (v("vnBudget")) payload.budget = v("vnBudget");
+  if (v("vnNotes")) payload.notes = v("vnNotes");
+  await withBusy($("vnBtn"), async () => {
+    try {
+      const { enquiry } = await guestApi.createVenueEnquiry(branchId, payload);
+      const bname = (_eventsBranches.find((b) => b.id === branchId) || {}).name || "the branch";
+      if (!$("eventsList")) return;
+      $("eventsList").innerHTML = html`<div class="panel" style="max-width:760px;text-align:center;padding:36px 22px;">
+        <div class="ei" style="font-size:2.2rem;color:var(--teal);"><i class="fas fa-circle-check"></i></div><h3 style="margin-top:10px;">Enquiry sent to ${bname}</h3>
+        <p class="muted" style="margin:6px auto 6px;max-width:440px;">Your reference is <b>${(enquiry && enquiry.reference) || ""}</b>. Our events team will review it and send a quote. You'll get a notification, and the quote will appear below.</p>
+        <div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap;margin-top:14px;"><button class="btn btn-primary" onclick="renderVenueEnquiry()">See my enquiries</button><button class="btn btn-outline" onclick="_supportTab='messages'; switchPage('support')">Messages</button></div></div>
+        <section style="margin-top:34px;max-width:760px;"><h2 class="section-title">My enquiries</h2><div id="venueMine">${skeletonList(1)}</div></section>`;
+      loadMyVenueEnquiries(); refreshSupportBadgeSilently();
+    } catch (err) { showNotice("venueNotice", err.message); }
+  }, "Sending…");
+}
+
+/* ---- My enquiries: status, quote, accept / withdraw ---- */
+let _venueMine = new Map();
+function venueDayStr(iso) { return iso ? new Date(iso).toLocaleDateString(undefined, { timeZone: "UTC", weekday: "short", day: "numeric", month: "short", year: "numeric" }) : ""; }
+const VENUE_STATUS_TEXT = { NEW: "Received", IN_REVIEW: "Being reviewed", QUOTED: "Quote ready", ACCEPTED: "Confirmed", DECLINED: "Declined", WITHDRAWN: "Withdrawn" };
+async function loadMyVenueEnquiries() {
+  const el = $("venueMine"); if (!el) return;
+  try {
+    const { enquiries } = await guestApi.listVenueEnquiries();
+    if (!$("venueMine")) return;
+    _venueMine = new Map((enquiries || []).map((e) => [e.id, e]));
+    if (!enquiries || !enquiries.length) { el.innerHTML = html`<p class="muted small">You haven't sent any venue enquiries yet.</p>`; return; }
+    el.innerHTML = html.join(enquiries.map((e) => {
+      const quoted = e.status === "QUOTED", open = ["NEW", "IN_REVIEW", "QUOTED"].includes(e.status);
+      return html`<div class="panel" style="margin-bottom:12px;">
+        <div class="row between wrap" style="gap:8px;"><div><b>${e.eventType}</b> <span class="muted small">· ${e.reference}</span><div class="small muted">${e.branch ? e.branch.name + " · " : ""}${venueDayStr(e.preferredDate)} · ${e.guestsCount} guests</div></div>
+          <span class="badge ${e.status === "ACCEPTED" ? "badge-confirmed" : e.status === "DECLINED" || e.status === "WITHDRAWN" ? "badge-cancelled" : e.status === "QUOTED" ? "badge-pending" : "badge-info"}">${VENUE_STATUS_TEXT[e.status] || e.status}</span></div>
+        ${quoted || (e.status === "ACCEPTED" && e.quoteAmount != null) ? html`<div class="summary-line total" style="margin-top:12px;"><span>Quote${e.quoteValidUntil ? html` <span class="muted small">(valid until ${venueDayStr(e.quoteValidUntil)})</span>` : ""}</span><span>${money(e.quoteAmount, e.quoteCurrency)}</span></div>
+          ${e.quoteNotes ? html`<p class="small" style="white-space:pre-wrap;margin:6px 0 0;">${e.quoteNotes}</p>` : ""}` : ""}
+        ${e.status === "DECLINED" ? html`<p class="small muted" style="margin:10px 0 0;">${e.declineReason || "The branch can't host this event on that date."}</p>` : ""}
+        ${e.status === "ACCEPTED" ? html`<p class="small" style="margin:10px 0 0;color:var(--teal);"><i class="fas fa-circle-check"></i> Confirmed. The branch will be in touch about payment and arrangements.</p>` : ""}
+        <div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap;">
+          ${quoted ? html`<button class="btn btn-primary btn-sm" onclick="acceptVenueQuote('${e.id}')">Accept quote</button>` : ""}
+          ${open ? html`<button class="btn btn-outline btn-sm" onclick="withdrawVenueEnquiry('${e.id}')">Withdraw</button>` : ""}
+          <button class="btn btn-outline btn-sm" onclick="_supportTab='messages'; switchPage('support')">Message the branch</button></div></div>`;
+    }));
+  } catch (err) { if ($("venueMine")) el.innerHTML = errorState(err.message, "loadMyVenueEnquiries()"); }
+}
+async function acceptVenueQuote(id) {
+  const e = _venueMine.get(id); if (!e) return;
+  if (!(await confirmDialog({ title: "Accept this quote?", message: `You're accepting ${money(e.quoteAmount, e.quoteCurrency)} for your ${e.eventType}. The branch will confirm the details with you.`, confirmLabel: "Accept quote" }))) return;
+  try { await guestApi.acceptVenueQuote(id); toast("Quote accepted. The branch has been told.", "success"); } catch (err) { toast(err.message, "error"); }
+  loadMyVenueEnquiries();
+}
+async function withdrawVenueEnquiry(id) {
+  if (!(await confirmDialog({ title: "Withdraw this enquiry?", message: "The branch will be told you no longer need the space.", confirmLabel: "Withdraw", danger: true }))) return;
+  try { await guestApi.withdrawVenueEnquiry(id); toast("Enquiry withdrawn.", "success"); } catch (err) { toast(err.message, "error"); }
+  loadMyVenueEnquiries();
+}
+function venueCta() {
+  return html`<div class="panel" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:26px;"><div class="list-icon"><i class="fas fa-champagne-glasses"></i></div>
+    <div class="grow"><h3 style="margin:0 0 2px;">Planning your own event?</h3><p class="muted small" style="margin:0;">Weddings, conferences, birthdays and more. Request our halls, gardens or restaurant for your date.</p></div>
+    <button class="btn btn-dark" onclick="setEventsKind('host')">Request our space</button></div>`;
+}
+
+/* ---------------- My tickets: QR codes ---------------- */
+let _ticketMap = new Map();
+async function loadMyTickets() {
+  const el = $("myTicketsList"); if (!el) return;
+  try {
+    const [{ orders }, tk] = await Promise.all([guestApi.listMyOrders(), guestApi.listEventTickets().catch(() => ({ tickets: [] }))]);
+    if (!$("myTicketsList")) return;
+    const ticketOrders = orders.filter((o) => o.type === "UPCOMING_EVENT_TICKET" || o.type === "EVENT_TICKET");
+    const byId = new Map(ticketOrders.map((o) => [o.id, o]));
+    const tickets = (tk.tickets || []).filter((t) => byId.has(t.orderId) || true);
+    _ticketMap = new Map(tickets.map((t) => [t.id, t]));
+    const unpaid = ticketOrders.filter(canPayOrder);
+    if (!tickets.length && !unpaid.length) { el.innerHTML = html`<p class="muted small">No tickets yet. They'll appear here once you book.</p>`; return; }
+    el.innerHTML = html`<div class="panel list" style="padding:0;">
+      ${html.join(unpaid.map((o) => html`<div class="list-item"><div class="list-icon"><i class="fas fa-hourglass-half"></i></div>
+        <div class="grow"><b>${o.upcomingEvent?.title || o.event?.name || "Event ticket"}</b><div class="small muted">Awaiting payment · ${money(o.totalAmount, o.currency)}</div></div>
+        <button class="btn btn-primary btn-sm" onclick="payPendingOrder('${o.id}', this)">Pay now</button></div>`))}
+      ${html.join(tickets.map((t) => { const o = byId.get(t.orderId) || {}; return html`<div class="list-item"><div class="list-icon"><i class="fas fa-ticket"></i></div>
+        <div class="grow"><b>${o.upcomingEvent?.title || o.event?.name || "Event ticket"}</b><div class="small muted">${t.ticketType || "Admit one"}${t.holderName ? " · " + t.holderName : ""} · <span class="ref">${String(t.code).slice(0, 8).toUpperCase()}</span></div></div>
+        ${statusBadge(t.status, t.status === "VALID" ? "Valid" : null)}<button class="btn btn-outline btn-sm" onclick="openTicketQr('${t.id}')"><i class="fas fa-qrcode"></i> Show</button></div>`; }))}</div>`;
+  } catch { if ($("myTicketsList")) el.innerHTML = ""; }
+}
+function openTicketQr(id) {
+  const t = _ticketMap.get(id); if (!t) return;
+  openModal(html`<h3>${t.ticketType || "Event ticket"}</h3><p class="modal-sub">Show this code at the entrance. ${t.status === "VALID" ? "" : "This ticket is " + titleCase(t.status) + "."}</p>
+    <div style="text-align:center;margin:10px 0 16px;">${t.qrDataUrl ? html`<img src="${t.qrDataUrl}" alt="Ticket QR code" style="width:230px;height:230px;image-rendering:pixelated;background:#fff;padding:8px;border-radius:12px;border:1px solid var(--border);">` : html`<div class="panel"><div class="ref" style="font-size:1.3rem;letter-spacing:.1em;">${t.code}</div></div>`}</div>
+    ${t.holderName ? html`<div class="summary-line"><span>Name</span><span>${t.holderName}</span></div>` : ""}
+    <div class="summary-line"><span>Ticket code</span><span class="ref">${String(t.code).slice(0, 8).toUpperCase()}</span></div>
+    <div class="summary-line"><span>Status</span><span>${statusBadge(t.status)}</span></div>
+    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal(this)">Done</button></div>`, { size: "narrow" });
+}
+
+/* ---------------- Notifications inbox ---------------- */
+function setNotifBadge(n) { const b = $("notifBadge"); if (b) { b.textContent = n > 99 ? "99+" : n; b.classList.toggle("visible", n > 0); } }
+function bumpNotifBadge() { const b = $("notifBadge"); setNotifBadge((parseInt(b && b.textContent, 10) || 0) + 1); }
+async function refreshNotifBadge() { try { const { unread } = await guestApi.listNotifications(1); setNotifBadge(Number(unread) || 0); } catch { /* silent */ } }
+function timeAgo(v) {
+  const s = Math.max(0, (Date.now() - new Date(v).getTime()) / 1000);
+  if (s < 60) return "just now"; if (s < 3600) return `${Math.floor(s / 60)} min ago`; if (s < 86400) return `${Math.floor(s / 3600)} h ago`;
+  return s < 604800 ? `${Math.floor(s / 86400)} d ago` : fmtD(v);
+}
+async function openNotifications() {
+  openModal(html`<h3>Notifications</h3><div id="notifBody">${skeletonList(2)}</div>`, { id: "notifModal" });
+  await renderNotifications();
+}
+async function renderNotifications() {
+  const body = $("notifBody"); if (!body) return;
+  try {
+    const { notifications, unread } = await guestApi.listNotifications(40);
+    if (!$("notifBody")) return;
+    setNotifBadge(Number(unread) || 0);
+    const items = (notifications || []).filter((n) => n.channel === "IN_APP");
+    body.innerHTML = items.length ? html`
+      <div class="row between" style="margin:2px 0 10px;"><span class="small muted">${unread ? plural(unread, "unread message") : "You're all caught up"}</span>${unread ? html`<button class="link-btn" onclick="markAllNotificationsRead(this)">Mark all as read</button>` : ""}</div>
+      <div class="list" style="max-height:60vh;overflow:auto;">${html.join(items.map((n) => html`<div class="list-item" style="align-items:flex-start;${n.readAt ? "" : "background:var(--brass-soft);"}">
+        <div class="grow"><b>${plainText(n.subject) || titleCase(n.category)}</b><div class="small" style="margin-top:2px;">${plainText(n.body).slice(0, 280)}</div><div class="small faint" style="margin-top:4px;">${timeAgo(n.createdAt)}</div></div>
+        ${n.readAt ? "" : html`<button class="icon-btn" aria-label="Mark as read" onclick="markNotificationRead('${n.id}')"><i class="fas fa-check"></i></button>`}</div>`))}</div>`
+      : emptyState({ icon: "fa-bell", title: "No notifications yet", text: "Booking updates, replies and reminders will appear here." });
+  } catch (err) { if ($("notifBody")) body.innerHTML = errorState(err.message, "renderNotifications()"); }
+}
+async function markNotificationRead(id) { try { await guestApi.readNotification(id); } catch { /* ignore */ } renderNotifications(); }
+async function markAllNotificationsRead(btn) {
+  await withBusy(btn, async () => {
+    try {
+      const { notifications } = await guestApi.listNotifications(40);
+      await Promise.allSettled(notifications.filter((n) => n.channel === "IN_APP" && !n.readAt).map((n) => guestApi.readNotification(n.id)));
+    } catch (err) { toast(err.message, "error"); }
+    await renderNotifications();
+  });
+}
+
+/* ---------------- How we contact you (preferences) ---------------- */
+const CONTACT_ROWS = [["Booking updates & receipts", ["emailBooking", "smsBooking", "whatsappBooking"]], ["Offers & news", ["emailMarketing", "smsMarketing", "whatsappMarketing"]]];
+async function renderContactPrefs() {
+  const area = $("contactPrefsArea"); if (!area) return;
+  try {
+    const { preferences: p } = await guestApi.getNotifPrefs();
+    if (!$("contactPrefsArea")) return;
+    area.innerHTML = html`<form id="contactPrefsForm">
+      <div class="panel flat" style="margin-bottom:12px;"><table style="width:100%;"><thead><tr><th style="text-align:left;"></th><th>Email</th><th>SMS</th><th>WhatsApp</th></tr></thead><tbody>
+        ${html.join(CONTACT_ROWS.map(([label, keys]) => html`<tr><td style="padding:10px 14px;">${label}</td>${html.join(keys.map((k) => html`<td style="text-align:center;"><input type="checkbox" id="cp_${k}" ${p[k] ? raw("checked") : ""} aria-label="${label}: ${k}" style="width:18px;height:18px;accent-color:var(--brass-dark);"></td>`))}</tr>`))}
+      </tbody></table></div>
+      <div class="form-field" style="max-width:320px;"><label for="cpPhone">Mobile number for SMS / WhatsApp</label><input type="tel" id="cpPhone" value="${p.phoneE164 || ""}" placeholder="+234…" autocomplete="tel"><div class="hint">Use international format. Changing the number means it has to be verified again.</div></div>
+      <button type="submit" class="btn btn-outline" id="cpBtn">Save contact preferences</button></form>`;
+    const original = p.phoneE164 || "";
+    $("contactPrefsForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {}; CONTACT_ROWS.forEach(([, keys]) => keys.forEach((k) => { payload[k] = $("cp_" + k).checked; }));
+      const ph = $("cpPhone").value.trim(); if (ph !== original) payload.phone = ph;
+      await withBusy($("cpBtn"), async () => {
+        try { await guestApi.updateNotifPrefs(payload); showNotice("profileNotice", "Contact preferences saved.", "success"); renderContactPrefs(); }
+        catch (err) { showNotice("profileNotice", err.message); }
+      }, "Saving…");
+    });
+  } catch (err) { if ($("contactPrefsArea")) area.innerHTML = errorState(err.message, "renderContactPrefs()"); }
+}
+
+/* ---------------- Promo code check (booking modal) ---------------- */
+async function applyBookingPromo() {
+  const ctx = _searchContext, room = window._bkRoom; if (!ctx || !room) return;
+  const code = ($("bkPromo").value || "").trim().toUpperCase(); const out = $("bkPromoResult"); if (!out) return;
+  if (!code) { out.textContent = ""; return; }
+  const nights = Math.max(1, nightsBetween(ctx.checkIn, ctx.checkOut)); const subtotal = Number(room.basePrice) * nights;
+  await withBusy($("bkPromoBtn"), async () => {
+    try {
+      const r = await guestApi.validatePromo(ctx.branchId, code, subtotal, room.currency);
+      const d = Number(r.discountAmount) || 0;
+      out.className = "hint ok"; out.style.color = "var(--teal)"; out.textContent = `Code applied: you save ${money(d, room.currency)}.`;
+      const t = $("bkTotal"); if (t) t.textContent = money(Math.max(0, subtotal - d), room.currency);
+    } catch (err) {
+      out.style.color = "var(--danger)"; out.textContent = err.message || "That code isn't valid for this stay.";
+      const t = $("bkTotal"); if (t) t.textContent = money(subtotal, room.currency);
+    }
+  }, "Checking…");
+}
+
+/* ---------------- Lost & found ---------------- */
+let _lostItems = [];
+async function showLostFound() {
+  const box = $("lostFoundBox"); if (!box) return;
+  try {
+    const { items } = await guestApi.listLostFound(); _lostItems = items || [];
+    if (!$("lostFoundBox") || !_lostItems.length) return;
+    box.innerHTML = html`<div class="banner" style="margin-bottom:16px;"><i class="fas fa-magnifying-glass"></i><div class="grow"><b>We may have found something of yours</b><span>${plural(_lostItems.length, "item")} from your past stays ${_lostItems.length === 1 ? "is" : "are"} being kept safe.</span></div><button class="btn btn-primary btn-sm" onclick="openLostFound()">See items</button></div>`;
+  } catch { /* optional */ }
+}
+function openLostFound() {
+  openModal(html`<h3>Found items</h3><p class="modal-sub">Tell us which one is yours and we'll arrange collection or delivery.</p>
+    <div class="list">${html.join(_lostItems.map((i) => html`<div class="list-item" style="align-items:flex-start;">
+      ${i.photoUrl ? html`<img src="${i.photoUrl}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:10px;">` : html`<div class="list-icon"><i class="fas fa-box"></i></div>`}
+      <div class="grow"><b>${i.description || "Item"}</b><div class="small muted">${titleCase(i.category)} · found ${fmtD(i.foundAt)}</div></div>
+      <button class="btn btn-outline btn-sm" onclick="claimLostItem('${i.id}', this)">This is mine</button></div>`))}</div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeModal(this)">Close</button></div>`);
+}
+async function claimLostItem(id, btn) {
+  const i = _lostItems.find((x) => x.id === id); if (!i) return;
+  await withBusy(btn, async () => {
+    try {
+      await guestApi.createTicket(i.branchId, { subject: "Lost & found: this item is mine", message: `I believe this item is mine: ${i.description || titleCase(i.category)} (found ${fmtD(i.foundAt)}, ref ${shortRef(i.id)}). Please let me know how to collect it or have it sent to me.` });
+      closeModal(btn); toast("Claim sent. We'll reply in your Support messages.", "success"); refreshSupportBadgeSilently();
+    } catch (err) { toast(err.message, "error"); }
+  }, "Sending…");
+}
+
+/* ============================================================
    SHELL: auth/app switching, realtime, payment return, boot
    ============================================================ */
 function showAuth() {
@@ -2822,7 +3223,7 @@ function connectGuestSocket() {
     retryAt = Date.now() + 30000;
     if (await refreshSession() && _guestSocket) _guestSocket.connect();
   });
-  _guestSocket.on("notification", (n) => toast(`${n.title}${n.body ? " · " + n.body : ""}`, "info"));
+  _guestSocket.on("notification", (n) => { toast(`${n.title}${n.body ? " · " + n.body : ""}`, "info"); bumpNotifBadge(); });
   _guestSocket.on("ticket_message", (n) => {
     toast(`${n.title}${n.body ? " · " + n.body : ""}`, "info");
     bumpSupportBadges();
@@ -2857,7 +3258,13 @@ async function showApp() {
   renderNav(); renderGlobalBanner();
 
   const paymentReturn = readPaymentReturn();
-  const hashPage = (window.location.hash || "").replace("#", "");
+  let hashPage = (window.location.hash || "").replace("#", "");
+  // ?returnTo=<page> (e.g. from the public site) is honoured once, after sign-in
+  try {
+    const qs = new URLSearchParams(window.location.search), want = qs.get("returnTo") || qs.get("page");
+    if (!hashPage && want && PAGE_LOADERS[want]) hashPage = want;
+    if (qs.has("returnTo") || qs.has("page")) { qs.delete("returnTo"); qs.delete("page"); history.replaceState(null, "", window.location.pathname + (qs.toString() ? "?" + qs : "") + window.location.hash); }
+  } catch { /* optional nicety */ }
   switchPage(paymentReturn ? paymentReturn.page : (PAGE_LOADERS[hashPage] ? hashPage : "search"), { fromPop: !!(PAGE_LOADERS[hashPage] && !paymentReturn) });
   if (paymentReturn) {
     const pending = showPaymentBanner(_t("Confirming your payment…"), "info", true);
@@ -2867,7 +3274,7 @@ async function showApp() {
       if (res.type !== "info") switchPage(res.page || paymentReturn.page); // show the updated status
     });
   }
-  refreshSupportBadgeSilently();
+  refreshSupportBadgeSilently(); refreshNotifBadge();
 }
 
 function boot(skipLink) {

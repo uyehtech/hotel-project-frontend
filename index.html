@@ -257,6 +257,97 @@ section{position:relative;padding:96px 0}
 .cta-banner p{max-width:56ch;margin:16px auto 28px;color:rgba(237,230,214,.78)}
 .toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);background:var(--ivory);color:var(--ink);padding:12px 20px;border-radius:2px;font-size:.86rem;opacity:0;pointer-events:none;transition:.35s var(--ease-out);z-index:300}
 .toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* PATCH8-HOME-SECTIONS */
+.split-band{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+.split-band .lead-p{color:rgba(237,230,214,.72);margin:16px 0 24px;max-width:56ch}
+.chip-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 26px}
+.chip-row span{border:1px solid var(--line-on-ink);border-radius:999px;padding:7px 15px;font-size:.82rem;color:rgba(237,230,214,.86)}
+.cta-row{display:flex;flex-wrap:wrap;gap:12px}
+.cta-row .btn,.band-cta .btn{padding:14px 28px;border-radius:999px}
+.btn-ghost{border-color:var(--line-on-ink);color:var(--ivory);background:transparent}
+.btn-ghost:hover{border-color:var(--brass);color:var(--brass-light)}
+.steps-card{background:linear-gradient(160deg,#2a2218,#151a21);border:1px solid var(--line-on-ink);border-radius:var(--radius);padding:34px}
+.steps-card ol{list-style:none;counter-reset:s;display:grid;gap:20px}
+.steps-card li{counter-increment:s;display:grid;grid-template-columns:42px 1fr;gap:14px;align-items:start}
+.steps-card li::before{content:counter(s);width:42px;height:42px;border-radius:50%;border:1px solid var(--brass);color:var(--brass-light);display:grid;place-items:center;font-family:var(--font-display);font-size:1.1rem}
+.steps-card b{display:block;font-weight:600;margin-bottom:2px}
+.steps-card span{font-size:.9rem;color:rgba(237,230,214,.66)}
+.perk-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:8px}
+.perk{padding:26px;border:1px solid var(--line-on-ink);border-radius:var(--radius);background:rgba(255,255,255,.02);transition:transform .35s var(--ease-out),border-color .3s}
+.perk:hover{transform:translateY(-4px);border-color:var(--brass)}
+.perk .pi{font-family:var(--font-display);font-size:1.5rem;color:var(--brass-light);margin-bottom:14px}
+.perk h4{font-size:1.1rem;margin-bottom:6px}.perk p{font-size:.88rem;color:rgba(237,230,214,.66)}
+.band-cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px;align-items:center}
+.band-cta small{color:rgba(237,230,214,.55)}
+@media (max-width:900px){.split-band{grid-template-columns:1fr;gap:34px}.perk-grid{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.perk-grid{grid-template-columns:1fr}}
+
+/* PATCH9-CINEMATIC-HOME */
+:root{--serif-xl:clamp(2.8rem,7.4vw,6.2rem)}
+.ph{background-color:#1c222b}
+/* hero */
+#hero3d{display:none!important}
+.hero{min-height:100vh;padding:150px 0 90px}
+.hero-bg{inset:0!important;opacity:1!important;background:#0d1015}
+.hero-slide{position:absolute;inset:-4%;background:var(--img) center/cover no-repeat,linear-gradient(135deg,#2a3340,#14181f 60%,#2d2418);opacity:0;transform:scale(1.06);transition:opacity 1.8s ease,transform 9s ease-out}
+.hero-slide.on{opacity:1;transform:scale(1.14)}
+.hero::before{background:linear-gradient(90deg,rgba(10,12,16,.88) 0%,rgba(10,12,16,.55) 48%,rgba(10,12,16,.2) 100%),linear-gradient(180deg,rgba(10,12,16,.45),rgba(10,12,16,.0) 30%,rgba(10,12,16,.9) 100%)!important}
+.hero-content h1{font-size:var(--serif-xl);max-width:13ch;line-height:1.02;font-weight:400}
+.hero .lead{font-size:clamp(1.05rem,1.6vw,1.28rem);max-width:50ch}
+.hero-dots{position:absolute;right:28px;bottom:120px;z-index:3;display:flex;flex-direction:column;gap:10px}
+.hero-dots button{width:8px;height:8px;border-radius:50%;border:0;background:rgba(237,230,214,.4);cursor:pointer;padding:0;transition:.3s}
+.hero-dots button.on{background:var(--brass-light);transform:scale(1.5)}
+.booking-bar{backdrop-filter:blur(14px);background:rgba(246,241,231,.96)!important;border-radius:6px!important;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+/* story */
+.story{padding:130px 0}
+.story-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:80px;align-items:center}
+.story-media{position:relative;padding-bottom:70px}
+.story-main{aspect-ratio:4/5;border-radius:4px;background:var(--img) center/cover,linear-gradient(160deg,#3a2f1f,#171c24);box-shadow:0 40px 90px rgba(0,0,0,.5)}
+.story-inset{position:absolute;right:-28px;bottom:0;width:46%;aspect-ratio:1;border-radius:4px;border:8px solid var(--ink);background:var(--img) center/cover,linear-gradient(160deg,#2f5d5a,#151a21);box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.story-text h2{font-size:clamp(2.2rem,4.6vw,3.8rem);font-weight:400;line-height:1.05}
+.story-text h2 em{font-style:italic;color:var(--brass-light)}
+.story-text p{margin-top:22px;color:rgba(237,230,214,.74);font-size:1.05rem;max-width:52ch}
+.story-text p.eyebrow{font-size:.74rem;color:var(--brass-light);margin:0 0 18px;max-width:none}
+.story-sign{display:flex;gap:40px;margin-top:38px;padding-top:28px;border-top:1px solid var(--line-on-ink)}
+.story-sign b{display:block;font-family:var(--font-display);font-size:2rem;color:var(--brass-light);font-weight:400}
+.story-sign span{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:rgba(237,230,214,.55)}
+/* experiences with photos */
+.experience-card{min-height:480px;padding:34px;border-radius:4px}
+.experience-card::before{background:linear-gradient(180deg,rgba(13,16,21,.05) 25%,rgba(13,16,21,.92)),var(--img) center/cover,linear-gradient(160deg,#43301c,#12161c)!important}
+.experience-card h3{font-size:1.9rem;font-weight:400}
+/* quote band */
+.quote-band{position:relative;padding:190px 0;text-align:center;overflow:hidden;background:var(--img) center/cover fixed,linear-gradient(160deg,#2a2218,#0d1015)}
+.quote-band::before{content:"";position:absolute;inset:0;background:rgba(10,12,16,.62)}
+.quote-band .wrap{position:relative}
+.quote-band blockquote{font-family:var(--font-display);font-size:clamp(1.8rem,4.2vw,3.4rem);font-weight:400;line-height:1.18;max-width:20ch;margin:0 auto;font-style:italic}
+.quote-band cite{display:block;margin-top:26px;font-style:normal;font-size:.74rem;letter-spacing:.24em;text-transform:uppercase;color:var(--brass-light)}
+/* gallery wall */
+.wall{display:grid;grid-template-columns:repeat(12,1fr);grid-auto-rows:150px;gap:14px}
+.wall a{position:relative;overflow:hidden;border-radius:4px;background:var(--img) center/cover,linear-gradient(135deg,#252d38,#14181f);cursor:zoom-in;display:block}
+.wall a::after{content:"";position:absolute;inset:0;background:rgba(10,12,16,0);transition:.4s}
+.wall a:hover::after{background:rgba(10,12,16,.25)}
+.wall a span{position:absolute;inset:0;background:inherit;transition:transform 1s var(--ease-out)}
+.wall a:hover span{transform:scale(1.08)}
+.wall .w1{grid-column:span 5;grid-row:span 3}.wall .w2{grid-column:span 4;grid-row:span 2}.wall .w3{grid-column:span 3;grid-row:span 2}
+.wall .w4{grid-column:span 3;grid-row:span 2}.wall .w5{grid-column:span 4;grid-row:span 2}.wall .w6{grid-column:span 5;grid-row:span 2}
+.lightbox{position:fixed;inset:0;z-index:1200;background:rgba(8,10,13,.94);display:none;align-items:center;justify-content:center;padding:30px}
+.lightbox.open{display:flex}
+.lightbox img{max-width:min(1200px,94vw);max-height:88vh;border-radius:3px}
+.lightbox button{position:absolute;background:none;border:0;color:#fff;font-size:2rem;cursor:pointer;padding:14px}
+.lightbox .lb-x{top:10px;right:14px}.lightbox .lb-p{left:10px;top:50%}.lightbox .lb-n{right:10px;top:50%}
+/* closing banner */
+.cta-banner{padding:170px 0!important;background:linear-gradient(rgba(13,16,21,.7),rgba(13,16,21,.82)),var(--img) center/cover,linear-gradient(140deg,var(--teal),var(--ink-deep))!important}
+.cta-banner h2{font-size:clamp(2.4rem,5.6vw,4.8rem);font-weight:400}
+section{padding-block:clamp(80px,10vw,130px)}
+.stats-band,.quote-band{padding-block:revert-layer}
+.perk,.experience-card,.branch-card{border-radius:4px}
+@media (max-width:900px){
+  .story-grid{grid-template-columns:1fr;gap:50px}.story-inset{right:8px}
+  .wall{grid-auto-rows:110px;grid-template-columns:repeat(6,1fr)}
+  .wall .w1,.wall .w6{grid-column:span 6;grid-row:span 3}.wall .w2,.wall .w3,.wall .w4,.wall .w5{grid-column:span 3;grid-row:span 2}
+  .hero-dots{display:none}.quote-band{background-attachment:scroll;padding:120px 0}.experience-card{min-height:380px}
+}
 </style>
 <script src="config.js"></script>
 <script src="web-core.js"></script>
@@ -278,6 +369,7 @@ section{position:relative;padding:96px 0}
       <a href="index.html">Home</a>
       <a href="#locations">Locations</a>
       <a href="#experiences">Experiences</a>
+      <a href="#host-event">Host an event</a>
       <a href="blog.html">Blog</a>
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
@@ -291,12 +383,14 @@ section{position:relative;padding:96px 0}
 
 <main id="main">
 <header class="hero grain" id="book">
-  <div class="hero-bg" id="heroBg"></div>
-  <canvas id="hero3d" aria-hidden="true"></canvas>
-  <div class="wrap">
+  <div class="hero-bg" id="heroBg">
+    <div class="hero-slide on" style="--img:url('images/gallery1.jpg')"></div><div class="hero-slide" style="--img:url('images/gallery2.jpg')"></div><div class="hero-slide" style="--img:url('images/gallery3.jpg')"></div>
+  </div>
+  <div class="hero-dots" id="heroDots" aria-hidden="true"><button class="on"></button><button></button><button></button></div>
+    <div class="wrap">
     <div class="hero-content">
       <p class="eyebrow fade-up" id="heroEyebrow">Every location, held to the same standard</p>
-      <h1 id="heroTitle">A stay arranged the way it should be.</h1>
+      <h1 id="heroTitle">Stay where every detail is looked after.</h1>
       <p class="lead fade-up" id="heroSubtitle">Rooms, dining, spa and events — reserved directly with us, at any branch, with real-time availability and nothing left to guesswork.</p>
 
       <div class="hero-actions fade-up" id="heroActions">
@@ -355,6 +449,20 @@ section{position:relative;padding:96px 0}
   </div>
 </div>
 
+<!-- PATCH9-CINEMATIC-HOME: STORY -->
+<section class="story reveal" id="story">
+  <div class="wrap story-grid">
+    <div class="story-media"><div class="story-main" style="--img:url('images/gallery4.jpg')"></div><div class="story-inset" style="--img:url('images/gallery5.jpg')"></div></div>
+    <div class="story-text">
+      <p class="eyebrow">Our story</p>
+      <h2>Hospitality that <em>remembers</em> you.</h2>
+      <p>Every Uyeh Hotel is run to one standard: warm people, quiet rooms, food worth coming back for, and a team that already knows what you asked for last time.</p>
+      <p>Book a room, a table, a spa treatment or an entire hall, and it is looked after by the same people from the first message to the last goodbye.</p>
+      <div class="story-sign"><div><b id="storyBranches">—</b><span>Locations</span></div><div><b>24/7</b><span>Front desk</span></div><div><b>0%</b><span>Booking fee</span></div></div>
+    </div>
+  </div>
+</section>
+
 <!-- ===== LOCATIONS — live from GET /api/branches ===== -->
 <section id="locations" class="reveal">
   <div class="wrap">
@@ -394,24 +502,47 @@ section{position:relative;padding:96px 0}
       <p>What sets each stay apart isn't the booking — it's what's waiting once you arrive. Availability varies by location.</p>
     </div>
     <div class="experience-grid reveal-stagger">
-      <div class="experience-card card-dining">
+      <div class="experience-card card-dining" style="--img:url('images/gallery7.jpg')">
         <p class="experience-eyebrow">Dining</p>
         <h3>A table, held for you.</h3>
         <p>From in-room service to the branch restaurant, order or reserve ahead — the kitchen knows you're coming before you arrive.</p>
         <p class="experience-note">Available at select locations</p>
       </div>
-      <div class="experience-card card-spa">
+      <div class="experience-card card-spa" style="--img:url('images/gallery8.jpg')">
         <p class="experience-eyebrow">Spa &amp; wellness</p>
         <h3>Time set aside, properly.</h3>
         <p>Treatments booked the same way as a room — real availability, no back-and-forth.</p>
         <p class="experience-note">Available at select locations</p>
       </div>
-      <div class="experience-card card-events">
+      <div class="experience-card card-events" style="--img:url('images/gallery9.jpg')">
         <p class="experience-eyebrow">Events &amp; celebrations</p>
         <h3>A space, kept ready.</h3>
         <p>Browse upcoming events or reserve a space for your own — handled directly with the branch team.</p>
         <p class="experience-note">Available at select locations</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- PATCH8-HOME-SECTIONS: HOST AN EVENT -->
+<section id="host-event" class="reveal">
+  <div class="wrap split-band">
+    <div>
+      <p class="eyebrow">Host an event</p>
+      <h2>Your occasion. Our halls, gardens and tables.</h2>
+      <p class="lead-p">Weddings, conferences, birthdays and shoots. Tell the branch your date and numbers, get a quote from the events team, and accept it online. Nothing is booked or charged until you agree.</p>
+      <div class="chip-row"><span>Weddings</span><span>Conferences</span><span>Birthdays &amp; anniversaries</span><span>Corporate dinners</span><span>Launches &amp; shoots</span></div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="guest-panel.html?returnTo=hostevent" data-guest-portal data-return="hostevent">Request our space</a>
+        <a class="btn btn-ghost" href="contact.html">Talk to the team</a>
+      </div>
+    </div>
+    <div class="steps-card">
+      <ol>
+        <li><div><b>Tell us what you're planning</b><span>Date, guests, space and what you'd like us to provide.</span></div></li>
+        <li><div><b>The branch reviews and quotes</b><span>Usually within one working day, with what the quote includes.</span></div></li>
+        <li><div><b>Accept online</b><span>Track every enquiry from your account, and message the team any time.</span></div></li>
+      </ol>
     </div>
   </div>
 </section>
@@ -440,6 +571,15 @@ section{position:relative;padding:96px 0}
   </div>
 </section>
 
+<!-- PATCH9-CINEMATIC-HOME: GALLERY -->
+<section id="gallery" class="reveal">
+  <div class="wrap">
+    <div class="section-head center"><p class="eyebrow">Moments</p><h2>A look inside.</h2><p>Rooms, tables, gardens and halls, as our guests find them.</p></div>
+    <div class="wall"><a class="w1" href="images/gallery10.jpg" data-lb aria-label="Open photo 1"><span style="--img:url('images/gallery10.jpg');background:var(--img) center/cover"></span></a><a class="w2" href="images/gallery11.jpg" data-lb aria-label="Open photo 2"><span style="--img:url('images/gallery11.jpg');background:var(--img) center/cover"></span></a><a class="w3" href="images/gallery12.jpg" data-lb aria-label="Open photo 3"><span style="--img:url('images/gallery12.jpg');background:var(--img) center/cover"></span></a><a class="w4" href="images/gallery13.jpg" data-lb aria-label="Open photo 4"><span style="--img:url('images/gallery13.jpg');background:var(--img) center/cover"></span></a><a class="w5" href="images/gallery14.jpg" data-lb aria-label="Open photo 5"><span style="--img:url('images/gallery14.jpg');background:var(--img) center/cover"></span></a><a class="w6" href="images/gallery15.jpg" data-lb aria-label="Open photo 6"><span style="--img:url('images/gallery15.jpg');background:var(--img) center/cover"></span></a></div>
+  </div>
+</section>
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer"><button class="lb-x" aria-label="Close">&times;</button><button class="lb-p" aria-label="Previous">&#8249;</button><img alt=""><button class="lb-n" aria-label="Next">&#8250;</button></div>
+
 <!-- ===== WHAT WE OFFER ===== -->
 <section class="amenities-band grain reveal" style="background:var(--ink-soft);border-block:1px solid var(--line-on-ink);">
   <div class="wrap">
@@ -453,6 +593,28 @@ section{position:relative;padding:96px 0}
       <div class="amenity-item"><div class="key-tag">D</div><h4>Restaurant &amp; room service</h4><p>Order from the branch menu to your room, or reserve a table ahead of time.</p></div>
       <div class="amenity-item"><div class="key-tag">E</div><h4>Events &amp; spaces</h4><p>Browse upcoming events at each branch and reserve your spot directly.</p></div>
       <div class="amenity-item"><div class="key-tag">S</div><h4>Spa &amp; laundry</h4><p>Where offered, book spa treatments or laundry the same way you book a room.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- PATCH8-HOME-SECTIONS: YOUR ACCOUNT -->
+<section id="account" class="reveal" style="background:var(--ink-soft);border-block:1px solid var(--line-on-ink);">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Your guest account</p>
+      <h2>Everything about your stay, in one place.</h2>
+      <p>Free to create. Book without one if you prefer; an account just makes everything easier.</p>
+    </div>
+    <div class="perk-grid reveal-stagger">
+      <div class="perk"><div class="pi">01</div><h4>Manage your stays</h4><p>See upcoming trips, change or cancel with the policy shown up front, and view invoices.</p></div>
+      <div class="perk"><div class="pi">02</div><h4>Order to your room</h4><p>Dining, spa, laundry and bar, charged to your room while you're with us.</p></div>
+      <div class="perk"><div class="pi">03</div><h4>Events &amp; tickets</h4><p>Buy tickets, keep the QR code on your phone, or request a venue for your own event.</p></div>
+      <div class="perk"><div class="pi">04</div><h4>Earn rewards</h4><p>Points on every stay, turned into discounts. Groups can reserve several rooms together.</p></div>
+    </div>
+    <div class="band-cta">
+      <a class="btn btn-primary" href="guest-panel.html" data-guest-portal>Sign in or create an account</a>
+      <a class="btn btn-ghost" href="#book">Check availability first</a>
+      <small>Your details stay with us and the branch you book.</small>
     </div>
   </div>
 </section>
@@ -473,6 +635,11 @@ section{position:relative;padding:96px 0}
   </div>
 </section>
 
+<!-- PATCH9-CINEMATIC-HOME: QUOTE BAND -->
+<section class="quote-band" style="--img:url('images/gallery6.jpg')">
+  <div class="wrap"><blockquote>Arrive as a guest. Leave as one of ours.</blockquote><cite>The Uyeh promise</cite></div>
+</section>
+
 <!-- ===== FAQ ===== -->
 <section id="faq" class="reveal">
   <div class="wrap" style="max-width:860px;">
@@ -485,7 +652,7 @@ section{position:relative;padding:96px 0}
 </section>
 
 <!-- ===== CTA ===== -->
-<section class="cta-banner grain reveal">
+<section class="cta-banner grain reveal" style="--img:url('images/gallery16.jpg')">
   <div class="wrap">
     <h2 data-content="ctaTitle">Ready to book your stay?</h2>
     <p data-content="ctaSubtitle">Choose a location, see what's actually available, and book directly with us — no account required to get started.</p>
@@ -504,7 +671,9 @@ section{position:relative;padding:96px 0}
 {"@context":"https://schema.org","@type":"Organization","name":"Uyeh Hotel","url":"/index.html","logo":"/assets/og-default.jpg","description":"A multi-location hospitality brand — rooms, dining, spa and events booked directly with real-time availability at every branch."}
 </script>
 
-<script src="three.min.js"></script>
+<script>/* PATCH8-HOME-SECTIONS */
+(function(){var p=window.__GUEST_PORTAL__||"guest-panel.html";document.querySelectorAll("[data-guest-portal]").forEach(function(a){var r=a.getAttribute("data-return");a.setAttribute("href",p+(r?(p.indexOf("?")<0?"?":"&")+"returnTo="+encodeURIComponent(r):""));});})();
+</script>
 <script>
 (function () {
   "use strict";
@@ -1124,7 +1293,6 @@ section{position:relative;padding:96px 0}
     initNav();
     initMagnetic();
     initHeroMotion();
-    initHero3D();
     initReveal();
     revealHero();
     initBookingForm();
@@ -1137,6 +1305,27 @@ section{position:relative;padding:96px 0}
   });
 })();
 </script>
+<script>/* PATCH9-CINEMATIC-HOME */
+(function(){
+  var reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // hero slideshow
+  var slides=[].slice.call(document.querySelectorAll(".hero-slide")),dots=[].slice.call(document.querySelectorAll("#heroDots button")),i=0,timer;
+  function show(n){i=(n+slides.length)%slides.length;slides.forEach(function(s,k){s.classList.toggle("on",k===i)});dots.forEach(function(d,k){d.classList.toggle("on",k===i)});}
+  function auto(){clearInterval(timer);if(!reduced&&slides.length>1)timer=setInterval(function(){show(i+1)},6500);}
+  dots.forEach(function(d,k){d.addEventListener("click",function(){show(k);auto();});});auto();
+  // story counter mirrors the live locations count
+  var src=document.getElementById("statBranches"),dst=document.getElementById("storyBranches");
+  if(src&&dst){var sync=function(){dst.textContent=src.textContent};sync();new MutationObserver(sync).observe(src,{childList:true,characterData:true,subtree:true});}
+  // lightbox
+  var lb=document.getElementById("lightbox");if(!lb)return;var im=lb.querySelector("img"),links=[].slice.call(document.querySelectorAll("[data-lb]")),cur=0;
+  function open(n){cur=(n+links.length)%links.length;im.src=links[cur].getAttribute("href");lb.classList.add("open");}
+  links.forEach(function(a,k){a.addEventListener("click",function(e){e.preventDefault();open(k);});});
+  lb.querySelector(".lb-x").onclick=function(){lb.classList.remove("open")};lb.querySelector(".lb-p").onclick=function(){open(cur-1)};lb.querySelector(".lb-n").onclick=function(){open(cur+1)};
+  lb.addEventListener("click",function(e){if(e.target===lb)lb.classList.remove("open")});
+  document.addEventListener("keydown",function(e){if(!lb.classList.contains("open"))return;if(e.key==="Escape")lb.classList.remove("open");if(e.key==="ArrowLeft")open(cur-1);if(e.key==="ArrowRight")open(cur+1);});
+})();
+</script>
 <script src="chat-widget.js"></script>
+<script src="guest-link.js" defer></script>
 </body>
 </html>
