@@ -168,6 +168,51 @@ tr:last-child td { border-bottom: none; }
   .hamburger-btn { display: flex; }
   .form-row { grid-template-columns: 1fr; }
 }
+
+/* ===== PATCH14-STAFF-PANEL ===== */
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.skip-link { position:absolute; left:-9999px; top:8px; background:var(--ink); color:#fff; padding:10px 16px; border-radius:var(--radius); z-index:5000; font-size:0.86rem; }
+.skip-link:focus { left:12px; }
+:focus-visible { outline:2px solid var(--brass); outline-offset:2px; }
+.nav-item:focus-visible, .nav-item-standalone:focus-visible, .nav-group-header:focus-visible, .logout-link:focus-visible { outline-offset:-2px; }
+.nav-group:not(.open) > .nav-group-body { visibility:hidden; }
+.page-content:focus { outline:none; }
+button.topbar-btn { font:inherit; padding:0; }
+.panel { overflow-x:auto; }
+td .btn + .btn { margin-left:0; }
+.badge-awaiting_inspection { background:rgba(59,110,165,0.12); color:var(--info); }
+.badge-clean, .badge-inspected { background:rgba(47,93,90,0.12); color:var(--teal); }
+.badge-dirty, .badge-out_of_order, .badge-urgent, .badge-high { background:rgba(163,57,42,0.1); color:var(--danger); }
+.toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+.toolbar select, .toolbar input[type=search] { padding:9px 12px; border:1px solid var(--border); border-radius:var(--radius); font:inherit; font-size:0.84rem; background:#fff; }
+.toolbar input[type=search] { flex:1; min-width:180px; max-width:320px; }
+.pills { display:flex; flex-wrap:wrap; gap:6px; }
+.pill { font:inherit; font-size:0.8rem; font-weight:600; padding:8px 14px; border-radius:999px; border:1px solid var(--border); background:#fff; color:var(--ink); cursor:pointer; }
+.pill[aria-pressed="true"] { background:var(--ink); color:#fff; border-color:var(--ink); }
+.row-late td { background:rgba(163,57,42,0.05); }
+.late-text { color:var(--danger); font-weight:700; }
+.link-btn { background:none; border:none; color:var(--brass-dark); font:inherit; font-size:0.78rem; font-weight:600; cursor:pointer; text-decoration:underline; }
+#bellWrap { position:relative; }
+.tray { position:absolute; right:0; top:48px; width:min(360px, 92vw); max-height:70vh; overflow-y:auto; background:#fff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 12px 32px rgba(0,0,0,0.18); z-index:300; }
+.tray[hidden], .search-results[hidden], .offline-banner[hidden] { display:none; }
+.tray-head { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid var(--border); }
+.tray-item { display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; padding:10px 16px; background:none; border:none; border-bottom:1px solid var(--border-soft); font:inherit; font-size:0.84rem; cursor:pointer; color:var(--ink); }
+.tray-item:hover, .tray-item:focus-visible { background:var(--ivory); }
+.tray-item.unread { background:rgba(185,141,69,0.08); }
+.tray-item span { color:var(--text-muted); font-size:0.8rem; }
+.tray-item small { color:var(--text-muted); font-size:0.72rem; }
+.search-results { position:absolute; left:0; right:0; top:46px; background:#fff; border:1px solid var(--border); border-radius:var(--radius); box-shadow:0 12px 32px rgba(0,0,0,0.18); z-index:300; max-height:60vh; overflow-y:auto; }
+.offline-banner { position:sticky; top:0; z-index:400; background:var(--danger); color:#fff; text-align:center; padding:8px 12px; font-size:0.84rem; font-weight:600; }
+@media (max-width:700px) {
+  .page-content { padding:20px 16px 50px; }
+  .topbar { padding:12px 16px; }
+  .panel { padding:16px; }
+  .panel table { min-width:620px; }
+  .modal { padding:20px; }
+  .modal-actions { flex-wrap:wrap; }
+  .form-row { grid-template-columns:1fr; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
 </style>
 </head>
 <body>
@@ -193,7 +238,9 @@ tr:last-child td { border-bottom: none; }
 </div>
 
 <div id="appShell" style="display:none;">
-  <div class="sidebar" id="sidebar">
+  <a class="skip-link" href="#pageContent">Skip to content</a>
+  <div class="offline-banner" id="offlineBanner" role="status" hidden>You are offline. Changes will not save until the connection is back.</div>
+  <div class="sidebar" id="sidebar" role="navigation" aria-label="Main">
     <div class="sidebar-header">
       <div class="logo-icon">O</div>
       <div class="logo-text">Uyeh <span>Hotel</span></div>
@@ -214,14 +261,14 @@ tr:last-child td { border-bottom: none; }
 
   <div class="main-content">
     <div class="topbar">
-      <button class="hamburger-btn" id="hamburgerBtn"><span></span><span></span><span></span></button>
-      <div class="search-bar"><i class="fas fa-magnifying-glass"></i><input type="text" placeholder="Search…" disabled></div>
+      <button class="hamburger-btn" id="hamburgerBtn" type="button" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false"><span></span><span></span><span></span></button>
+      <div class="search-bar" id="globalSearchBar" role="search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input type="search" id="globalSearch" placeholder="Find a guest or booking…" aria-label="Find a guest or booking" autocomplete="off"><div class="search-results" id="globalSearchResults" hidden></div></div>
       <div class="topbar-actions">
-        <div class="topbar-btn" id="ticketsBellBtn"><i class="fas fa-bell"></i><span class="nav-badge" id="ticketsBellBadge" style="position:absolute; top:2px; right:2px;">0</span></div>
-        <div class="topbar-btn" id="pushToggleBtn" title="Push notifications" onclick="handlePushToggle()"><i class="fas fa-bell-slash" id="pushToggleIcon"></i></div>
+        <div id="bellWrap"><button type="button" class="topbar-btn" id="bellBtn" aria-label="Notifications" aria-haspopup="true" aria-expanded="false" aria-controls="bellTray"><i class="fas fa-bell" aria-hidden="true"></i><span class="nav-badge" id="bellBadge" aria-hidden="true" style="position:absolute; top:2px; right:2px; display:none;">0</span></button><div class="tray" id="bellTray" hidden></div></div>
+        <button type="button" class="topbar-btn" id="pushToggleBtn" title="Push notifications" aria-label="Turn push notifications on or off" onclick="handlePushToggle()"><i class="fas fa-bell-slash" id="pushToggleIcon" aria-hidden="true"></i></button>
       </div>
     </div>
-    <div class="page-content" id="pageContent"></div>
+    <main class="page-content" id="pageContent" tabindex="-1"></main>
   </div>
 </div>
 
@@ -426,6 +473,7 @@ function toast(message, type = "info") {
   if (!stack) {
     stack = document.createElement("div");
     stack.id = "toastStack";
+    stack.setAttribute("role", "status"); stack.setAttribute("aria-live", "polite");
     stack.style.cssText = "position:fixed; top:16px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:8px;";
     document.body.appendChild(stack);
   }
@@ -433,9 +481,11 @@ function toast(message, type = "info") {
   const bg = type === "error" ? "#B3261E" : type === "success" ? "#2E5339" : "#1F2937";
   el.style.cssText = `background:${bg}; color:#fff; padding:12px 16px; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.2); max-width:320px; font-size:0.9rem; cursor:pointer;`;
   el.textContent = message;
+  el.title = "Click to dismiss";
   el.onclick = () => el.remove();
   stack.appendChild(el);
-  setTimeout(() => el.remove(), 5000);
+  while (stack.children.length > 4) stack.firstChild.remove();
+  setTimeout(() => el.remove(), type === "error" ? 9000 : 5000);
 }
 
 /* Socket.IO — one personal room per account (user:staff:{id}), joined
@@ -450,11 +500,8 @@ function connectStaffSocket() {
     if ((await refreshSession()) === false) endSession("Your session ended. Please sign in again.");
   });
   _staffSocket.on("connect", () => { _renewedOnce = false; });
-  _staffSocket.on("notification", (n) => toast(`${n.title}${n.body ? " — " + n.body : ""}`, "info"));
-  _staffSocket.on("ticket_message", (n) => {
-    toast(`${n.title}${n.body ? " — " + n.body : ""}`, "info");
-    if (typeof refreshTicketsBadgeSilently === "function") refreshTicketsBadgeSilently();
-  });
+  _staffSocket.on("notification", (n) => onStaffNotification(n, "general"));
+  _staffSocket.on("ticket_message", (n) => onStaffNotification(n, "ticket"));
 }
 
 /* Push — separate from the socket above. Socket only fires while a tab
@@ -538,6 +585,7 @@ async function adminRequest(path, options = {}, _retried = false) {
   return data;
 }
 
+const _qs = (o) => { const p = new URLSearchParams(); Object.entries(o || {}).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== "") p.set(k, v); }); const s = p.toString(); return s ? `?${s}` : ""; };
 const staffApi = {
   getPushVapidKey: () => adminRequest("/push/vapid-public-key"),
   subscribeToPush: (subscription) => adminRequest("/push/subscribe", { method: "POST", body: JSON.stringify(subscription) }),
@@ -577,7 +625,7 @@ const staffApi = {
   listStockMovements: (id) => adminRequest(`/manager/stock/${id}/movements`),
   recordStockMovement: (id, payload) => adminRequest(`/manager/stock/${id}/movements`, { method: "POST", body: JSON.stringify(payload) }),
 
-  listBookings: (status) => adminRequest(`/manager/bookings${status ? `?status=${status}` : ""}`),
+  listBookings: (opts) => adminRequest(`/manager/bookings${_qs(typeof opts === "string" ? { status: opts } : opts)}`),
   updateBookingStatus: (id, status) => adminRequest(`/manager/bookings/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
   getFolio: (id) => adminRequest(`/manager/bookings/${id}/folio`),
   settleFolio: (id, method) => adminRequest(`/manager/bookings/${id}/folio/settle`, { method: "POST", body: JSON.stringify({ method }) }),
@@ -596,10 +644,14 @@ const staffApi = {
   // checked per order type on the backend (see server.js), not here.
   searchGuests: (q) => adminRequest(`/manager/guests/search?q=${encodeURIComponent(q)}`),
   createWalkInOrder: (payload) => adminRequest("/manager/orders", { method: "POST", body: JSON.stringify(payload) }),
-  listOrders: (status) => adminRequest(`/manager/orders${status ? `?status=${status}` : ""}`),
+  listOrders: (opts) => adminRequest(`/manager/orders${_qs(typeof opts === "string" ? { status: opts } : opts)}`),
   updateOrderStatus: (id, status) => adminRequest(`/manager/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
 
   getReports: () => adminRequest("/manager/reports"),
+  createWalkInBooking: (payload) => adminRequest("/manager/bookings", { method: "POST", body: JSON.stringify(payload) }),
+  updateMyTask: (id, payload) => adminRequest(`/staff/my-tasks/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
+  listVenueEnquiries: (status) => adminRequest(`/manager/venue-enquiries${status ? `?status=${encodeURIComponent(status)}` : ""}`),
+  updateVenueEnquiry: (id, payload) => adminRequest(`/manager/venue-enquiries/${id}`, { method: "PATCH", body: JSON.stringify(payload) }),
 
   // My Shift — the dedicated staff router. Needs no permission at all,
   // just a valid login.
@@ -648,6 +700,7 @@ const staffApi = {
    permissions a Manager/Director granted this account. No
    People, no Company, no Settings.
    ============================================================ */
+const ORDER_VIEW_PERMS = ["manage_bookings", "manage_orders", "manage_menu", "manage_laundry", "manage_spa"];
 const NAV_GROUPS = [
   {
     id: "operations", label: "Operations", icon: "fa-th-large",
@@ -656,10 +709,11 @@ const NAV_GROUPS = [
       { page: "housekeeping", label: "Housekeeping", icon: "fa-broom", permission: "manage_rooms" },
       { page: "menu", label: "Menu", icon: "fa-utensils", permission: "manage_menu" },
       { page: "place-order", label: "Place Order", icon: "fa-bell-concierge", permissions: ["manage_menu", "manage_laundry", "manage_spa"] },
-      { page: "orders", label: "Orders", icon: "fa-receipt", permission: "manage_bookings" },
+      { page: "orders", label: "Orders", icon: "fa-receipt", permissions: ORDER_VIEW_PERMS, badgeId: "ordersNavBadge" },
       { page: "bookings", label: "Bookings", icon: "fa-calendar-check", permission: "manage_bookings" },
       { page: "stock", label: "Stock", icon: "fa-boxes-stacked", permission: "manage_stock" },
       { page: "events", label: "Events", icon: "fa-champagne-glasses", permission: "manage_events" },
+      { page: "venue-enquiries", label: "Venue Enquiries", icon: "fa-landmark", permission: "manage_events", badgeId: "venueNavBadge" },
     ],
   },
   {
@@ -715,9 +769,10 @@ function renderSidebar() {
     <div class="nav-divider"></div>
     ${groupsHtml}
   `;
+  enhanceNav();
 }
-function toggleNavGroup(headerEl) { headerEl.parentElement.classList.toggle("open"); }
-function setActiveNav(page) { document.querySelectorAll(".nav-item, .nav-item-standalone").forEach((el) => el.classList.toggle("active", el.getAttribute("data-page") === page)); }
+function toggleNavGroup(headerEl) { headerEl.parentElement.classList.toggle("open"); headerEl.setAttribute("aria-expanded", String(headerEl.parentElement.classList.contains("open"))); }
+function setActiveNav(page) { document.querySelectorAll(".nav-item, .nav-item-standalone").forEach((el) => { const on = el.getAttribute("data-page") === page; el.classList.toggle("active", on); if (on) el.setAttribute("aria-current", "page"); else el.removeAttribute("aria-current"); }); }
 
 /* ============================================================
    ROUTER
@@ -733,6 +788,7 @@ const PAGE_LOADERS = {
   bookings: loadBookingsPage,
   stock: loadStockPage,
   events: loadEventsPage,
+  "venue-enquiries": loadVenueEnquiriesPage,
   tickets: loadTicketsPage,
   reports: loadReportsPage,
 };
@@ -747,8 +803,8 @@ function switchPage(page) {
   // link) still gets blocked here rather than trusting the click alone.
   const pagePermission = { rooms: "manage_rooms", menu: "manage_menu", bookings: "manage_bookings",
     stock: "manage_stock", events: "manage_events", tickets: "handle_tickets", reports: "view_reports",
-    orders: "manage_bookings" }[page];
-  const pageAnyPermissions = { "place-order": ["manage_menu", "manage_laundry", "manage_spa"] }[page];
+    "venue-enquiries": "manage_events" }[page];
+  const pageAnyPermissions = { "place-order": ["manage_menu", "manage_laundry", "manage_spa"], orders: ORDER_VIEW_PERMS }[page];
   if (pagePermission && !hasPermission(pagePermission)) {
     container.innerHTML = html`<div class="empty-state">You don't have access to this section. Ask your Manager to grant it.</div>`;
     return;
@@ -762,7 +818,8 @@ function switchPage(page) {
   if (!loader) { container.innerHTML = html`<div class="empty-state">Unknown page.</div>`; return; }
   container.innerHTML = html`<div class="loading-state">Loading…</div>`;
   loader();
-  if (window.innerWidth <= 900) document.getElementById("sidebar").classList.remove("open");
+  afterPageSwitch(page);
+  if (window.innerWidth <= 900) closeSidebarMobile();
 }
 function loadComingSoon(title, description) {
   document.getElementById("pageContent").innerHTML = html`
@@ -892,21 +949,27 @@ async function refreshMyTasks() {
   try {
     const { tasks } = await staffApi.getMyTasks();
     const canManage = hasPermission("manage_rooms");
-    const TASK_NEXT = { PENDING: "IN_PROGRESS", ASSIGNED: "IN_PROGRESS", IN_PROGRESS: "COMPLETED" };
+    const NEXT = { PENDING: "IN_PROGRESS", ASSIGNED: "IN_PROGRESS", IN_PROGRESS: canManage ? "COMPLETED" : "AWAITING_INSPECTION" };
+    const LABEL = { IN_PROGRESS: "Start", COMPLETED: "Complete", AWAITING_INSPECTION: "Ready for inspection" };
     document.getElementById("myTasksBody").innerHTML = tasks.length ? html.join(tasks.map((t) => html`
       <tr>
         <td>${t.room ? t.room.roomNumber : "—"}</td>
         <td>${t.type.replace(/_/g, " ")}</td>
         <td><span class="badge badge-${t.priority.toLowerCase()}">${t.priority}</span></td>
         <td><span class="badge badge-${t.status.toLowerCase()}">${t.status.replace(/_/g, " ")}</span></td>
-        <td>${canManage && TASK_NEXT[t.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceMyTask('${t.id}','${TASK_NEXT[t.status]}')">${TASK_NEXT[t.status] === "COMPLETED" ? "Complete" : "Start"}</button>` : ""}</td>
+        <td>${NEXT[t.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceMyTask('${t.id}','${NEXT[t.status]}')">${LABEL[NEXT[t.status]]}</button>`
+          : t.status === "AWAITING_INSPECTION" ? html`<span style="color:var(--text-muted); font-size:0.8rem;">Waiting for an inspector</span>` : ""}</td>
       </tr>
     `)) : html`<tr><td colspan="5" class="empty-state">No tasks assigned to you.</td></tr>`;
   } catch (err) { showNotice("myShiftNotice", err.message); }
 }
 async function advanceMyTask(id, status) {
-  try { await staffApi.updateHousekeepingTask(id, { status }); refreshMyTasks(); }
-  catch (err) { showNotice("myShiftNotice", err.message); }
+  try {
+    // Completing is a supervisor action (manage_rooms); everyone else starts a task and sends it for inspection.
+    if (status === "COMPLETED") await staffApi.updateHousekeepingTask(id, { status }); else await staffApi.updateMyTask(id, { status });
+    showNotice("myShiftNotice", status === "AWAITING_INSPECTION" ? "Sent for inspection." : "Task updated.", "success");
+    refreshMyTasks();
+  } catch (err) { showNotice("myShiftNotice", err.message); }
 }
 
 /* ============================================================
@@ -938,11 +1001,10 @@ async function loadRoomsPage() {
         <td>${money(r.basePrice, r.currency)}</td>
         <td>${r.floor || "—"}</td>
         <td>
-          <select onchange="updateRoomStatusInline('${r.id}', this.value)" style="padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem;">
+          <select aria-label="Change status of room ${r.roomNumber}" onchange="updateRoomStatusInline('${r.id}', this.value)" style="padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem;">
             <option value="">${r.status}</option>
             <option value="ACTIVE">Active</option>
             <option value="MAINTENANCE">Maintenance</option>
-            <option value="INACTIVE">Inactive</option>
           </select>
         </td>
       </tr>
@@ -1077,7 +1139,7 @@ async function refreshHousekeeping() {
         <td>${r.housekeepingUpdatedAt ? fmtDT(r.housekeepingUpdatedAt) : "—"}</td>
         <td>
           <span class="badge badge-${r.housekeepingStatus.toLowerCase()}" style="margin-right:8px;">${HOUSEKEEPING_LABELS[r.housekeepingStatus]}</span>
-          <select onchange="changeHousekeepingStatus('${r.id}', this.value)" style="padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem;">
+          <select aria-label="Change housekeeping status of room ${r.roomNumber}" onchange="changeHousekeepingStatus('${r.id}', this.value)" style="padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem;">
             <option value="">Change…</option>
             ${html.join(HOUSEKEEPING_STATUSES.filter((s) => s !== r.housekeepingStatus).map((s) => html`<option value="${s}">${HOUSEKEEPING_LABELS[s]}</option>`))}
           </select>
@@ -1109,14 +1171,14 @@ async function refreshHousekeepingBoard() {
       <div class="stat-card"><b>${summary.outOfOrder}</b><span>Out of order</span></div>
     `;
     const canManage = hasPermission("manage_rooms");
-    const TASK_NEXT = { PENDING: "IN_PROGRESS", ASSIGNED: "IN_PROGRESS", IN_PROGRESS: "COMPLETED" };
+    const TASK_NEXT = { PENDING: "IN_PROGRESS", ASSIGNED: "IN_PROGRESS", IN_PROGRESS: "COMPLETED", AWAITING_INSPECTION: "COMPLETED" };
     const tasks = rooms.flatMap((r) => r.tasks.map((t) => ({ ...t, roomNumber: r.roomNumber })));
     document.getElementById("hkTasksBody").innerHTML = tasks.length ? html.join(tasks.map((t) => html`
       <tr>
         <td>${t.roomNumber}</td><td>${t.type.replace(/_/g, " ")}</td>
         <td><span class="badge badge-${t.priority.toLowerCase()}">${t.priority}</span></td>
         <td><span class="badge badge-${t.status.toLowerCase()}">${t.status.replace(/_/g, " ")}</span></td>
-        <td>${canManage && TASK_NEXT[t.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceTask('${t.id}','${TASK_NEXT[t.status]}')">${TASK_NEXT[t.status] === "COMPLETED" ? "Complete" : "Start"}</button>` : ""}</td>
+        <td>${canManage && TASK_NEXT[t.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceTask('${t.id}','${TASK_NEXT[t.status]}')">${taskActionLabel(t.status)}</button>` : ""}</td>
       </tr>
     `)) : html`<tr><td colspan="5" class="empty-state">No open tasks.</td></tr>`;
 
@@ -1132,7 +1194,7 @@ async function refreshHousekeepingBoard() {
 
     const roomOptions = html.join(rooms.map((r) => html`<option value="${r.id}">${r.roomNumber}</option>`));
     document.getElementById("tkRoomId").innerHTML = roomOptions;
-    document.getElementById("mtRoomId").innerHTML += roomOptions;
+    document.getElementById("mtRoomId").innerHTML = html`<option value="">— Common area —</option>` + roomOptions;
   } catch (err) {
     showNotice("housekeepingNotice", err.message);
   }
@@ -1601,13 +1663,13 @@ function searchGuestDebounced() {
   _poSearchTimer = setTimeout(async () => {
     const q = document.getElementById("poGuestSearch").value.trim();
     const resultsEl = document.getElementById("poGuestResults");
-    if (q.length < 2) { resultsEl.innerHTML = ""; return; }
+    if (q.length < 3) { resultsEl.innerHTML = q.length ? html`<p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">Keep typing — at least 3 characters.</p>` : ""; return; }
     try {
       const { guests } = await staffApi.searchGuests(q);
       resultsEl.innerHTML = guests.length ? html.join(guests.map((g) => html`
-        <div style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; margin-top:4px; cursor:pointer;" onclick='selectGuest(${refJs(g)})'>
-          <b>${g.name}</b> <span style="color:var(--text-muted); font-size:0.82rem;">${g.email}${g.phone ? " · " + g.phone : ""}</span>
-        </div>
+        <button type="button" class="tray-item" style="border:1px solid var(--border); border-radius:6px; margin-top:4px;" onclick='selectGuest(${refJs(g)})'>
+          <b>${g.name}</b> <span>${g.email}${g.phone ? " · " + g.phone : ""}</span>
+        </button>
       `)) : html`<p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">No match — enter their details below instead.</p>`;
     } catch { /* search failing shouldn't block manual entry below */ }
   }, 350);
@@ -1678,7 +1740,7 @@ async function submitWalkInOrder() {
           method: document.getElementById("poMethod").value,
         });
       } catch (err) {
-        showNotice("placeOrderNotice", `Order placed, but recording the payment failed: ${err.message}. Record it from Transactions instead.`, "error");
+        showNotice("placeOrderNotice", `Order placed, but recording the payment failed: ${err.message}. Ask a Manager to record the payment, or open the order from Orders and take it there.`, "error");
         return;
       }
     }
@@ -1697,52 +1759,6 @@ async function submitWalkInOrder() {
    staff walk-in alike, with the placing staff member shown when
    applicable. Same "advance status" convention as Bookings.
    ============================================================ */
-async function loadOrdersQueuePage() {
-  const container = document.getElementById("pageContent");
-  container.innerHTML = html`
-    ${pageHeader("Orders", "Every order placed at this branch — online and walk-in.")}
-    <div id="ordersNotice"></div>
-    <div class="panel">
-      <table><thead><tr><th>Guest</th><th>Type</th><th>Total</th><th>Status</th><th>Placed by</th><th></th></tr></thead>
-        <tbody id="ordersBody"><tr><td colspan="6" class="loading-state">Loading…</td></tr></tbody>
-      </table>
-    </div>
-
-    <div class="modal-overlay" id="orderDetailModal" style="display:none;">
-      <div class="modal" style="max-width:640px;">
-        <h3>Order detail</h3>
-        <div id="orderDetailNotice"></div>
-        <div id="orderDetailBody"><div class="loading-state">Loading…</div></div>
-      </div>
-    </div>
-  `;
-  await refreshOrdersQueue();
-}
-async function refreshOrdersQueue() {
-  const NEXT_STATUS = { PENDING: "IN_PROGRESS", IN_PROGRESS: "COMPLETED" };
-  try {
-    const { orders } = await staffApi.listOrders();
-    document.getElementById("ordersBody").innerHTML = orders.length ? html.join(orders.map((o) => html`
-      <tr>
-        <td>${o.guest.name}</td>
-        <td>${(o.type || "").replace(/_/g, " ")}</td>
-        <td>${o.totalAmount != null ? money(o.totalAmount, o.currency) : "—"}</td>
-        <td><span class="badge badge-${o.status.toLowerCase()}">${o.status}</span></td>
-        <td style="font-size:0.82rem; color:var(--text-muted);">${o.placedByStaff ? o.placedByStaff.name : "Guest"}</td>
-        <td><button class="btn btn-sm btn-outline" onclick="openOrderDetailModal('${o.id}')">View</button>
-        ${NEXT_STATUS[o.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceOrder('${o.id}','${NEXT_STATUS[o.status]}')">${NEXT_STATUS[o.status].replace("_"," ").toLowerCase()}</button>` : ""}
-        ${["PENDING","IN_PROGRESS"].includes(o.status) ? html`<button class="btn btn-sm btn-danger" onclick="advanceOrder('${o.id}','CANCELLED')">Cancel</button>` : ""}</td>
-      </tr>
-    `)) : html`<tr><td colspan="6" class="empty-state">No orders yet.</td></tr>`;
-  } catch (err) {
-    document.getElementById("ordersBody").innerHTML = html`<tr><td colspan="6" class="empty-state">${err.message}</td></tr>`;
-  }
-}
-async function advanceOrder(id, status) {
-  try { await staffApi.updateOrderStatus(id, status); refreshOrdersQueue(); }
-  catch (err) { showNotice("ordersNotice", err.message); }
-}
-
 /* ============================================================
    ORDER DETAIL — line-level management (manage_orders). Anyone with
    manage_bookings can view; only manage_orders can add/void a line;
@@ -1762,6 +1778,7 @@ async function refreshOrderDetail() {
   const body = document.getElementById("orderDetailBody");
   try {
     const { order } = await staffApi.getOrder(_odOrderId);
+    _odOrder = order;
     const canEditLines = hasPermission("manage_orders");
     const canReopen = hasPermission("manage_payments");
     body.innerHTML = html`
@@ -1777,6 +1794,7 @@ async function refreshOrderDetail() {
         `)) : html`<tr><td colspan="${canEditLines ? 5 : 4}" class="empty-state">No items on this order.</td></tr>`}</tbody>
       </table>
       <div class="summary-line total" style="margin-top:10px;"><span>Total</span><span>${money(order.totalAmount || 0, order.currency)}</span></div>
+      ${orderPayBlock(order)}
       ${canEditLines && order.isOpen ? html`
         <form id="addLineForm" style="border-top:1px solid var(--border); margin-top:16px; padding-top:16px;">
           <div class="form-row">
@@ -1819,7 +1837,7 @@ async function submitAddOrderLine(e) {
   }
 }
 async function voidOrderLineRow(lineId) {
-  const reason = prompt("Reason for voiding this item (required):");
+  const reason = await uiPrompt("Reason for voiding this item (required):", { title: "Void item", confirmText: "Void item", danger: true, minLength: 3 });
   if (!reason || reason.trim().length < 3) { if (reason !== null) showNotice("orderDetailNotice", "A reason of at least 3 characters is required."); return; }
   try {
     await staffApi.voidOrderLine(_odOrderId, lineId, { reason: reason.trim() });
@@ -1830,7 +1848,7 @@ async function voidOrderLineRow(lineId) {
   }
 }
 async function closeOrderRow() {
-  if (!confirm("Close this order? No more items can be added unless it's reopened.")) return;
+  if (!(await uiConfirm("Close this order? No more items can be added unless it's reopened.", { title: "Close order", confirmText: "Close order" }))) return;
   try {
     await staffApi.closeOrder(_odOrderId);
     await refreshOrderDetail();
@@ -1856,13 +1874,16 @@ let _bookingsCache = [];
 async function loadBookingsPage() {
   const container = document.getElementById("pageContent");
   container.innerHTML = html`
-    ${pageHeader("Bookings", "Confirm, check in, check out, or cancel.")}
+    ${pageHeader("Bookings", "Confirm, check in, check out, or cancel. Updates by itself.", html`<button class="btn btn-primary" onclick="openWalkinModal()"><i class="fas fa-plus" aria-hidden="true"></i> New walk-in booking</button>`)}
     <div id="bookingsNotice"></div>
     <div class="panel">
+      ${bookingsHeaderHtml()}
       <table><thead><tr><th>Guest</th><th>Room</th><th>Dates</th><th>Status</th><th></th></tr></thead>
         <tbody id="bookingsBody"><tr><td colspan="5" class="loading-state">Loading…</td></tr></tbody>
       </table>
+      <div id="bookingsMore" style="text-align:center;"></div>
     </div>
+    ${walkinModalHtml()}
 
     <div class="modal-overlay" id="checkInModal" style="display:none;">
       <div class="modal" style="max-width:520px;">
@@ -1919,30 +1940,9 @@ async function loadBookingsPage() {
   `;
   document.getElementById("checkInForm").addEventListener("submit", submitCheckInForm);
   document.getElementById("assignRoomForm").addEventListener("submit", submitAssignRoomForm);
+  document.getElementById("walkinForm").addEventListener("submit", submitWalkinForm);
   await refreshBookingsTable();
 }
-async function refreshBookingsTable() {
-  const NEXT_STATUS = { PENDING: "CONFIRMED" };
-  try {
-    const { bookings } = await staffApi.listBookings();
-    _bookingsCache = bookings;
-    document.getElementById("bookingsBody").innerHTML = bookings.length ? html.join(bookings.map((b) => html`
-      <tr><td>${b.guest.name}<br><span style="color:var(--text-muted); font-size:0.78rem;">${b.guest.email}</span></td>
-      <td>${b.room ? `${b.room.name} — ${b.room.roomNumber}` : html`<span style="color:var(--text-muted);">Not assigned yet</span>`}</td>
-      <td>${b.checkIn.slice(0,10)} → ${b.checkOut.slice(0,10)}</td>
-      <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
-      <td>${b.status === "CHECKED_IN" ? html`<button class="btn btn-sm btn-outline" onclick="openFolioModal('${b.id}')">Check out</button><button class="btn btn-sm btn-outline" onclick="openAssignRoomModal('${b.id}')">Change room</button>`
-        : b.status === "CONFIRMED" ? html`<button class="btn btn-sm btn-outline" onclick="openCheckInModal('${b.id}')">Check in</button>`
-        : NEXT_STATUS[b.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceBooking('${b.id}','${NEXT_STATUS[b.status]}')">${NEXT_STATUS[b.status].replace("_"," ").toLowerCase()}</button>` : ""}
-      ${["PENDING","CONFIRMED"].includes(b.status) ? html`<button class="btn btn-sm btn-danger" onclick="advanceBooking('${b.id}','CANCELLED')">Cancel</button>` : ""}</td></tr>
-    `)) : html`<tr><td colspan="5" class="empty-state">No bookings yet.</td></tr>`;
-  } catch (err) { document.getElementById("bookingsBody").innerHTML = html`<tr><td colspan="5" class="empty-state">${err.message}</td></tr>`; }
-}
-async function advanceBooking(id, status) {
-  try { await staffApi.updateBookingStatus(id, status); refreshBookingsTable(); }
-  catch (err) { showNotice("bookingsNotice", err.message); }
-}
-
 async function populateRoomSelect(selectEl, selectedRoomId, includeAutoOption) {
   selectEl.innerHTML = html`<option value="">Loading…</option>`;
   try {
@@ -2086,7 +2086,7 @@ async function performCheckOut(bookingId, extraFlags = {}) {
     await staffApi.checkOutBooking(bookingId, extraFlags);
   } catch (err) {
     if (err.code === "KEYS_OUTSTANDING" && !extraFlags.acceptMissingKeys) {
-      if (confirm(`${err.message} Check out anyway?`)) return performCheckOut(bookingId, { ...extraFlags, acceptMissingKeys: true });
+      if (await uiConfirm(`${err.message} Check out anyway?`, { title: "Keys not returned", confirmText: "Check out anyway", danger: true })) return performCheckOut(bookingId, { ...extraFlags, acceptMissingKeys: true });
       throw new Error("Checkout cancelled.");
     }
     throw err;
@@ -2246,7 +2246,7 @@ async function submitEventForm(e) {
 }
 
 async function deleteEventRow(id) {
-  if (!confirm("Delete this event? This can't be undone.")) return;
+  if (!(await uiConfirm("Delete this event? This can't be undone.", { title: "Delete event", confirmText: "Delete event", danger: true }))) return;
   try {
     await staffApi.deleteEvent(id);
     showNotice("eventsNotice", "Event deleted.", "success");
@@ -2515,8 +2515,9 @@ async function submitDisableTwoFactor() {
    ============================================================ */
 function showNotice(containerId, message, type = "error") {
   const el = document.getElementById(containerId); if (!el) return;
-  el.innerHTML = html`<div class="notice ${type}">${message}</div>`;
-  setTimeout(() => { if (el) el.innerHTML = ""; }, 4000);
+  el.innerHTML = html`<div class="notice ${type}" role="${type === "error" ? "alert" : "status"}">${message}</div>`;
+  clearTimeout(el._noticeTimer);
+  el._noticeTimer = setTimeout(() => { if (el) el.innerHTML = ""; }, type === "error" ? 9000 : 4000);
 }
 function showLogin() { document.getElementById("loginScreen").style.display = "flex"; document.getElementById("appShell").style.display = "none"; }
 function showApp() {
@@ -2524,14 +2525,13 @@ function showApp() {
   document.getElementById("appShell").style.display = "block";
   connectStaffSocket();
   refreshPushToggleIcon();
-  renderSidebar(); switchPage("dashboard"); refreshTicketsBadgeSilently();
+  renderSidebar(); initPatch14Shell(); switchPage("dashboard"); refreshBadges(); startLiveRefresh();
 }
 async function refreshTicketsBadgeSilently() {
   if (!hasPermission("handle_tickets")) return;
   try {
     const { tickets } = await staffApi.listTickets("OPEN");
-    const badge = document.getElementById("ticketsBellBadge");
-    if (badge) { badge.textContent = tickets.length; badge.style.display = tickets.length ? "flex" : "none"; }
+    setNavBadge("ticketsNavBadge", tickets.length);
   } catch { /* silent — background badge refresh */ }
 }
 
@@ -2581,8 +2581,611 @@ document.getElementById("twoFactorBackBtn").addEventListener("click", () => {
   document.getElementById("loginNotice").innerHTML = "";
 });
 document.getElementById("logoutBtn").addEventListener("click", () => endSession());
-document.getElementById("hamburgerBtn").addEventListener("click", () => document.getElementById("sidebar").classList.toggle("open"));
-document.getElementById("ticketsBellBtn").addEventListener("click", () => switchPage("tickets"));
+document.getElementById("hamburgerBtn").addEventListener("click", () => toggleSidebarMobile());
+
+/* PATCH14-STAFF-PANEL */
+/* ============================================================
+   PATCH14 — staff panel upgrade
+   Shell & accessibility, live updates, notifications, global search,
+   Orders / Bookings upgrades, walk-in booking, Venue Enquiries.
+   ============================================================ */
+const PAGE_TITLES = { dashboard: "Dashboard", "my-shift": "My Shift", rooms: "Rooms", housekeeping: "Housekeeping", menu: "Menu", "place-order": "Place Order", orders: "Orders", bookings: "Bookings", stock: "Stock", events: "Events", "venue-enquiries": "Venue Enquiries", tickets: "Tickets", reports: "Reports" };
+let _currentPage = "dashboard", _navCount = 0;
+
+function afterPageSwitch(page) {
+  _currentPage = page;
+  _navCount++;
+  renderDocTitle();
+  window.scrollTo(0, 0);
+  if (_navCount > 1) { const pc = document.getElementById("pageContent"); if (pc) pc.focus({ preventScroll: true }); }
+}
+function renderDocTitle() {
+  const unread = _notifs.filter((n) => !n.read).length;
+  document.title = `${unread ? `(${unread}) ` : ""}${PAGE_TITLES[_currentPage] || "Staff"} — Staff Panel — Uyeh Hotel`;
+}
+function setNavBadge(id, n) {
+  const el = document.getElementById(id); if (!el) return;
+  el.textContent = n > 99 ? "99+" : String(n);
+  el.style.display = "";
+  el.classList.toggle("visible", n > 0);
+}
+function toggleSidebarMobile(force) {
+  const sb = document.getElementById("sidebar"), hb = document.getElementById("hamburgerBtn");
+  const open = force === undefined ? !sb.classList.contains("open") : !!force;
+  sb.classList.toggle("open", open);
+  hb.setAttribute("aria-expanded", String(open));
+  hb.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+}
+function closeSidebarMobile() { toggleSidebarMobile(false); }
+function enhanceNav() {
+  const nm = document.getElementById("navMenu");
+  nm.querySelectorAll(".nav-item, .nav-item-standalone").forEach((el) => { el.setAttribute("role", "link"); el.tabIndex = 0; });
+  nm.querySelectorAll(".nav-group-header").forEach((el) => { el.setAttribute("role", "button"); el.tabIndex = 0; el.setAttribute("aria-expanded", String(el.parentElement.classList.contains("open"))); });
+  setActiveNav(_currentPage);
+}
+
+/* ---------- small helpers ---------- */
+function todayLocal(offsetDays = 0) { const d = new Date(); d.setDate(d.getDate() + offsetDays); const p = (x) => String(x).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+function ageLabel(iso) {
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  return m < 1 ? "just now" : m < 60 ? `${m} min` : m < 1440 ? `${Math.floor(m / 60)} h` : `${Math.floor(m / 1440)} d`;
+}
+function ageMinutes(iso) { return Math.round((Date.now() - new Date(iso).getTime()) / 60000); }
+function taskActionLabel(status) { return { PENDING: "Start", ASSIGNED: "Start", IN_PROGRESS: "Complete", AWAITING_INSPECTION: "Approve" }[status] || ""; }
+
+/* ---------- dialogs (replace the browser's prompt/confirm) ---------- */
+let _dlgSeq = 0;
+function uiDialog({ title, message, input, confirmText = "OK", cancelText = "Cancel", danger = false, minLength = 0 }) {
+  return new Promise((resolve) => {
+    const id = `dlg${++_dlgSeq}`;
+    const ov = document.createElement("div");
+    ov.className = "modal-overlay"; ov.id = id; ov.setAttribute("data-dlg", "1"); ov.style.zIndex = "3000";
+    ov.innerHTML = html`<div class="modal" style="max-width:440px;" role="alertdialog" aria-modal="true" aria-labelledby="${id}t" aria-describedby="${id}m">
+      <h3 id="${id}t">${title || "Please confirm"}</h3>
+      <p id="${id}m" style="font-size:0.9rem; line-height:1.5; margin-bottom:${input ? 12 : 4}px;">${message}</p>
+      <form>
+        ${input ? html`<div class="form-field"><label for="${id}i" class="sr-only">${message}</label><input type="text" id="${id}i" autocomplete="off"></div><div id="${id}e" class="notice error" role="alert" style="display:none;"></div>` : ""}
+        <div class="modal-actions"><button type="button" class="btn btn-outline" data-cancel>${cancelText}</button><button type="submit" class="btn ${danger ? "btn-danger" : "btn-primary"}">${confirmText}</button></div>
+      </form></div>`;
+    document.body.appendChild(ov);
+    const done = (v) => { ov.remove(); resolve(v); };
+    ov._cancel = () => done(input ? null : false);
+    ov.querySelector("[data-cancel]").onclick = ov._cancel;
+    ov.addEventListener("mousedown", (e) => { if (e.target === ov) ov._cancel(); });
+    ov.querySelector("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!input) return done(true);
+      const v = ov.querySelector("input").value.trim();
+      if (v.length < Math.max(1, minLength)) { const er = ov.querySelector(`#${id}e`); er.textContent = minLength > 1 ? `Please enter at least ${minLength} characters.` : "This is required."; er.style.display = "block"; return; }
+      done(v);
+    });
+    setTimeout(() => (ov.querySelector("input") || ov.querySelector("button[type=submit]")).focus(), 0);
+  });
+}
+const uiConfirm = (message, opts = {}) => uiDialog({ message, ...opts });
+const uiPrompt = (message, opts = {}) => uiDialog({ message, input: true, ...opts });
+
+/* ---------- modal accessibility: roles, focus in, focus back, Tab trap, Escape ---------- */
+const _modalState = { top: null, opener: null };
+const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+function openOverlays() { return [...document.querySelectorAll(".modal-overlay")].filter((m) => m.isConnected && m.style.display !== "none"); }
+let _a11yQueued = false;
+function queueA11y() { if (_a11yQueued) return; _a11yQueued = true; requestAnimationFrame(() => { _a11yQueued = false; syncA11y(); }); }
+let _fieldSeq = 0;
+function syncA11y() {
+  // modals
+  document.querySelectorAll(".modal-overlay > .modal:not([data-a11y])").forEach((m) => {
+    m.setAttribute("data-a11y", "1");
+    if (!m.getAttribute("role")) m.setAttribute("role", "dialog");
+    m.setAttribute("aria-modal", "true");
+    const h = m.querySelector("h3");
+    if (h && !m.getAttribute("aria-labelledby")) { if (!h.id) h.id = `mt${++_fieldSeq}`; m.setAttribute("aria-labelledby", h.id); }
+  });
+  const open = openOverlays(); const top = open[open.length - 1] || null;
+  if (top && top !== _modalState.top) {
+    if (!_modalState.top) _modalState.opener = document.activeElement;
+    _modalState.top = top;
+    setTimeout(() => { if (!top.contains(document.activeElement)) { const f = top.querySelector("input:not([type=hidden]):not([disabled]),select,textarea") || top.querySelector(FOCUSABLE); if (f) f.focus(); } }, 30);
+  } else if (!top && _modalState.top) {
+    const o = _modalState.opener; _modalState.top = null; _modalState.opener = null;
+    if (o && o.isConnected && typeof o.focus === "function") o.focus();
+  }
+  // labels <-> controls, table header scope
+  document.querySelectorAll(".form-field:not([data-l])").forEach((f) => {
+    f.setAttribute("data-l", "1");
+    const lab = f.querySelector(":scope > label"); const ctls = f.querySelectorAll("input:not([type=hidden]),select,textarea");
+    if (!lab || ctls.length !== 1 || lab.hasAttribute("for") || lab.contains(ctls[0])) return;
+    if (!ctls[0].id) ctls[0].id = `fld${++_fieldSeq}`;
+    lab.setAttribute("for", ctls[0].id);
+  });
+  document.querySelectorAll("th:not([scope])").forEach((th) => { th.setAttribute("scope", "col"); if (!th.textContent.trim() && !th.getAttribute("aria-label")) th.setAttribute("aria-label", "Actions"); });
+  document.querySelectorAll("img:not([alt])").forEach((i) => i.setAttribute("alt", ""));
+}
+new MutationObserver(queueA11y).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["style"] });
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    const tray = document.getElementById("bellTray");
+    if (tray && !tray.hidden) { closeTray(true); return; }
+    const sr = document.getElementById("globalSearchResults");
+    if (sr && !sr.hidden) { sr.hidden = true; return; }
+    const dlgs = [...document.querySelectorAll(".modal-overlay[data-dlg]")];
+    if (dlgs.length) { dlgs[dlgs.length - 1]._cancel(); return; }
+    const open = openOverlays(); const top = open[open.length - 1];
+    if (top) {
+      const btn = top.querySelector(".modal-actions button.btn-outline, .modal-actions button[onclick*='close']");
+      if (btn) btn.click(); else top.style.display = "none";
+      return;
+    }
+    if (document.getElementById("sidebar").classList.contains("open")) { toggleSidebarMobile(false); document.getElementById("hamburgerBtn").focus(); }
+    return;
+  }
+  if (e.key === "Tab") {
+    const open = openOverlays(); const top = open[open.length - 1]; if (!top) return;
+    const f = [...top.querySelectorAll(FOCUSABLE)].filter((x) => x.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (!top.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  if ((e.key === "Enter" || e.key === " ") && e.target.closest && e.target.closest("#navMenu") && e.target.matches("[role=link],[role=button]")) { e.preventDefault(); e.target.click(); }
+});
+
+/* ---------- connection banner ---------- */
+function syncOnline(ev) { const b = document.getElementById("offlineBanner"); if (b) b.hidden = navigator.onLine; if (ev && navigator.onLine) refreshCurrentPage(); }
+window.addEventListener("online", syncOnline); window.addEventListener("offline", syncOnline);
+
+/* ---------- notifications tray ---------- */
+let _notifs = [];
+try { _notifs = JSON.parse(sessionStorage.getItem("stf_notifs") || "[]"); } catch { _notifs = []; }
+function saveNotifs() { try { sessionStorage.setItem("stf_notifs", JSON.stringify(_notifs.slice(0, 30))); } catch { /* storage blocked: tray still works this session */ } }
+const NOTIF_ROUTES = { "/orders": "orders", "/bookings": "bookings", "/housekeeping": "housekeeping", "/venue-enquiries": "venue-enquiries", "/tickets": "tickets", "/events": "events", "/stock": "stock" };
+function onStaffNotification(n, kind) {
+  _notifs.unshift({ id: Date.now() + Math.random(), title: n.title || "Notification", body: n.body || "", url: n.url || "", at: new Date().toISOString(), read: false });
+  _notifs = _notifs.slice(0, 30); saveNotifs(); renderBell();
+  toast(`${n.title}${n.body ? " — " + n.body : ""}`, "info");
+  if (kind === "ticket") refreshTicketsBadgeSilently();
+  liveRefreshSoon();
+}
+function renderBell() {
+  const unread = _notifs.filter((n) => !n.read).length;
+  const b = document.getElementById("bellBadge");
+  if (b) { b.textContent = unread > 9 ? "9+" : String(unread); b.style.display = unread ? "flex" : "none"; }
+  const btn = document.getElementById("bellBtn"); if (btn) btn.setAttribute("aria-label", unread ? `Notifications, ${unread} unread` : "Notifications");
+  renderDocTitle();
+  const tray = document.getElementById("bellTray"); if (!tray || tray.hidden) return;
+  tray.innerHTML = html`<div class="tray-head"><b>Notifications</b>${_notifs.length ? html`<button type="button" class="link-btn" onclick="markAllNotifsRead()">Mark all read</button>` : ""}</div>
+    ${_notifs.length ? html.join(_notifs.map((n, i) => html`<button type="button" class="tray-item ${n.read ? "" : "unread"}" onclick="openNotif(${i})"><b>${n.title}</b>${n.body ? html`<span>${n.body}</span>` : ""}<small>${ageLabel(n.at)} ago</small></button>`)) : html`<div class="empty-state" style="padding:22px;">Nothing new. You'll see orders, bookings and tasks here as they come in.</div>`}`;
+}
+function toggleTray() {
+  const tray = document.getElementById("bellTray"), btn = document.getElementById("bellBtn");
+  const open = tray.hidden; tray.hidden = !open; btn.setAttribute("aria-expanded", String(open));
+  if (open) renderBell();
+}
+function closeTray(refocus) { const tray = document.getElementById("bellTray"); if (tray) tray.hidden = true; const btn = document.getElementById("bellBtn"); if (btn) { btn.setAttribute("aria-expanded", "false"); if (refocus) btn.focus(); } }
+function markAllNotifsRead() { _notifs.forEach((n) => (n.read = true)); saveNotifs(); renderBell(); }
+function openNotif(i) {
+  const n = _notifs[i]; if (!n) return; n.read = true; saveNotifs(); closeTray(false); renderBell();
+  const page = NOTIF_ROUTES[String(n.url || "").split("?")[0]];
+  if (page && document.querySelector(`#navMenu [data-page="${page}"]`)) switchPage(page);
+}
+document.addEventListener("click", (e) => {
+  const tray = document.getElementById("bellTray");
+  if (tray && !tray.hidden && !e.target.closest("#bellWrap")) closeTray(false);
+  const sr = document.getElementById("globalSearchResults");
+  if (sr && !sr.hidden && !e.target.closest("#globalSearchBar")) sr.hidden = true;
+  if (window.innerWidth <= 900 && document.getElementById("sidebar").classList.contains("open") && !e.target.closest("#sidebar") && !e.target.closest("#hamburgerBtn")) toggleSidebarMobile(false);
+});
+
+/* ---------- live refresh ---------- */
+let _liveTimer = null, _liveSoon = null;
+function refreshCurrentPage() {
+  if (!getToken() || document.hidden || !navigator.onLine || openOverlays().length) return;
+  const fn = { orders: typeof refreshOrdersQueue === "function" && refreshOrdersQueue, bookings: typeof refreshBookingsTable === "function" && refreshBookingsTable, housekeeping: typeof refreshHousekeepingBoard === "function" && refreshHousekeepingBoard, tickets: typeof refreshTicketsTable === "function" && refreshTicketsTable, "venue-enquiries": venueRefresh, "my-shift": refreshMyTasks }[_currentPage];
+  if (fn) Promise.resolve(fn()).catch(() => {});
+}
+function liveRefreshSoon() { clearTimeout(_liveSoon); _liveSoon = setTimeout(() => { refreshCurrentPage(); refreshBadges(); }, 1500); }
+function startLiveRefresh() {
+  if (_liveTimer) return;
+  let n = 0;
+  _liveTimer = setInterval(() => { if (!getToken()) return; refreshCurrentPage(); if (++n % 2 === 0) refreshBadges(); }, 30000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) { refreshCurrentPage(); refreshBadges(); } });
+}
+async function refreshBadges() {
+  if (!getToken()) return;
+  refreshTicketsBadgeSilently();
+  if (ORDER_VIEW_PERMS.some((p) => hasPermission(p))) {
+    try { const d = await staffApi.listOrders({ active: "1", limit: 100 }); setNavBadge("ordersNavBadge", (d.orders || []).filter((o) => o.status === "PENDING").length); } catch { /* badge only */ }
+  }
+  if (hasPermission("manage_events")) {
+    try { const d = await staffApi.listVenueEnquiries(); setNavBadge("venueNavBadge", (d.counts && d.counts.NEW) || 0); } catch { /* badge only */ }
+  }
+}
+
+/* ---------- global search (guests & bookings) ---------- */
+let _gsTimer = null;
+function initGlobalSearch() {
+  const bar = document.getElementById("globalSearchBar"), input = document.getElementById("globalSearch"), res = document.getElementById("globalSearchResults");
+  if (!bar || bar.dataset.ready) return; bar.dataset.ready = "1";
+  if (!hasPermission("manage_bookings")) { bar.style.visibility = "hidden"; return; }
+  input.addEventListener("input", () => {
+    clearTimeout(_gsTimer);
+    const q = input.value.trim();
+    if (q.length < 3) { res.hidden = true; return; }
+    _gsTimer = setTimeout(async () => {
+      try {
+        const d = await staffApi.listBookings({ q, limit: 8 });
+        const ql = q.toLowerCase();
+        const rows = (d.bookings || []).filter((b) => `${b.guest?.name} ${b.guest?.email} ${b.guest?.phone || ""}`.toLowerCase().includes(ql)).slice(0, 8);
+        res.innerHTML = rows.length ? html.join(rows.map((b) => html`<button type="button" class="tray-item" onclick='goToBookingSearch(${refJs(q)})'><b>${b.guest?.name}</b><span>${b.room ? b.room.roomNumber : "No room yet"} · ${String(b.checkIn).slice(0, 10)} → ${String(b.checkOut).slice(0, 10)}</span><small>${String(b.status).replace(/_/g, " ").toLowerCase()}</small></button>`)) : html`<div class="empty-state" style="padding:16px;">No booking found for “${q}”.</div>`;
+        res.hidden = false;
+      } catch { res.hidden = true; }
+    }, 300);
+  });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); const q = input.value.trim(); if (q.length >= 3) goToBookingSearch(q); } });
+}
+function goToBookingSearch(q) {
+  _bk.q = q; _bk.view = "all"; _bk.limit = 100;
+  document.getElementById("globalSearchResults").hidden = true; document.getElementById("globalSearch").value = "";
+  switchPage("bookings");
+}
+
+/* ============================================================
+   ORDERS QUEUE (replaces the old one): filters, live, paging, age, payment state.
+   Kitchen / laundry / spa staff see their own order types (the server decides).
+   ============================================================ */
+let _ord = { filter: "active", type: "", q: "", limit: 50 };
+const ORDER_FILTERS = [["active", "Active"], ["completed", "Completed"], ["cancelled", "Cancelled"], ["all", "All"]];
+function orderPayBadge(o) {
+  return o.paymentStatus === "SUCCESSFUL" ? html`<span class="badge badge-paid">Paid</span>` : o.paymentStatus === "CHARGED_TO_ROOM" ? html`<span class="badge badge-confirmed">On room</span>` : html`<span class="badge badge-pending">Unpaid</span>`;
+}
+async function loadOrdersQueuePage() {
+  document.getElementById("pageContent").innerHTML = html`
+    ${pageHeader("Orders", "Every order placed at this branch — online and walk-in. This list updates by itself.")}
+    <div id="ordersNotice"></div>
+    <div class="panel">
+      <div class="toolbar">
+        <div class="pills" role="group" aria-label="Order status">${html.join(ORDER_FILTERS.map(([k, l]) => html`<button type="button" class="pill" aria-pressed="${k === _ord.filter}" onclick="setOrderFilter('${k}')">${l}</button>`))}</div>
+        <select id="ordType" aria-label="Order type" onchange="_ord.type=this.value; refreshOrdersQueue()">
+          <option value="">All types</option>${html.join(Object.keys(ORDER_TYPE_LABELS).map((t) => html`<option value="${t}" ${t === _ord.type ? "selected" : ""}>${ORDER_TYPE_LABELS[t]}</option>`))}
+        </select>
+        <input type="search" id="ordSearch" placeholder="Find a guest…" aria-label="Find a guest in these orders" value="${_ord.q}" oninput="_ord.q=this.value; refreshOrdersQueue()">
+      </div>
+      <table><thead><tr><th>Guest</th><th>Type</th><th>Total</th><th>Status</th><th>Payment</th><th>Waiting</th><th>Placed by</th><th></th></tr></thead>
+        <tbody id="ordersBody"><tr><td colspan="8" class="loading-state">Loading…</td></tr></tbody>
+      </table>
+      <div id="ordersMore" style="text-align:center;"></div>
+    </div>
+    <div class="modal-overlay" id="orderDetailModal" style="display:none;">
+      <div class="modal" style="max-width:640px;">
+        <h3>Order detail</h3>
+        <div id="orderDetailNotice"></div>
+        <div id="orderDetailBody"><div class="loading-state">Loading…</div></div>
+      </div>
+    </div>`;
+  await refreshOrdersQueue();
+}
+function setOrderFilter(k) { _ord.filter = k; _ord.limit = 50; document.querySelectorAll(".pills .pill").forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === (ORDER_FILTERS.find((f) => f[0] === k) || [])[1]))); refreshOrdersQueue(); }
+async function refreshOrdersQueue() {
+  const body = document.getElementById("ordersBody"); if (!body) return;
+  const NEXT_STATUS = { PENDING: "IN_PROGRESS", IN_PROGRESS: "COMPLETED" };
+  try {
+    const opts = { limit: _ord.limit };
+    if (_ord.filter === "active") opts.active = "1"; else if (_ord.filter === "completed") opts.status = "COMPLETED"; else if (_ord.filter === "cancelled") opts.status = "CANCELLED";
+    if (_ord.type) opts.type = _ord.type;
+    const data = await staffApi.listOrders(opts);
+    let orders = data.orders || [];
+    // Same result even if the server ignores the new options.
+    if (_ord.filter === "active") orders = orders.filter((o) => ["PENDING", "IN_PROGRESS"].includes(o.status));
+    else if (_ord.filter === "completed") orders = orders.filter((o) => o.status === "COMPLETED");
+    else if (_ord.filter === "cancelled") orders = orders.filter((o) => o.status === "CANCELLED");
+    if (_ord.type) orders = orders.filter((o) => o.type === _ord.type);
+    const hasMore = data.hasMore !== undefined ? data.hasMore : orders.length > _ord.limit;
+    orders = orders.slice(0, _ord.limit);
+    const term = _ord.q.trim().toLowerCase();
+    if (term) orders = orders.filter((o) => String(o.guest?.name || "").toLowerCase().includes(term));
+    if (_ord.filter === "active") setNavBadge("ordersNavBadge", orders.filter((o) => o.status === "PENDING").length);
+    body.innerHTML = orders.length ? html.join(orders.map((o) => {
+      const late = o.status === "PENDING" && ageMinutes(o.createdAt) >= 15;
+      return html`<tr class="${late ? "row-late" : ""}">
+        <td>${o.guest?.name || "—"}</td>
+        <td>${ORDER_TYPE_LABELS[o.type] || (o.type || "").replace(/_/g, " ")}</td>
+        <td>${o.totalAmount != null ? money(o.totalAmount, o.currency) : "—"}</td>
+        <td><span class="badge badge-${o.status.toLowerCase()}">${o.status.replace(/_/g, " ")}</span></td>
+        <td>${orderPayBadge(o)}</td>
+        <td>${["PENDING", "IN_PROGRESS"].includes(o.status) ? html`<span class="${late ? "late-text" : ""}">${ageLabel(o.createdAt)}</span>` : "—"}</td>
+        <td style="font-size:0.82rem; color:var(--text-muted);">${o.placedByStaff ? o.placedByStaff.name : "Guest"}</td>
+        <td><button class="btn btn-sm btn-outline" onclick="openOrderDetailModal('${o.id}')">View</button>${NEXT_STATUS[o.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceOrder('${o.id}','${NEXT_STATUS[o.status]}')">${NEXT_STATUS[o.status] === "COMPLETED" ? "Complete" : "Start"}</button>` : ""}${["PENDING", "IN_PROGRESS"].includes(o.status) ? html`<button class="btn btn-sm btn-danger" onclick="advanceOrder('${o.id}','CANCELLED')">Cancel</button>` : ""}</td>
+      </tr>`;
+    })) : html`<tr><td colspan="8" class="empty-state">${_ord.filter === "active" ? "Nothing waiting right now." : "No orders match."}</td></tr>`;
+    const more = document.getElementById("ordersMore");
+    if (more) more.innerHTML = hasMore ? html`<button class="btn btn-outline" onclick="_ord.limit += 50; refreshOrdersQueue()">Show more</button>` : "";
+  } catch (err) {
+    body.innerHTML = html`<tr><td colspan="8" class="empty-state">${err.message}</td></tr>`;
+  }
+}
+async function advanceOrder(id, status) {
+  if (status === "CANCELLED" && !(await uiConfirm("Cancel this order? The guest will not be served.", { title: "Cancel order", confirmText: "Cancel order", cancelText: "Keep order", danger: true }))) return;
+  try { await staffApi.updateOrderStatus(id, status); refreshOrdersQueue(); refreshBadges(); }
+  catch (err) { showNotice("ordersNotice", err.message); }
+}
+
+/* ---- payment on the order detail ---- */
+let _odOrder = null;
+function orderPayBlock(order) {
+  const paid = order.paymentStatus === "SUCCESSFUL", onRoom = order.paymentStatus === "CHARGED_TO_ROOM";
+  const me = getStaff(); const need = ORDER_TYPE_PERMISSION[order.type];
+  const can = hasPermission("manage_payments") || (me && order.placedByStaffId === me.id && need && hasPermission(need));
+  return html`
+    <div class="summary-line"><span>Payment</span><span>${paid ? "Paid" : onRoom ? "Charged to room" : "Not paid yet"}</span></div>
+    ${!paid && !onRoom && can && order.status !== "CANCELLED" && Number(order.totalAmount) > 0 ? html`
+      <div class="form-row" style="align-items:end; margin-top:10px;">
+        <div class="form-field" style="margin:0;"><label for="odPayMethod">Take payment at the counter</label>
+          <select id="odPayMethod"><option value="CASH">Cash</option><option value="CARD">Card</option><option value="TRANSFER">Transfer</option></select></div>
+        <button type="button" class="btn btn-primary" id="odPayBtn" onclick="recordOrderPayment()">Record ${money(order.totalAmount, order.currency)}</button>
+      </div>` : ""}`;
+}
+async function recordOrderPayment() {
+  const o = _odOrder; if (!o) return;
+  const btn = document.getElementById("odPayBtn"); if (btn) btn.disabled = true;
+  try {
+    await staffApi.recordTransaction({ orderId: o.id, guestName: o.guest?.name || "Guest", source: ORDER_TYPE_TRANSACTION_SOURCE[o.type] || "SERVICE", amount: Number(o.totalAmount), method: document.getElementById("odPayMethod").value });
+    showNotice("orderDetailNotice", "Payment recorded.", "success");
+    await refreshOrderDetail(); refreshOrdersQueue();
+  } catch (err) { showNotice("orderDetailNotice", err.message); if (btn) btn.disabled = false; }
+}
+
+/* ============================================================
+   BOOKINGS (upgraded): Arrivals / In-house / Departures / Upcoming / All,
+   search, paging, walk-in booking. Works with or without the new server options.
+   ============================================================ */
+const BOOKING_VIEWS = [["arrivals", "Arriving today"], ["inhouse", "In-house"], ["departures", "Leaving today"], ["upcoming", "Upcoming"], ["all", "All"]];
+let _bk = { view: "arrivals", q: "", limit: 100 };
+function bookingMatchesView(b, view) {
+  const today = todayLocal(), ci = String(b.checkIn).slice(0, 10), co = String(b.checkOut).slice(0, 10);
+  if (view === "arrivals") return ci === today && ["PENDING", "CONFIRMED"].includes(b.status);
+  if (view === "inhouse") return b.status === "CHECKED_IN";
+  if (view === "departures") return co === today && b.status === "CHECKED_IN";
+  if (view === "upcoming") return ci >= today && ["PENDING", "CONFIRMED"].includes(b.status);
+  return true;
+}
+function bookingsHeaderHtml() {
+  return html`
+    <div class="toolbar">
+      <div class="pills" role="group" aria-label="Booking view">${html.join(BOOKING_VIEWS.map(([k, l]) => html`<button type="button" class="pill" data-view="${k}" aria-pressed="${k === _bk.view}" onclick="setBookingView('${k}')">${l}</button>`))}</div>
+      <input type="search" id="bkSearch" placeholder="Guest name, email or phone…" aria-label="Search bookings" value="${_bk.q}" oninput="bookingSearchInput(this.value)">
+    </div>`;
+}
+function setBookingView(k) { _bk.view = k; _bk.limit = 100; document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === k))); refreshBookingsTable(); }
+let _bkTimer = null;
+function bookingSearchInput(v) { _bk.q = v; clearTimeout(_bkTimer); _bkTimer = setTimeout(() => { _bk.limit = 100; refreshBookingsTable(); }, 300); }
+async function refreshBookingsTable() {
+  const body = document.getElementById("bookingsBody"); if (!body) return;
+  const NEXT_STATUS = { PENDING: "CONFIRMED" };
+  try {
+    const opts = { limit: _bk.limit };
+    if (_bk.view !== "all") opts.view = _bk.view;
+    if (_bk.q.trim().length >= 2) opts.q = _bk.q.trim();
+    const data = await staffApi.listBookings(opts);
+    let bookings = (data.bookings || []).filter((b) => bookingMatchesView(b, _bk.view));
+    const term = _bk.q.trim().toLowerCase();
+    if (term.length >= 2) bookings = bookings.filter((b) => `${b.guest?.name} ${b.guest?.email} ${b.guest?.phone || ""}`.toLowerCase().includes(term));
+    const hasMore = data.hasMore !== undefined ? data.hasMore : bookings.length > _bk.limit;
+    bookings = bookings.slice(0, _bk.limit);
+    _bookingsCache = bookings;
+    body.innerHTML = bookings.length ? html.join(bookings.map((b) => {
+      const nights = Math.max(1, Math.round((new Date(String(b.checkOut).slice(0, 10)) - new Date(String(b.checkIn).slice(0, 10))) / 86400000));
+      return html`
+      <tr><td>${b.guest.name}<br><span style="color:var(--text-muted); font-size:0.78rem;">${b.guest.email}${b.guest.phone ? " · " + b.guest.phone : ""}</span></td>
+      <td>${b.room ? `${b.room.name} — ${b.room.roomNumber}` : html`<span style="color:var(--text-muted);">Not assigned yet</span>`}</td>
+      <td>${b.checkIn.slice(0, 10)} → ${b.checkOut.slice(0, 10)}<br><span style="color:var(--text-muted); font-size:0.78rem;">${nights} night${nights === 1 ? "" : "s"}</span></td>
+      <td><span class="badge badge-${b.status.toLowerCase()}">${b.status.replace(/_/g, " ")}</span></td>
+      <td>${b.status === "CHECKED_IN" ? html`<button class="btn btn-sm btn-outline" onclick="openFolioModal('${b.id}')">Check out</button><button class="btn btn-sm btn-outline" onclick="openAssignRoomModal('${b.id}')">Change room</button>`
+        : b.status === "CONFIRMED" ? html`<button class="btn btn-sm btn-outline" onclick="openCheckInModal('${b.id}')">Check in</button>`
+        : NEXT_STATUS[b.status] ? html`<button class="btn btn-sm btn-outline" onclick="advanceBooking('${b.id}','${NEXT_STATUS[b.status]}')">${NEXT_STATUS[b.status].replace("_", " ").toLowerCase()}</button>` : ""}
+      ${["PENDING", "CONFIRMED"].includes(b.status) ? html`<button class="btn btn-sm btn-danger" onclick="advanceBooking('${b.id}','CANCELLED')">Cancel</button>` : ""}</td></tr>`;
+    })) : html`<tr><td colspan="5" class="empty-state">${_bk.view === "arrivals" ? "No arrivals expected today." : _bk.view === "inhouse" ? "No guests in-house." : _bk.view === "departures" ? "No departures due today." : "No bookings match."}</td></tr>`;
+    const more = document.getElementById("bookingsMore");
+    if (more) more.innerHTML = hasMore ? html`<button class="btn btn-outline" onclick="_bk.limit += 100; refreshBookingsTable()">Show more</button>` : "";
+  } catch (err) { body.innerHTML = html`<tr><td colspan="5" class="empty-state">${err.message}</td></tr>`; }
+}
+async function advanceBooking(id, status) {
+  if (status === "CANCELLED" && !(await uiConfirm("Cancel this booking? The guest will be told by email.", { title: "Cancel booking", confirmText: "Cancel booking", cancelText: "Keep booking", danger: true }))) return;
+  try { await staffApi.updateBookingStatus(id, status); refreshBookingsTable(); }
+  catch (err) { showNotice("bookingsNotice", err.message); }
+}
+
+/* ---- walk-in booking ---- */
+let _wiGuestId = null, _wiRooms = [], _wiTimer = null;
+function walkinModalHtml() {
+  return html`
+    <div class="modal-overlay" id="walkinModal" style="display:none;">
+      <div class="modal" style="max-width:560px;">
+        <h3>New walk-in booking</h3>
+        <div id="walkinNotice"></div>
+        <form id="walkinForm">
+          <div class="form-field"><label for="wiGuestSearch">Find an existing guest</label><input type="text" id="wiGuestSearch" placeholder="Name, email or phone (3+ letters)" autocomplete="off" oninput="walkinGuestSearch()"><div id="wiGuestResults"></div></div>
+          <div id="wiSelectedGuest" style="display:none; margin:0 0 12px; padding:10px 14px; background:var(--ivory); border:1px solid var(--border); border-radius:6px;"><b id="wiSelName"></b> <span id="wiSelEmail" style="color:var(--text-muted); font-size:0.82rem;"></span> <button type="button" class="btn btn-sm btn-outline" onclick="walkinClearGuest()">Change</button></div>
+          <div id="wiNewGuest"><p style="font-size:0.8rem; color:var(--text-muted); margin:0 0 8px;">New guest? Enter their details:</p>
+            <div class="form-row"><div class="form-field"><label for="wiName">Name</label><input type="text" id="wiName"></div><div class="form-field"><label for="wiEmail">Email</label><input type="email" id="wiEmail"></div></div>
+            <div class="form-field"><label for="wiPhone">Phone <span style="color:var(--text-muted); font-weight:400;">(optional)</span></label><input type="text" id="wiPhone"></div></div>
+          <div class="form-field"><label for="wiRoom">Room</label><select id="wiRoom" onchange="walkinEstimate()"><option value="">Loading rooms…</option></select></div>
+          <div class="form-row"><div class="form-field"><label for="wiIn">Check-in</label><input type="date" id="wiIn" onchange="walkinEstimate()"></div><div class="form-field"><label for="wiOut">Check-out</label><input type="date" id="wiOut" onchange="walkinEstimate()"></div></div>
+          <div class="form-row"><div class="form-field"><label for="wiGuests">Guests</label><input type="number" id="wiGuests" min="1" value="1"></div><div class="form-field"><label for="wiReq">Special requests <span style="color:var(--text-muted); font-weight:400;">(optional)</span></label><input type="text" id="wiReq"></div></div>
+          <div class="summary-line"><span>Estimated total</span><span id="wiEstimate">—</span></div>
+          ${hasPermission("manage_payments") ? html`<div class="form-row" style="margin-top:10px;"><div class="form-field"><label for="wiPay">Payment</label><select id="wiPay" onchange="document.getElementById('wiMethodWrap').style.display = this.value === 'NOW' ? '' : 'none'"><option value="LATER">Pay later (booking stays pending)</option><option value="NOW">Paid now at the desk</option></select></div>
+            <div class="form-field" id="wiMethodWrap" style="display:none;"><label for="wiMethod">Method</label><select id="wiMethod"><option value="CASH">Cash</option><option value="CARD">Card</option><option value="TRANSFER">Transfer</option></select></div></div>` : ""}
+          <p style="font-size:0.78rem; color:var(--text-muted);">The final price, tax and availability are worked out by the server, exactly as for an online booking.</p>
+          <div class="modal-actions"><button type="button" class="btn btn-outline" onclick="closeWalkinModal()">Cancel</button><button type="submit" class="btn btn-primary" id="wiSubmit">Create booking</button></div>
+        </form>
+      </div>
+    </div>`;
+}
+async function openWalkinModal() {
+  const f = document.getElementById("walkinForm"); f.reset(); walkinClearGuest(); _wiGuestId = null;
+  document.getElementById("walkinNotice").innerHTML = ""; document.getElementById("wiGuestResults").innerHTML = "";
+  document.getElementById("wiIn").value = todayLocal(); document.getElementById("wiOut").value = todayLocal(1);
+  document.getElementById("walkinModal").style.display = "flex";
+  const sel = document.getElementById("wiRoom");
+  try {
+    const { rooms } = await staffApi.listRooms();
+    _wiRooms = (rooms || []).filter((r) => !r.status || r.status === "ACTIVE");
+    sel.innerHTML = _wiRooms.length ? html.join(_wiRooms.map((r) => html`<option value="${r.id}">${r.name} — ${r.roomNumber} · ${money(r.basePrice, r.currency)}/night</option>`)) : html`<option value="">No rooms available</option>`;
+  } catch (err) { sel.innerHTML = html`<option value="">Couldn't load rooms</option>`; }
+  walkinEstimate();
+}
+function closeWalkinModal() { document.getElementById("walkinModal").style.display = "none"; }
+function walkinEstimate() {
+  const r = _wiRooms.find((x) => x.id === document.getElementById("wiRoom").value);
+  const a = document.getElementById("wiIn").value, b = document.getElementById("wiOut").value;
+  const nights = a && b ? Math.round((new Date(b) - new Date(a)) / 86400000) : 0;
+  document.getElementById("wiEstimate").textContent = r && nights > 0 ? `${money(Number(r.basePrice) * nights, r.currency)} (${nights} night${nights === 1 ? "" : "s"})` : "—";
+}
+function walkinGuestSearch() {
+  clearTimeout(_wiTimer);
+  _wiTimer = setTimeout(async () => {
+    const q = document.getElementById("wiGuestSearch").value.trim(), el = document.getElementById("wiGuestResults");
+    if (q.length < 3) { el.innerHTML = ""; return; }
+    try {
+      const { guests } = await staffApi.searchGuests(q);
+      el.innerHTML = guests.length ? html.join(guests.map((g) => html`<button type="button" class="tray-item" style="border:1px solid var(--border); margin-top:4px; border-radius:6px;" onclick='walkinSelectGuest(${refJs(g)})'><b>${g.name}</b><span>${g.email}${g.phone ? " · " + g.phone : ""}</span></button>`)) : html`<p style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">No guest found at this branch — enter their details below.</p>`;
+    } catch { /* manual entry still works */ }
+  }, 350);
+}
+function walkinSelectGuest(g) {
+  _wiGuestId = g.id;
+  document.getElementById("wiSelName").textContent = g.name; document.getElementById("wiSelEmail").textContent = g.email;
+  document.getElementById("wiSelectedGuest").style.display = "block"; document.getElementById("wiNewGuest").style.display = "none";
+  document.getElementById("wiGuestResults").innerHTML = ""; document.getElementById("wiGuestSearch").value = "";
+}
+function walkinClearGuest() { _wiGuestId = null; document.getElementById("wiSelectedGuest").style.display = "none"; document.getElementById("wiNewGuest").style.display = "block"; }
+async function submitWalkinForm(e) {
+  e.preventDefault();
+  const v = (id) => document.getElementById(id).value.trim();
+  if (!_wiGuestId && (!v("wiName") || !v("wiEmail"))) return showNotice("walkinNotice", "Choose an existing guest, or enter a name and email.");
+  if (!v("wiRoom")) return showNotice("walkinNotice", "Choose a room.");
+  if (!v("wiIn") || !v("wiOut") || v("wiOut") <= v("wiIn")) return showNotice("walkinNotice", "Check-out must be after check-in.");
+  const payload = { roomId: v("wiRoom"), checkIn: v("wiIn"), checkOut: v("wiOut"), guestsCount: Number(v("wiGuests")) || 1, specialRequests: v("wiReq") || undefined };
+  if (_wiGuestId) payload.existingGuestId = _wiGuestId; else payload.guest = { name: v("wiName"), email: v("wiEmail"), phone: v("wiPhone") || undefined };
+  if (document.getElementById("wiPay") && document.getElementById("wiPay").value === "NOW") payload.payment = { method: document.getElementById("wiMethod").value };
+  const btn = document.getElementById("wiSubmit"); btn.disabled = true;
+  try {
+    const { message, booking } = await staffApi.createWalkInBooking(payload);
+    closeWalkinModal();
+    _bk.view = "all"; _bk.q = ""; await loadBookingsPage();
+    showNotice("bookingsNotice", `${message} Total ${money(booking.totalAmount, booking.currency)}.`, "success");
+  } catch (err) { showNotice("walkinNotice", err.message); }
+  finally { btn.disabled = false; }
+}
+
+/* ============================================================
+   VENUE ENQUIRIES (manage_events) — guests asking to rent a hall, garden or restaurant.
+   ============================================================ */
+const VENUE_STATUS_LIST = ["NEW", "IN_REVIEW", "QUOTED", "ACCEPTED", "DECLINED", "WITHDRAWN"];
+let _venueRows = [];
+function venueDay(iso) { return iso ? new Date(iso).toLocaleDateString(undefined, { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" }) : "—"; }
+function venueBadge(v) { return html`<span class="badge badge-${String(v || "").toLowerCase()}">${String(v || "—").replace(/_/g, " ").toLowerCase()}</span>`; }
+function openSimpleModal(title, bodyHtml, actionsHtml, width = 560) {
+  closeSimpleModal();
+  const ov = document.createElement("div"); ov.className = "modal-overlay"; ov.id = "simpleModal";
+  ov.innerHTML = html`<div class="modal" style="max-width:${width}px;"><h3>${title}</h3><div id="simpleModalNotice"></div>${bodyHtml}<div class="modal-actions" style="flex-wrap:wrap;">${actionsHtml}</div></div>`;
+  document.body.appendChild(ov);
+}
+function closeSimpleModal() { const el = document.getElementById("simpleModal"); if (el) el.remove(); }
+function simpleModalNotice(message, type = "error") { const el = document.getElementById("simpleModalNotice"); if (el) el.innerHTML = html`<div class="notice ${type}" role="alert">${message}</div>`; }
+async function loadVenueEnquiriesPage() {
+  document.getElementById("pageContent").innerHTML = html`
+    ${pageHeader("Venue Enquiries", "Guests asking to rent your halls, gardens or restaurant. Review, send a quote, and confirm.")}
+    <div class="stats-grid" id="venueStats"></div>
+    <div class="panel">
+      <div class="toolbar"><select id="veStatus" aria-label="Filter by status" onchange="venueRefresh()"><option value="">All statuses</option>${html.join(VENUE_STATUS_LIST.map((s) => html`<option value="${s}">${s.replace(/_/g, " ")}</option>`))}</select></div>
+      <div id="veNotice"></div>
+      <table><thead><tr><th>Reference</th><th>Guest</th><th>Event</th><th>Date</th><th>Guests</th><th>Status</th><th>Quote</th><th></th></tr></thead>
+        <tbody id="veBody"><tr><td colspan="8" class="loading-state">Loading…</td></tr></tbody></table>
+    </div>`;
+  await venueRefresh();
+}
+async function venueRefresh() {
+  const body = document.getElementById("veBody"); if (!body) return;
+  try {
+    const status = (document.getElementById("veStatus") || {}).value || undefined;
+    const { enquiries, counts } = await staffApi.listVenueEnquiries(status);
+    _venueRows = enquiries || [];
+    const stats = document.getElementById("venueStats");
+    if (stats) stats.innerHTML = html.join(["NEW", "IN_REVIEW", "QUOTED", "ACCEPTED"].map((k) => html`<div class="stat-card"><b>${(counts || {})[k] || 0}</b><span>${k.replace("_", " ").toLowerCase()}</span></div>`));
+    setNavBadge("venueNavBadge", (counts || {}).NEW || 0);
+    body.innerHTML = _venueRows.length ? html.join(_venueRows.map((e) => html`<tr>
+      <td><b>${e.reference}</b></td>
+      <td>${e.guest?.name || "—"}<br><span style="color:var(--text-muted); font-size:0.78rem;">${e.contactPhone}</span></td>
+      <td>${e.eventType}${e.spacePreference ? html`<br><span style="color:var(--text-muted); font-size:0.78rem;">${e.spacePreference}</span>` : ""}</td>
+      <td>${venueDay(e.preferredDate)}</td><td>${e.guestsCount}</td><td>${venueBadge(e.status)}</td>
+      <td>${e.quoteAmount != null ? money(e.quoteAmount, e.quoteCurrency) : "—"}</td>
+      <td><button class="btn btn-sm btn-outline" onclick="venueOpen('${e.id}')">Open</button></td></tr>`)) : html`<tr><td colspan="8" class="empty-state">No venue enquiries yet.</td></tr>`;
+  } catch (err) { body.innerHTML = html`<tr><td colspan="8" class="empty-state">${err.message}</td></tr>`; }
+}
+function venueOpen(id) {
+  const e = _venueRows.find((x) => x.id === id); if (!e) return;
+  const open = ["NEW", "IN_REVIEW", "QUOTED"].includes(e.status);
+  openSimpleModal(`${e.reference} · ${e.eventType}`, html`
+    <div class="summary-line"><span>Status</span><span>${venueBadge(e.status)}</span></div>
+    <div class="summary-line"><span>Guest</span><span>${e.guest?.name || "—"} · ${e.guest?.email || ""}</span></div>
+    <div class="summary-line"><span>Phone / WhatsApp</span><span>${e.contactPhone}</span></div>
+    <div class="summary-line"><span>Preferred date</span><span>${venueDay(e.preferredDate)}${e.backupDate ? html` (backup ${venueDay(e.backupDate)})` : ""}</span></div>
+    ${e.startTime || e.endTime ? html`<div class="summary-line"><span>Time</span><span>${e.startTime || "?"} – ${e.endTime || "?"}</span></div>` : ""}
+    <div class="summary-line"><span>Expected guests</span><span>${e.guestsCount}</span></div>
+    ${e.spacePreference ? html`<div class="summary-line"><span>Space</span><span>${e.spacePreference}</span></div>` : ""}
+    ${(e.services || []).length ? html`<div class="summary-line"><span>Wants</span><span>${e.services.join(", ")}</span></div>` : ""}
+    ${e.budget ? html`<div class="summary-line"><span>Budget</span><span>${e.budget}</span></div>` : ""}
+    ${e.notes ? html`<div class="form-field" style="margin-top:12px;"><label>Guest notes</label><div style="white-space:pre-wrap;">${e.notes}</div></div>` : ""}
+    ${e.status === "DECLINED" && e.declineReason ? html`<div class="summary-line"><span>Decline reason</span><span>${e.declineReason}</span></div>` : ""}
+    ${e.quoteAmount != null ? html`<div class="summary-line"><span>Quote</span><span><b>${money(e.quoteAmount, e.quoteCurrency)}</b>${e.quoteValidUntil ? html` · valid until ${venueDay(e.quoteValidUntil)}` : ""}</span></div>` : ""}
+    <hr style="border:none; border-top:1px solid var(--border); margin:16px 0;">
+    ${open ? html`
+      <div class="form-row"><div class="form-field"><label for="veQuote">Quote amount</label><input type="number" id="veQuote" min="0" step="0.01" value="${e.quoteAmount ?? ""}" placeholder="e.g. 2500000"></div>
+        <div class="form-field"><label for="veCur">Currency</label><input type="text" id="veCur" maxlength="3" value="${e.quoteCurrency || ""}" placeholder="branch default" style="text-transform:uppercase;"></div></div>
+      <div class="form-field"><label for="veValid">Quote valid until</label><input type="date" id="veValid" value="${e.quoteValidUntil ? String(e.quoteValidUntil).slice(0, 10) : ""}"></div>
+      <div class="form-field"><label for="veQNotes">What the quote includes <span style="color:var(--text-muted); font-weight:400;">(shown to the guest)</span></label><textarea id="veQNotes" rows="2">${e.quoteNotes || ""}</textarea></div>
+      <div class="form-field"><label for="veReason">Reason if declining <span style="color:var(--text-muted); font-weight:400;">(shown to the guest)</span></label><input type="text" id="veReason" maxlength="500"></div>` : ""}
+    <div class="form-field"><label for="veNote">Internal notes <span style="color:var(--text-muted); font-weight:400;">(never shown to the guest)</span></label><textarea id="veNote" rows="2">${e.internalNotes || ""}</textarea></div>
+    ${e.handledByName ? html`<p style="font-size:0.8rem; color:var(--text-muted);">Last handled by ${e.handledByName}.</p>` : ""}`,
+    html`<button class="btn btn-outline" onclick="closeSimpleModal()">Close</button>
+      ${hasPermission("handle_tickets") ? html`<button class="btn btn-outline" onclick="closeSimpleModal(); switchPage('tickets');" title="Reply in the Support thread titled ${e.reference}">Open conversation</button>` : ""}
+      <button class="btn btn-outline" onclick="venueAct('${e.id}', null)">Save notes</button>
+      ${open ? html`${e.status === "NEW" ? html`<button class="btn btn-outline" onclick="venueAct('${e.id}', 'IN_REVIEW')">Mark in review</button>` : ""}
+        <button class="btn btn-danger" onclick="venueAct('${e.id}', 'DECLINED')">Decline</button>
+        <button class="btn btn-outline" onclick="venueAct('${e.id}', 'ACCEPTED')" title="Use when the guest confirmed outside the app">Confirm booking</button>
+        <button class="btn btn-primary" onclick="venueAct('${e.id}', 'QUOTED')">Send quote</button>` : ""}`, 780);
+}
+async function venueAct(id, status) {
+  const val = (x) => { const el = document.getElementById(x); return el ? el.value.trim() : ""; };
+  const payload = { internalNotes: val("veNote") };
+  if (status) {
+    payload.status = status;
+    if (status === "QUOTED") {
+      const amt = Number(val("veQuote"));
+      if (!(amt > 0)) return simpleModalNotice("Enter the quote amount first.");
+      payload.quoteAmount = amt; payload.quoteNotes = val("veQNotes");
+      if (val("veCur")) payload.quoteCurrency = val("veCur").toUpperCase();
+      if (val("veValid")) payload.quoteValidUntil = val("veValid");
+    }
+    if (status === "DECLINED") {
+      if (val("veReason").length < 3 && !(await uiConfirm("Decline without a reason? The guest will not be told why.", { title: "Decline enquiry", confirmText: "Decline", danger: true }))) return;
+      payload.declineReason = val("veReason");
+    }
+  }
+  try {
+    await staffApi.updateVenueEnquiry(id, payload);
+    closeSimpleModal(); await venueRefresh();
+    showNotice("veNotice", status ? "Saved. The guest has been notified." : "Notes saved.", "success");
+  } catch (err) { simpleModalNotice(err.message); }
+}
+
+/* ---------- wiring ---------- */
+function initPatch14Shell() {
+  const bell = document.getElementById("bellBtn"); if (bell && !bell.dataset.ready) { bell.dataset.ready = "1"; bell.addEventListener("click", toggleTray); }
+  initGlobalSearch(); renderBell(); syncOnline(); queueA11y();
+}
 
 // Boot
 if (getToken() && getStaff()) { showApp(); } else { showLogin(); }

@@ -331,10 +331,13 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
     nodes.forEach((n) => io.observe(n));
   }
 
+  let siteName = "Uyeh Hotel", postTitle = "";
   async function hydrateBrand() {
     try {
       const { settings } = await api("/settings");
       const name = settings.platformName || "Uyeh Hotel";
+      siteName = name;
+      if (postTitle) document.title = `${postTitle} — ${name}`;
       $("footerCopyrightName") && ($("footerCopyrightName").textContent = name);
       const navBrand = $("navBrand");
       if (settings.logoUrl) navBrand.innerHTML = `<img class="brand-logo" src="${escapeHtml(settings.logoUrl)}" alt="${escapeHtml(name)}">`;
@@ -354,7 +357,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
   }
   const IMAGE_LINE = /^https?:\/\/\S+\.(?:png|jpe?g|webp|gif|avif)(?:\?\S*)?$/i;
   function renderContent(content) {
-    return content.split(/\n\s*\n/).map((para) => {
+    return String(content || "").split(/\n\s*\n/).map((para) => {
       const trimmed = para.trim();
       if (IMAGE_LINE.test(trimmed)) {
         return `<img class="content-image" src="${escapeHtml(trimmed)}" alt="" loading="lazy" decoding="async" onload="this.classList.add('loaded')">`;
@@ -364,7 +367,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
   }
 
   function formatDate(iso) {
-    return window.Uyeh.fmtDate(iso, { month: "long" });
+    return iso ? window.Uyeh.fmtDate(iso, { month: "long" }) : "";
   }
 
   function renderRelated(posts, currentSlug) {
@@ -373,7 +376,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
     $("relatedSection").style.display = "block";
     $("relatedGrid").innerHTML = others.map((p) => `
       <a href="blog-post.html?slug=${encodeURIComponent(p.slug)}" class="post-card">
-        <div class="post-card-image" style="${p.coverImageUrl ? `background-image:url('${escapeHtml(p.coverImageUrl)}')` : ""}"></div>
+        <div class="post-card-image" ${p.coverImageUrl ? `data-bg="${escapeHtml(p.coverImageUrl)}"` : ""}></div>
         <div class="post-card-body">
           <div class="post-meta">${escapeHtml(p.branch ? p.branch.name : window.Uyeh.t("Company news"))} &middot; ${escapeHtml(formatDate(p.publishedAt))}</div>
           <h3>${escapeHtml(p.title)}</h3>
@@ -382,6 +385,11 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
         </div>
       </a>
     `).join("");
+    $("relatedGrid").querySelectorAll("[data-bg]").forEach((el) => {
+      const u = el.getAttribute("data-bg");
+      if (/^\s*(javascript|data|vbscript):/i.test(u)) return;
+      el.style.backgroundImage = "url(" + JSON.stringify(u) + ")";
+    });
     observe([$("relatedSection")]);
   }
 
@@ -400,6 +408,16 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
         setTimeout(() => { btn.textContent = original; }, 1500);
       } catch { /* clipboard unavailable — silently ignore */ }
     });
+  }
+
+  function handleAuthError(err) {
+    if (err && err.status === 401) {
+      try { localStorage.removeItem("guest_token"); localStorage.removeItem("guest_user"); } catch { /* ignore */ }
+      showBanner("Your session has expired — please log in again.", "error");
+      setTimeout(() => { window.location.href = `${window.__GUEST_PORTAL__ || "guest-panel.html"}?returnTo=${encodeURIComponent(window.location.href)}`; }, 1600);
+      return true;
+    }
+    return false;
   }
 
   function showBanner(message, type) {
@@ -439,7 +457,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
       currentComments = currentComments.filter((c) => c.id !== id);
       renderCommentList(currentComments);
     } catch (err) {
-      showBanner(err.message, "error");
+      if (!handleAuthError(err)) showBanner(err.message, "error");
     }
   }
 
@@ -466,11 +484,11 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
         btn.disabled = true;
         try {
           const { comment } = await guestApi(`/blog/${encodeURIComponent(slug)}/comments`, { method: "POST", body: JSON.stringify({ content: textarea.value.trim() }) });
-          currentComments = [...currentComments, comment];
+          currentComments = [...currentComments, { ...comment, guest: comment.guest || me }];
           renderCommentList(currentComments);
           textarea.value = "";
         } catch (err) {
-          showBanner(err.message, "error");
+          if (!handleAuthError(err)) showBanner(err.message, "error");
         } finally {
           btn.disabled = false;
         }
@@ -484,6 +502,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
     function render() {
       countEl.textContent = count;
       btn.classList.toggle("liked", liked);
+      btn.setAttribute("aria-pressed", String(liked));
       btn.querySelector(".heart").innerHTML = liked ? "&#9829;" : "&#9825;";
     }
     render();
@@ -498,7 +517,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
         liked = result.liked; count = result.likeCount;
         render();
       } catch (err) {
-        showBanner(err.message, "error");
+        if (!handleAuthError(err)) showBanner(err.message, "error");
       } finally {
         btn.disabled = false;
       }
@@ -519,7 +538,16 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
       $("loadingState").style.display = "none";
 
       const url = window.location.href;
-      document.title = `${post.title} — Uyeh Hotel`;
+      postTitle = post.title;
+      document.title = `${post.title} — ${siteName}`;
+      let can = document.querySelector('link[rel="canonical"]');
+      if (!can) { can = document.createElement("link"); can.rel = "canonical"; document.head.appendChild(can); }
+      can.href = `${location.origin}${location.pathname}?slug=${encodeURIComponent(slug)}`;
+      const ld = document.createElement("script"); ld.type = "application/ld+json";
+      ld.textContent = JSON.stringify({ "@context": "https://schema.org", "@type": "BlogPosting", headline: post.title, description: post.excerpt || undefined,
+        image: post.coverImageUrl || undefined, datePublished: post.publishedAt || undefined, dateModified: post.updatedAt || post.publishedAt || undefined,
+        mainEntityOfPage: can.href, publisher: { "@type": "Organization", name: siteName } });
+      document.head.appendChild(ld);
       $("pageDescription").setAttribute("content", post.excerpt || post.title);
       $("ogTitle").setAttribute("content", post.title);
       $("ogDescription").setAttribute("content", post.excerpt || "");
@@ -536,6 +564,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
         img.src = post.coverImageUrl;
         img.alt = post.title;
         img.addEventListener("load", () => img.classList.add("loaded"), { once: true });
+        img.addEventListener("error", () => { $("coverWrap").style.display = "none"; }, { once: true });
         $("coverWrap").style.display = "block";
       }
       if (post.excerpt) {
@@ -544,7 +573,7 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
       }
 
       $("postWrap").style.display = "block";
-      $("postContent").innerHTML = renderContent(post.content);
+      $("postContent").innerHTML = renderContent(post.content || "");
 
       if (post.tags && post.tags.length) {
         $("postTags").innerHTML = post.tags.map((t) => `<span class="tag-chip">${escapeHtml(t)}</span>`).join("");
@@ -570,10 +599,10 @@ section.related h2{font-size:1.5rem;margin-bottom:32px}
     btn.disabled = true;
     try {
       const { message } = await api("/newsletter/subscribe", { method: "POST", body: JSON.stringify({ email: input.value }) });
-      note.textContent = message || "You're subscribed.";
+      note.style.color = ""; note.textContent = message || "Almost done — check your inbox to confirm.";
       input.value = "";
     } catch (err) {
-      note.textContent = err.message;
+      note.style.color = "#f0b4a6"; note.textContent = err.message;
     } finally {
       btn.disabled = false;
     }

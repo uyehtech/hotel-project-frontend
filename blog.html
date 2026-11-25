@@ -4,19 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="pageTitle">Blog — Uyeh Hotel</title>
-<meta name="description" id="pageDescription" content="News, offers, and stories from Our Hotel — every location.">
+<meta name="description" id="pageDescription" content="News, offers, and stories from every Uyeh Hotel location.">
 <meta name="theme-color" content="#14181f">
 <meta name="robots" content="index, follow">
-<meta property="og:image" content="/assets/og-default.jpg">
-<meta name="twitter:image" content="/assets/og-default.jpg">
+<link rel="canonical" id="canonicalLink" href="">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Blog — Uyeh Hotel">
+<meta property="og:description" content="News, offers, and stories from every Uyeh Hotel location.">
+<meta property="og:image" id="ogImage" content="images/gallery20.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="images/gallery20.jpg">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="manifest" href="/site.webmanifest">
+<link rel="preload" as="image" href="images/gallery20.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
 <style>
-/* Self-contained, same pattern as index(s).html/location.html — no
-   shared CSS/JS with any other page except footer.js. */
+
+/* Self-contained, same pattern as every other page — no shared CSS/JS
+   except footer.js. */
 :root{
   --ink:#14181f; --ink-soft:#1c222b; --ink-deep:#0d1015;
   --ivory:#f6f1e7; --ivory-dim:#ede5d4;
@@ -77,56 +84,130 @@ button,input,select{font:inherit;color:inherit}
   .nav-cta{border:0;border-radius:0;color:var(--brass-light)!important}
 }
 
-/* page header */
-.page-header{position:relative;background:var(--ink);color:var(--text-on-ink);padding:150px 0 80px;overflow:hidden}
-.page-header::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 12% 0%,rgba(47,93,90,.42),transparent 60%),linear-gradient(180deg,rgba(13,16,21,.3),rgba(13,16,21,.92))}
-.page-header .wrap{position:relative;z-index:2}
-.eyebrow{font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-light);margin-bottom:18px;display:inline-flex;align-items:center;gap:8px}
-.eyebrow::before{content:"";width:24px;height:1px;background:var(--brass)}
-.page-header h1{font-size:clamp(2.2rem,4.5vw,3.4rem);max-width:18ch}
 .fade-up{opacity:0;transform:translateY(18px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
 .fade-up.in{opacity:1;transform:none}
 
-section{padding:88px 0}
+section{padding:96px 0}
 .reveal{opacity:0;transform:translateY(26px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
 .reveal.is-visible{opacity:1;transform:none}
+.section-head{max-width:60ch;margin-bottom:44px}
+.section-head .eyebrow{color:var(--teal)}
+.section-head .eyebrow::before{background:var(--teal)}
+.section-head p:not(.eyebrow){color:var(--text-muted);margin-top:14px;font-size:1.02rem}
 
-/* filters */
-.filter-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:40px}
-.filter-chip{font-size:.82rem;letter-spacing:.02em;color:var(--teal);background:rgba(47,93,90,.08);padding:7px 16px;border-radius:20px;cursor:pointer;border:1px solid transparent;transition:all .2s}
-.filter-chip:hover,.filter-chip.active{background:var(--teal);color:var(--ivory)}
+/* story two-col */
+.two-col{display:grid;grid-template-columns:1fr 1.1fr;gap:64px;align-items:center}
+@media(max-width:860px){.two-col{grid-template-columns:1fr}}
+.two-col h2{font-size:clamp(1.8rem,3.2vw,2.4rem);margin-bottom:8px}
+.two-col p{color:var(--text-muted);margin-top:16px;max-width:48ch;font-size:1rem}
 
-/* post cards */
-.post-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:32px}
+/* stats */
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:28px;margin-top:44px}
+.stat{border-top:1px solid rgba(20,24,31,.14);padding-top:16px}
+.stat .num{font-family:var(--font-display);font-size:2.2rem;color:var(--teal)}
+.stat .label{font-size:.82rem;color:var(--text-muted);margin-top:4px}
+
+/* amenities/team band */
+.amenities-band{background:var(--ink-soft);color:var(--text-on-ink)}
+.amenities-band .section-head h2{color:var(--ivory)}
+.amenities-band .section-head p:not(.eyebrow){color:rgba(237,230,214,.6)}
+.amenity-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:32px}
+.amenity-item .key-tag{margin-bottom:18px}
+.amenity-item h4{font-size:1.08rem;margin-bottom:8px;color:var(--ivory)}
+.amenity-item p{font-size:.92rem;color:rgba(237,230,214,.62)}
+.key-tag{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;background:var(--brass);border-radius:6px;color:var(--ink);font-family:var(--font-display);font-weight:600;font-size:1rem;transform:rotate(-4deg)}
+.key-tag::after{content:"";position:absolute;top:8px;left:-7px;width:8px;height:8px;border-radius:50%;background:var(--ivory);border:2px solid var(--ink)}
+
+/* cta */
+.cta-band{text-align:center;background:linear-gradient(140deg,var(--teal),var(--ink-deep));color:var(--ivory)}
+.cta-band .wrap{max-width:560px}
+.cta-band h2{color:var(--ivory);font-size:clamp(1.8rem,3vw,2.3rem);margin-bottom:10px}
+.cta-band p{color:rgba(237,230,214,.72);margin-bottom:28px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:14px 30px;border-radius:2px;font-size:.92rem;font-weight:600;border:1px solid transparent;cursor:pointer;transition:.25s}
+.btn-primary{background:var(--brass);color:var(--ink)}
+.btn-primary:hover{background:var(--brass-light)}
+
+/* hero with photo */
+.page-header{position:relative;background:var(--ink);color:var(--text-on-ink);padding:160px 0 96px;overflow:hidden;min-height:440px;display:flex;align-items:flex-end}
+.page-header>.wrap{width:100%}
+.hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55;transform:scale(1.06);transition:transform 2.4s var(--ease-out)}
+.page-header.ready .hero-img{transform:scale(1)}
+.page-header::before{content:"";position:absolute;inset:0;z-index:1;background:radial-gradient(120% 90% at 12% 0%,rgba(47,93,90,.45),transparent 60%),linear-gradient(180deg,rgba(13,16,21,.55),rgba(13,16,21,.94))}
+.page-header .wrap{position:relative;z-index:2}
+.eyebrow{font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-light);margin-bottom:18px;display:inline-flex;align-items:center;gap:8px}
+.eyebrow::before{content:"";width:24px;height:1px;background:var(--brass)}
+.page-header h1{font-size:clamp(2.4rem,5.5vw,4.2rem);max-width:18ch;margin-bottom:18px}
+.page-header .lead{max-width:54ch;color:rgba(237,230,214,.8);font-size:clamp(1rem,1.5vw,1.12rem)}
+.pills{display:flex;flex-wrap:wrap;gap:10px;margin-top:28px}
+.pill{border:1px solid var(--line-on-ink);color:var(--ivory);padding:9px 18px;border-radius:999px;font-size:.85rem;background:rgba(13,16,21,.35);backdrop-filter:blur(6px);transition:.25s}
+.pill:hover{border-color:var(--brass);color:var(--brass-light)}
+.btn-dark{background:var(--ink);color:var(--ivory)}.btn-dark:hover{background:var(--teal)}
+.btn[disabled]{opacity:.6;cursor:wait}
+.btn-ghost{border-color:var(--brass);color:var(--brass-light)}.btn-ghost:hover{background:var(--brass);color:var(--ink)}
+/* photo frames */
+.photo{position:relative;overflow:hidden;border-radius:var(--radius);background:linear-gradient(135deg,var(--teal) 0%,var(--teal-light) 55%,var(--brass) 140%)}
+.photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.4s var(--ease-out)}
+.photo:hover img{transform:scale(1.04)}
+.collage{position:relative;aspect-ratio:4/5}
+.collage .photo.a{position:absolute;inset:0 18% 14% 0}
+.collage .photo.b{position:absolute;right:0;bottom:0;width:48%;aspect-ratio:1;border:6px solid var(--ivory)}
+/* footer overflow guard */
+#siteFooter{overflow-x:clip}
+@media(max-width:820px){#siteFooter .ft-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media(max-width:520px){#siteFooter .ft-grid{grid-template-columns:minmax(0,1fr)}}
+#siteFooter *{overflow-wrap:anywhere}
+@media(max-width:700px){section{padding:68px 0}.page-header{padding:130px 0 70px;min-height:380px}}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;margin-bottom:36px}
+.filter-row{display:flex;flex-wrap:wrap;gap:8px}
+.filter-chip{border:1px solid rgba(20,24,31,.2);background:transparent;padding:8px 16px;border-radius:999px;font-size:.82rem;cursor:pointer;transition:.2s}
+.filter-chip:hover{border-color:var(--teal);color:var(--teal)}
+.filter-chip[aria-pressed="true"]{background:var(--ink);color:var(--ivory);border-color:var(--ink)}
+.search{position:relative;flex:0 1 280px;min-width:200px}
+.search input{width:100%;padding:11px 14px;border:1px solid rgba(20,24,31,.22);border-radius:999px;background:#fff;font-size:.92rem}
+.search input:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(47,93,90,.18)}
+.result-count{font-size:.84rem;color:var(--text-muted);margin-bottom:20px}
+.featured{display:grid;grid-template-columns:1.25fr 1fr;gap:0;background:#fff;border:1px solid rgba(107,99,85,.14);border-radius:var(--radius);overflow:hidden;margin-bottom:40px;transition:box-shadow .3s}
+.featured:hover{box-shadow:0 30px 60px -30px rgba(20,24,31,.35)}
+.featured .pic{min-height:340px}
+.featured .body{padding:42px;display:flex;flex-direction:column;justify-content:center}
+.featured h2{font-size:clamp(1.6rem,2.8vw,2.2rem);margin:6px 0 14px}
+.featured p{color:var(--text-muted);margin-bottom:20px}
+@media(max-width:800px){.featured{grid-template-columns:1fr}.featured .pic{min-height:220px}.featured .body{padding:26px}}
+.pic{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--teal) 0%,var(--teal-light) 60%,var(--brass) 140%)}
+.pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform 1.2s var(--ease-out)}
+a:hover>.pic img,a:hover .pic img{transform:scale(1.05)}
+.post-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:30px}
 .post-card{background:#fff;border:1px solid rgba(107,99,85,.14);border-radius:var(--radius);overflow:hidden;transition:transform .25s,box-shadow .25s;display:flex;flex-direction:column;opacity:0;transform:translateY(18px);animation:cardIn .7s var(--ease-out) forwards;animation-delay:var(--d,0ms)}
+@media(prefers-reduced-motion:reduce){.post-card{opacity:1;transform:none;animation:none}}
 @keyframes cardIn{to{opacity:1;transform:none}}
 .post-card:hover{transform:translateY(-4px);box-shadow:0 20px 40px -20px rgba(20,24,31,.25)}
-.post-card-image{height:180px;background:linear-gradient(135deg,var(--teal) 0%,var(--teal-light) 60%,var(--brass) 140%);background-size:cover;background-position:center}
-.post-card-body{padding:24px 26px 28px;flex:1;display:flex;flex-direction:column}
-.post-card-body .post-meta{font-size:.76rem;letter-spacing:.05em;text-transform:uppercase;color:var(--brass);margin-bottom:10px}
-.post-card-body h3{font-size:1.25rem;margin-bottom:10px}
+.post-card .pic{height:190px}
+.post-card-body{padding:22px 24px 26px;flex:1;display:flex;flex-direction:column}
+.post-meta{font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--brass);margin-bottom:10px}
+.post-card-body h3{font-size:1.2rem;margin-bottom:10px}
 .post-card-body p{color:var(--text-muted);font-size:.92rem;flex:1}
-.post-card-body .read-more{margin-top:16px;font-size:.85rem;color:var(--teal);font-weight:600}
-.post-card-body .engagement-row{margin-top:10px;display:flex;gap:14px;font-size:.78rem;color:var(--text-muted)}
-
-.loading-state,.empty-state{padding:48px 0;text-align:center;color:var(--text-muted)}
-.skeleton-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:32px}
+.read-more{margin-top:14px;font-size:.85rem;color:var(--teal);font-weight:600}
+.engagement-row{margin-top:10px;display:flex;gap:14px;font-size:.78rem;color:var(--text-muted)}
+.more-row{text-align:center;margin-top:44px}
+.empty-state{padding:56px 0;text-align:center;color:var(--text-muted)}
+.skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:30px}
 .skeleton-card{height:340px;border-radius:var(--radius);background:linear-gradient(100deg,var(--ivory-dim) 30%,rgba(255,255,255,.7) 50%,var(--ivory-dim) 70%);background-size:220% 100%;animation:shimmer 1.5s infinite}
 @keyframes shimmer{to{background-position:-220% 0}}
-
-/* newsletter band */
-.newsletter-band{position:relative;text-align:center;background:linear-gradient(140deg,var(--teal),var(--ink-deep));color:var(--ivory)}
+.newsletter-band{text-align:center;background:linear-gradient(140deg,var(--teal),var(--ink-deep));color:var(--ivory)}
 .newsletter-band h2{color:var(--ivory);font-size:clamp(1.7rem,3vw,2.3rem);margin-bottom:14px}
 .newsletter-band p{color:rgba(237,230,214,.72);max-width:44ch;margin:0 auto 28px;font-size:.98rem}
 .newsletter-form{display:flex;gap:10px;max-width:440px;margin:0 auto;flex-wrap:wrap;justify-content:center}
-.newsletter-form input{flex:1;min-width:220px;padding:13px 16px;border-radius:var(--radius);border:1px solid var(--line-on-ink);background:rgba(255,255,255,.06);color:var(--ivory);font-family:var(--font-body);font-size:.92rem}
+.newsletter-form input{flex:1;min-width:200px;padding:13px 16px;border-radius:2px;border:1px solid var(--line-on-ink);background:rgba(255,255,255,.06);color:var(--ivory);font-size:.92rem}
 .newsletter-form input::placeholder{color:rgba(237,230,214,.45)}
 .newsletter-form input:focus{outline:none;border-color:var(--brass-light)}
-.btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 26px;border-radius:var(--radius);font-size:.9rem;letter-spacing:.02em;font-weight:600;cursor:pointer;border:1px solid transparent;transition:all .2s}
-.btn-primary{background:var(--brass);color:var(--ink)}
-.btn-primary:hover{background:var(--brass-light)}
+.newsletter-note{font-size:.82rem;color:rgba(237,230,214,.7)!important;margin:14px auto 0!important;min-height:1em}
+.newsletter-note.err{color:#f0b4a6!important}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 28px;border-radius:2px;font-size:.9rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:.2s}
+.btn-primary{background:var(--brass);color:var(--ink)}.btn-primary:hover{background:var(--brass-light)}
+.btn-line{border-color:var(--ink);background:transparent}.btn-line:hover{background:var(--ink);color:var(--ivory)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
-.newsletter-note{font-size:.78rem;color:rgba(237,230,214,.6);margin-top:14px;min-height:1em}
+
 </style>
 <script src="config.js"></script>
 <script src="web-core.js"></script>
@@ -134,45 +215,45 @@ section{padding:88px 0}
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
-
-<div id="preloader" aria-hidden="true">
-  <div class="preloader-mark">Uyeh Hotel<span>.</span></div>
-  <div class="preloader-bar"></div>
-</div>
+<div id="preloader" aria-hidden="true"><div class="preloader-mark">Uyeh Hotel<span>.</span></div><div class="preloader-bar"></div></div>
 <div id="scrollProgress"></div>
-
-<nav class="site-nav" id="siteNav">
+<nav class="site-nav" id="siteNav" aria-label="Primary">
   <div class="wrap">
     <a href="index.html" class="brand" id="navBrand">Uyeh Hotel</a>
     <div class="nav-links" id="navLinks">
       <a href="index.html">Home</a>
       <a href="index.html#locations">Locations</a>
       <a href="index.html#experiences">Experiences</a>
-      <a href="blog.html" class="active">Blog</a>
+      <a href="blog.html" class="active" aria-current="page">Blog</a>
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
       <a href="index.html#book" class="nav-cta">Check availability</a>
     </div>
-    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
-      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
-    </button>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks"><span class="bar"></span><span class="bar"></span><span class="bar"></span></button>
   </div>
 </nav>
-
 <main id="main">
 <header class="page-header">
+  <img class="hero-img" src="images/gallery20.jpg" alt="" fetchpriority="high" onerror="this.remove()">
   <div class="wrap">
     <span class="eyebrow fade-up" id="pageEyebrow">From the team</span>
     <h1 class="fade-up" id="pageHeading">News, offers, and stories</h1>
+    <p class="lead fade-up" id="pageLead">Openings, offers and notes from every location.</p>
   </div>
 </header>
 
 <section class="reveal">
   <div class="wrap">
-    <div class="filter-row" id="tagFilters"></div>
-    <div class="post-grid" id="postGrid">
-      <div class="skeleton-grid"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+    <div class="toolbar">
+      <div class="filter-row" id="tagFilters" role="group" aria-label="Filter by topic"></div>
+      <div class="search"><label for="postSearch" style="position:absolute;left:-9999px">Search posts</label><input type="search" id="postSearch" placeholder="Search posts…" autocomplete="off"></div>
     </div>
+    <div class="result-count" id="resultCount" role="status" aria-live="polite"></div>
+    <div id="featuredSlot"></div>
+    <div class="post-grid" id="postGrid">
+      <div class="skeleton-grid" style="grid-column:1/-1"><div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+    </div>
+    <div class="more-row" id="moreRow" style="display:none"><button class="btn btn-line" id="moreBtn" type="button">Load more</button></div>
   </div>
 </section>
 
@@ -182,28 +263,25 @@ section{padding:88px 0}
     <p>Offers, new openings, and stories from every location — straight to your inbox, no spam.</p>
     <form class="newsletter-form" id="newsletterForm">
       <label for="newsletterEmail" style="position:absolute;left:-9999px;">Email address</label>
-      <input type="email" id="newsletterEmail" placeholder="you@email.com" required>
+      <input type="email" id="newsletterEmail" placeholder="you@email.com" autocomplete="email" required>
       <button type="submit" class="btn btn-primary" id="newsletterSubmitBtn">Subscribe</button>
     </form>
     <p class="newsletter-note" id="newsletterNote" role="status" aria-live="polite">We'll send a confirmation link — you're only added once you click it.</p>
   </div>
 </section>
 </main>
-
 <div id="siteFooter"></div>
 <script src="footer.js"></script>
-
 <script>
 (function () {
   "use strict";
-  const API_BASE = window.Uyeh.API_BASE;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = (id) => document.getElementById(id);
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-
   const api = window.Uyeh.api;
-
-  /* ---------- preloader ---------- */
+  const url = (u) => (u && !/^\s*(javascript|data|vbscript):/i.test(String(u))) ? String(u) : "";
+  const abs = (u) => { try { return new URL(u, location.href).href; } catch { return u; } };
+/* ---------- preloader ---------- */
   function initPreloader() {
     const el = $("preloader");
     if (!el || reduced) { if (el) el.style.display = "none"; return; }
@@ -244,97 +322,103 @@ section{padding:88px 0}
   }
 
   function revealHeader() {
-    ["pageEyebrow", "pageHeading"].forEach((id, i) => setTimeout(() => $(id).classList.add("in"), reduced ? 0 : 220 + i * 130));
+    ["pageEyebrow", "pageHeading", "pageLead"].forEach((id, i) => setTimeout(() => $(id).classList.add("in"), reduced ? 0 : 220 + i * 120));
   }
 
+  function initHero() {
+    const h = document.querySelector(".page-header"), im = h.querySelector(".hero-img");
+    if (im) { im.addEventListener("error", () => im.remove(), { once: true }); }
+    requestAnimationFrame(() => h.classList.add("ready"));
+    document.getElementById("canonicalLink").href = location.origin + location.pathname;
+  }
   async function hydrateBrand() {
     try {
       const { settings } = await api("/settings");
       const name = settings.platformName || "Uyeh Hotel";
       document.title = document.title.replace("Uyeh Hotel", name);
-      const navBrand = $("navBrand");
-      if (settings.logoUrl) navBrand.innerHTML = `<img class="brand-logo" src="${esc(settings.logoUrl)}" alt="${esc(name)}">`;
-      else navBrand.textContent = name;
-    } catch (err) {
-      console.warn("Could not load platform name, using fallback:", err.message);
-    }
+      const nb = $("navBrand");
+      if (settings.logoUrl) nb.innerHTML = `<img class="brand-logo" src="${esc(url(settings.logoUrl))}" alt="${esc(name)}">`; else nb.textContent = name;
+      return settings;
+    } catch (err) { console.warn("settings unavailable:", err.message); return null; }
   }
+  function jsonLd(obj) { const s = document.createElement("script"); s.type = "application/ld+json"; s.textContent = JSON.stringify(obj); document.head.appendChild(s); }
+  const PAGE = 9;
+  let allPosts = [], tag = "", q = "", shown = PAGE;
+  const dateOf = (p) => (p.publishedAt ? window.Uyeh.fmtDate(p.publishedAt, { month: "long" }) : "");
+  const metaOf = (p) => [p.branch ? p.branch.name : window.Uyeh.t("Company news"), dateOf(p)].filter(Boolean).map(esc).join(" &middot; ");
+  const pic = (p) => { const u = url(p.coverImageUrl); return `<div class="pic">${u ? `<img src="${esc(u)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : ""}</div>`; };
+  const href = (p) => `blog-post.html?slug=${encodeURIComponent(p.slug)}`;
 
-  let allPosts = [];
-  function renderPosts(posts) {
-    const grid = $("postGrid");
-    if (!posts.length) {
-      grid.innerHTML = `<div class="empty-state">No posts published yet — check back soon.</div>`;
+  function filtered() {
+    const needle = q.trim().toLowerCase();
+    return allPosts.filter((p) => (!tag || (p.tags || []).includes(tag)) &&
+      (!needle || `${p.title} ${p.excerpt || ""} ${(p.tags || []).join(" ")}`.toLowerCase().includes(needle)));
+  }
+  function render() {
+    const list = filtered(), grid = $("postGrid"), slot = $("featuredSlot");
+    $("resultCount").textContent = allPosts.length ? `${list.length} ${list.length === 1 ? "post" : "posts"}${tag ? ` in “${tag}”` : ""}${q ? ` matching “${q}”` : ""}` : "";
+    if (!list.length) {
+      slot.innerHTML = ""; $("moreRow").style.display = "none";
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">${allPosts.length ? "No posts match — try another topic or search." : "No posts published yet — check back soon."}</div>`;
       return;
     }
-    grid.innerHTML = posts.map((p, i) => `
-      <a href="blog-post.html?slug=${encodeURIComponent(p.slug)}" class="post-card" style="--d:${i * 60}ms">
-        <div class="post-card-image"${p.coverImageUrl ? ` style="background-image:url('${esc(p.coverImageUrl)}')"` : ""}></div>
-        <div class="post-card-body">
-          <div class="post-meta">${esc(p.branch ? p.branch.name : window.Uyeh.t("Company news"))} &middot; ${p.publishedAt ? esc(window.Uyeh.fmtDate(p.publishedAt, { month: "long" })) : ""}</div>
-          <h3>${esc(p.title)}</h3>
-          <p>${esc(p.excerpt || "")}</p>
+    const useFeat = !tag && !q, feat = useFeat ? list[0] : null, rest = useFeat ? list.slice(1) : list;
+    slot.innerHTML = feat ? `<a class="featured" href="${href(feat)}">${pic(feat)}<div class="body"><div class="post-meta">${metaOf(feat)}</div><h2>${esc(feat.title)}</h2><p>${esc(feat.excerpt || "")}</p><span class="read-more">Read the story &rarr;</span></div></a>` : "";
+    const slice = rest.slice(0, shown);
+    grid.innerHTML = slice.map((p, i) => `
+      <a href="${href(p)}" class="post-card" style="--d:${(i % PAGE) * 60}ms">${pic(p)}
+        <div class="post-card-body"><div class="post-meta">${metaOf(p)}</div><h3>${esc(p.title)}</h3><p>${esc(p.excerpt || "")}</p>
           <span class="read-more">Read more &rarr;</span>
-          <div class="engagement-row">
-            <span>&#9825; ${p._count ? p._count.likes : 0}</span>
-            <span>&#128172; ${p._count ? p._count.comments : 0}</span>
-          </div>
-        </div>
-      </a>
-    `).join("");
+          <div class="engagement-row"><span aria-label="Likes">&#9825; ${p._count ? p._count.likes : 0}</span><span aria-label="Comments">&#128172; ${p._count ? p._count.comments : 0}</span></div>
+        </div></a>`).join("");
+    $("moreRow").style.display = rest.length > shown ? "" : "none";
   }
-
-  function renderTagFilters(posts) {
-    const tags = [...new Set(posts.flatMap((p) => p.tags || []))];
-    const container = $("tagFilters");
-    if (!tags.length) { container.innerHTML = ""; return; }
-    container.innerHTML = `<span class="filter-chip active" data-tag="">All posts</span>` +
-      tags.map((t) => `<span class="filter-chip" data-tag="${esc(t)}">${esc(t)}</span>`).join("");
-    container.querySelectorAll(".filter-chip").forEach((chip) => {
-      chip.addEventListener("click", () => {
-        container.querySelectorAll(".filter-chip").forEach((c) => c.classList.remove("active"));
-        chip.classList.add("active");
-        const tag = chip.dataset.tag;
-        renderPosts(tag ? allPosts.filter((p) => (p.tags || []).includes(tag)) : allPosts);
-      });
-    });
+  function renderTags() {
+    const tags = [...new Set(allPosts.flatMap((p) => p.tags || []))].sort();
+    const c = $("tagFilters");
+    if (!tags.length) { c.innerHTML = ""; return; }
+    c.innerHTML = ["", ...tags].map((t) => `<button type="button" class="filter-chip" data-tag="${esc(t)}" aria-pressed="${t === tag}">${t ? esc(t) : "All posts"}</button>`).join("");
   }
-
+  function setTag(t) {
+    tag = t; shown = PAGE;
+    const p = new URLSearchParams(location.search); t ? p.set("tag", t) : p.delete("tag");
+    history.replaceState(null, "", location.pathname + (p.toString() ? "?" + p : ""));
+    renderTags(); render();
+  }
   async function loadPosts() {
     try {
       const { posts } = await api("/blog");
       allPosts = posts || [];
-      renderTagFilters(allPosts);
-      renderPosts(allPosts);
+      const want = new URLSearchParams(location.search).get("tag");
+      if (want && allPosts.some((p) => (p.tags || []).includes(want))) tag = want;
+      renderTags(); render();
+      jsonLd({ "@context": "https://schema.org", "@type": "Blog", name: document.title, url: location.href,
+        blogPost: allPosts.slice(0, 20).map((p) => ({ "@type": "BlogPosting", headline: p.title, url: abs(href(p)), datePublished: p.publishedAt || undefined, image: url(p.coverImageUrl) || undefined })) });
     } catch (err) {
-      $("postGrid").innerHTML = `<div class="empty-state">Couldn't load posts right now — please try again shortly.</div>`;
+      $("postGrid").innerHTML = `<div class="empty-state" style="grid-column:1/-1">Couldn't load posts right now — <button type="button" class="btn btn-line" id="retryBtn">Try again</button></div>`;
+      $("retryBtn").onclick = () => { $("postGrid").innerHTML = ""; loadPosts(); };
     }
   }
-
-  async function submitNewsletterSignup(e) {
+  async function subscribe(e) {
     e.preventDefault();
     const btn = $("newsletterSubmitBtn"), note = $("newsletterNote"), input = $("newsletterEmail");
-    btn.disabled = true;
+    btn.disabled = true; note.classList.remove("err");
     try {
       const { message } = await api("/newsletter/subscribe", { method: "POST", body: JSON.stringify({ email: input.value }) });
-      note.textContent = message || "You're subscribed.";
-      input.value = "";
-    } catch (err) {
-      note.textContent = err.message;
-    } finally {
-      btn.disabled = false;
-    }
+      note.textContent = message || "Almost done — check your inbox to confirm."; input.value = "";
+    } catch (err) { note.textContent = err.message; note.classList.add("err"); }
+    finally { btn.disabled = false; }
   }
-
   document.addEventListener("DOMContentLoaded", () => {
-    initPreloader();
-    initNav();
-    revealHeader();
+    initPreloader(); initNav(); initHero(); revealHeader();
     observe([...document.querySelectorAll("section.reveal")]);
-    hydrateBrand();
-    loadPosts();
-    $("newsletterForm").addEventListener("submit", submitNewsletterSignup);
+    hydrateBrand(); loadPosts();
+    $("tagFilters").addEventListener("click", (e) => { const b = e.target.closest(".filter-chip"); if (b) setTag(b.dataset.tag); });
+    let tm; $("postSearch").addEventListener("input", (e) => { clearTimeout(tm); tm = setTimeout(() => { q = e.target.value; shown = PAGE; render(); }, 180); });
+    $("moreBtn").addEventListener("click", () => { shown += PAGE; render(); });
+    $("newsletterForm").addEventListener("submit", subscribe);
   });
+
 })();
 </script>
 <script src="/chat-widget.js"></script>

@@ -4,11 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title id="pageTitle">Location — Uyeh Hotel</title>
-<meta name="description" id="pageDescription" content="Book directly at this location — real-time availability, no OTA fees.">
+<meta name="description" id="pageDescription" content="Book directly at this location — real-time availability, no booking-site fees.">
 <meta name="theme-color" content="#14181f">
 <meta name="robots" content="index, follow">
-<meta property="og:image" content="/assets/og-default.jpg">
-<meta name="twitter:image" content="/assets/og-default.jpg">
+<link rel="canonical" id="canonicalLink" href="">
+<meta property="og:type" content="website">
+<meta property="og:title" id="ogTitle" content="Uyeh Hotel">
+<meta property="og:description" id="ogDescription" content="">
+<meta property="og:image" id="ogImage" content="/assets/og-default.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" id="twImage" content="/assets/og-default.jpg">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="manifest" href="/site.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,38 +21,43 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
 <style>
 /* ============================================================
-   Self-contained, same as index(s).html — no shared CSS/JS with
-   any other page. Base tokens/reset/nav/preloader are copied
-   from indexs.html on purpose, so this page matches it exactly;
-   editing one never silently changes the other.
+   location.html — one file serves every branch (?branch=slug).
+   Self-contained on purpose: same tokens as the home page, no
+   shared page CSS/JS. Shared pieces: config.js, web-core.js,
+   site-controller.js (language, currency, prices), footer.js,
+   room-media.js (room videos).
    ============================================================ */
 :root{
   --ink:#14181f; --ink-soft:#1c222b; --ink-deep:#0d1015;
   --ivory:#f6f1e7; --ivory-dim:#ede5d4;
-  --brass:#b98d45; --brass-light:#d9b876;
+  --brass:#b98d45; --brass-light:#d9b876; --brass-deep:#8f6a2c;
   --teal:#2f5d5a; --teal-light:#3f7a76;
   --text-muted:#6b6355; --text-on-ink:#ede6d6;
-  --line-on-ink:rgba(237,230,214,0.16);
-  --radius:3px;
+  --line:rgba(107,99,85,.18); --line-on-ink:rgba(237,230,214,.16);
+  --danger:#a3392a; --ok:#2f6b4a;
+  --radius:4px; --radius-lg:14px;
   --font-display:'Fraunces',Georgia,serif;
   --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-  --ease-out:cubic-bezier(0.16,1,0.3,1);
-  --ease-in-out:cubic-bezier(0.87,0,0.13,1);
+  --ease-out:cubic-bezier(0.16,1,0.3,1); --ease-in-out:cubic-bezier(0.87,0,0.13,1);
+  --nav-h:72px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:96px}
+html{scroll-behavior:smooth;scroll-padding-top:150px}
 body{font-family:var(--font-body);background:var(--ivory);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation-duration:.01ms!important;transition-duration:.01ms!important}#preloader{display:none!important}}
-h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;line-height:1.1;letter-spacing:-0.01em}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:500;line-height:1.12;letter-spacing:-0.01em}
 a{color:inherit;text-decoration:none}
 img{max-width:100%;display:block}
 button,input,select{font:inherit;color:inherit}
-.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+button{cursor:pointer}
+.wrap{max-width:1200px;margin:0 auto;padding:0 28px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .skip-link{position:absolute;left:-999px;top:0;z-index:1000;background:var(--brass);color:var(--ink);padding:10px 16px}
 .skip-link:focus{left:12px;top:12px}
-:focus-visible{outline:2px solid var(--brass-light);outline-offset:3px}
+:focus-visible{outline:2px solid var(--brass);outline-offset:3px}
+.img-fail{display:none!important}
 
-/* preloader */
+/* preloader + progress */
 #preloader{position:fixed;inset:0;z-index:999;background:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:transform .9s var(--ease-in-out)}
 #preloader.lifted{transform:translateY(-101%)}
 .preloader-mark{font-family:var(--font-display);font-size:1.5rem;letter-spacing:.04em;color:var(--ivory)}
@@ -60,7 +70,7 @@ button,input,select{font:inherit;color:inherit}
 /* nav */
 .site-nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(20,24,31,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line-on-ink);transition:transform .45s var(--ease-out)}
 .site-nav.nav-hidden{transform:translateY(-100%)}
-.site-nav .wrap{display:flex;align-items:center;justify-content:space-between;height:72px;gap:20px}
+.site-nav .wrap{display:flex;align-items:center;justify-content:space-between;height:var(--nav-h);gap:20px}
 .brand{font-family:var(--font-display);font-size:1.22rem;letter-spacing:.02em;color:var(--ivory)}
 .brand-logo{height:30px;width:auto}
 .nav-links{display:flex;align-items:center;gap:26px;font-size:.9rem}
@@ -68,102 +78,261 @@ button,input,select{font:inherit;color:inherit}
 .nav-links a:hover{color:var(--ivory)}
 .nav-cta{border:1px solid var(--brass);color:var(--brass-light)!important;padding:9px 18px;border-radius:999px}
 .nav-cta:hover{background:var(--brass);color:var(--ink)!important}
-.nav-toggle{display:none;background:none;border:0;cursor:pointer;padding:8px;flex-direction:column;gap:5px}
+.nav-toggle{display:none;background:none;border:0;padding:8px;flex-direction:column;gap:5px}
 .nav-toggle .bar{display:block;width:22px;height:1.5px;background:var(--ivory);transition:.3s var(--ease-out)}
 .nav-toggle.active .bar:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
 .nav-toggle.active .bar:nth-child(2){opacity:0}
 .nav-toggle.active .bar:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
 @media(max-width:900px){
   .nav-toggle{display:flex}
-  .nav-links{position:absolute;top:72px;left:0;right:0;flex-direction:column;align-items:flex-start;gap:0;background:var(--ink-soft);border-bottom:1px solid var(--line-on-ink);max-height:0;overflow:hidden;transition:max-height .4s var(--ease-out)}
-  .nav-links.open{max-height:420px}
+  .nav-links{position:absolute;top:var(--nav-h);left:0;right:0;flex-direction:column;align-items:flex-start;gap:0;background:var(--ink-soft);border-bottom:1px solid var(--line-on-ink);max-height:0;overflow:hidden;transition:max-height .4s var(--ease-out)}
+  .nav-links.open{max-height:520px}
   .nav-links a{padding:15px 28px;width:100%;border-bottom:1px solid rgba(237,230,214,.07)}
-  .nav-cta{border:0;border-radius:0;color:var(--brass-light)!important}
+  .nav-links select{margin:12px 28px}
+  .nav-cta{border:0;border-radius:0}
 }
 
-/* hero */
-.hero{position:relative;background:var(--ink);color:var(--text-on-ink);padding:150px 0 90px;overflow:hidden}
-.hero::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 12% 0%,rgba(47,93,90,.42),transparent 60%),linear-gradient(180deg,rgba(13,16,21,.3),rgba(13,16,21,.92))}
-.hero .wrap{position:relative;z-index:2}
-.eyebrow{font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-light);margin-bottom:18px;display:inline-flex;align-items:center;gap:8px}
-.eyebrow::before{content:"";width:24px;height:1px;background:var(--brass)}
-.hero h1{font-size:clamp(2.4rem,5.5vw,4.2rem);max-width:18ch;margin-bottom:20px}
-.hero .lead{max-width:52ch;font-size:clamp(1rem,1.5vw,1.12rem);color:rgba(237,230,214,.76)}
-.hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px}
-.fade-up{opacity:0;transform:translateY(18px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
-.fade-up.in{opacity:1;transform:none}
-
 /* buttons */
-.btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 26px;border-radius:2px;font-size:.9rem;font-weight:600;border:1px solid transparent;cursor:pointer;transition:.25s}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 26px;border-radius:2px;font-size:.9rem;font-weight:600;border:1px solid transparent;transition:.25s;text-align:center}
 .btn-primary{background:var(--brass);color:var(--ink)}
 .btn-primary:hover{background:var(--brass-light)}
-.btn-ghost{border-color:var(--line-on-ink);color:var(--text-on-ink)}
+.btn-ghost{border-color:rgba(237,230,214,.35);color:var(--text-on-ink)}
 .btn-ghost:hover{border-color:var(--brass-light);color:var(--brass-light)}
 .btn-dark{background:var(--ink);color:var(--ivory)}
 .btn-dark:hover{background:var(--teal)}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.magnetic{transform:translate(var(--mx,0),var(--my,0));transition:transform .3s var(--ease-out)}
+.btn-line{border-color:var(--line);background:#fff;color:var(--ink)}
+.btn-line:hover{border-color:var(--brass);color:var(--brass-deep)}
+.btn:disabled,.btn[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.btn-block{width:100%}
 
-/* reveals */
-section{padding:96px 0}
-.section-head{max-width:60ch;margin-bottom:44px}
+/* hero */
+.hero{position:relative;background:var(--ink);color:var(--text-on-ink);min-height:min(88vh,760px);display:flex;align-items:flex-end;overflow:hidden}
+.hero-slides{position:absolute;inset:0}
+.hero-slide{position:absolute;inset:0;opacity:0;transition:opacity 1.4s ease;background:var(--ink-soft)}
+.hero-slide.on{opacity:1}
+.hero-slide img{width:100%;height:100%;object-fit:cover;transform:scale(1.04);transition:transform 9s linear}
+.hero-slide.on img{transform:scale(1.12)}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,16,21,.55) 0%,rgba(13,16,21,.18) 38%,rgba(13,16,21,.88) 100%),radial-gradient(110% 80% at 8% 100%,rgba(47,93,90,.4),transparent 60%)}
+.hero .wrap{position:relative;z-index:2;width:100%;padding-top:150px;padding-bottom:120px}
+.eyebrow{font-size:.74rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-light);margin-bottom:16px;display:inline-flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:26px;height:1px;background:var(--brass)}
+.hero h1{font-size:clamp(2.5rem,6vw,4.6rem);max-width:16ch;margin-bottom:18px}
+.hero .lead{display:flex;align-items:flex-start;gap:8px;max-width:56ch;font-size:clamp(1rem,1.5vw,1.12rem);color:rgba(237,230,214,.82)}
+.hero .lead svg{flex:none;margin-top:4px}
+.facts{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.fact{display:inline-flex;align-items:center;gap:8px;font-size:.84rem;padding:8px 14px;border:1px solid rgba(237,230,214,.28);border-radius:999px;background:rgba(13,16,21,.35);backdrop-filter:blur(6px)}
+.fact b{font-weight:600;color:#fff}
+.stars{color:var(--brass-light);letter-spacing:1px}
+.hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.hero-dots{position:absolute;right:28px;bottom:132px;z-index:3;display:flex;gap:8px}
+.hero-dots button{width:26px;height:3px;border:0;background:rgba(237,230,214,.35);padding:0}
+.hero-dots button[aria-current=true]{background:var(--brass-light)}
+.fade-up{opacity:0;transform:translateY(18px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
+.fade-up.in{opacity:1;transform:none}
+@media(max-width:700px){.hero{min-height:82vh}.hero .wrap{padding-bottom:104px}.hero-dots{display:none}}
+
+/* booking bar */
+.bar-wrap{position:sticky;top:calc(var(--nav-h) + 10px);z-index:90;margin-top:-62px;transition:top .45s var(--ease-out)}
+body.nav-away .bar-wrap{top:12px}
+.sbar{background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:0 24px 50px -24px rgba(13,16,21,.45);padding:14px 16px;display:grid;grid-template-columns:1.1fr 1.1fr .8fr auto;gap:10px;align-items:end}
+.sbar .fld{min-width:0;display:flex;flex-direction:column;gap:4px;padding:6px 12px;border-radius:10px;transition:background .2s}
+.sbar .fld:hover{background:rgba(185,141,69,.07)}
+.sbar label{font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.sbar input,.sbar select{min-width:0;border:0;background:transparent;font-size:1rem;font-weight:500;padding:2px 0;min-height:30px;width:100%}
+.sbar input:focus,.sbar select:focus{outline:0}
+.sbar .fld:focus-within{background:rgba(185,141,69,.12);box-shadow:inset 0 0 0 1.5px var(--brass)}
+.sbar .btn{min-height:52px;padding:0 30px}
+.sbar-meta{grid-column:1/-1;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding:2px 12px 0;font-size:.82rem;color:var(--text-muted)}
+.sbar-meta .err{color:var(--danger);font-weight:500}
+@media(max-width:900px){.sbar{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.sbar .btn{grid-column:1/-1}.bar-wrap{position:relative;top:0!important}}
+
+/* sections */
+section{padding:92px 0}
+.section-head{max-width:62ch;margin-bottom:40px}
 .section-head .eyebrow{color:var(--teal)}
 .section-head .eyebrow::before{background:var(--teal)}
-.section-head p:not(.eyebrow){color:var(--text-muted);margin-top:14px;font-size:1.02rem}
+.section-head h2{font-size:clamp(1.8rem,3.4vw,2.6rem)}
+.section-head p:not(.eyebrow){color:var(--text-muted);margin-top:12px;font-size:1.02rem}
 .reveal{opacity:0;transform:translateY(26px);transition:opacity .9s var(--ease-out),transform .9s var(--ease-out)}
 .reveal.is-visible{opacity:1;transform:none}
+.white{background:#fff}
 
-/* key-tag */
-.key-tag{position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;background:var(--brass);border-radius:6px;color:var(--ink);font-family:var(--font-display);font-weight:600;font-size:1rem;transform:rotate(-4deg)}
-.key-tag::after{content:"";position:absolute;top:8px;left:-7px;width:8px;height:8px;border-radius:50%;background:var(--ivory);border:2px solid var(--ink)}
+/* about */
+.about{display:grid;grid-template-columns:1.2fr .8fr;gap:56px;align-items:start}
+.about p.prose{font-size:1.06rem;color:#3d382f;max-width:60ch;white-space:pre-line}
+.service-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.service-chips span{font-size:.76rem;letter-spacing:.02em;color:var(--teal);background:rgba(47,93,90,.09);padding:6px 14px;border-radius:20px}
+.good{display:grid;gap:0;border:1px solid var(--line);border-radius:var(--radius-lg);background:#fff;overflow:hidden}
+.good div{display:flex;justify-content:space-between;gap:16px;padding:15px 20px;border-bottom:1px solid var(--line);font-size:.92rem}
+.good div:last-child{border-bottom:0}
+.good dt{color:var(--text-muted)}
+.good dd{font-weight:500;text-align:right}
+.amen{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px 22px;margin-top:40px}
+.amen li{list-style:none;display:flex;align-items:center;gap:12px;font-size:.94rem}
+.amen svg{flex:none;color:var(--teal)}
+@media(max-width:900px){.about{grid-template-columns:1fr;gap:34px}}
 
-/* services chips */
-.branch-services{display:flex;flex-wrap:wrap;gap:8px}
-.branch-services span{font-size:.72rem;letter-spacing:.02em;text-transform:capitalize;color:var(--teal);background:rgba(47,93,90,.08);padding:5px 12px;border-radius:20px}
+/* rooms toolbar */
+.toolbar{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;justify-content:space-between;margin-bottom:26px}
+.toolbar .left{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 16px;font-size:.85rem;font-weight:500;transition:.2s}
+.chip:hover{border-color:var(--brass)}
+.chip[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:#fff}
+.sort{display:flex;align-items:center;gap:10px;font-size:.85rem;color:var(--text-muted)}
+.sort select{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 14px;color:var(--ink)}
+.summary{font-size:.95rem;color:var(--text-muted);margin-bottom:22px;min-height:1.5em}
+.summary b{color:var(--ink)}
 
-/* room / event cards */
-.room-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px}
-.room-card{background:#fff;border:1px solid rgba(107,99,85,.14);border-radius:var(--radius);overflow:hidden;transition:transform .25s,box-shadow .25s}
-.room-card:hover{transform:translateY(-4px);box-shadow:0 20px 40px -20px rgba(20,24,31,.25)}
-.room-card-image{height:180px;background:linear-gradient(135deg,var(--teal) 0%,var(--teal-light) 60%,var(--brass) 140%);background-size:cover;background-position:center;position:relative}
-.room-card-image .key-tag{position:absolute;bottom:-22px;left:24px}
-.room-card-body{padding:34px 24px 24px}
-.room-card-body h3{font-size:1.24rem;margin-bottom:8px}
-.room-card-body p.desc{color:var(--text-muted);font-size:.92rem;margin-bottom:16px}
-.room-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-.price{font-family:var(--font-display);font-size:1.32rem;color:var(--ink)}
-.price small{font-family:var(--font-body);font-size:.76rem;color:var(--text-muted);font-weight:400}
-.amenity-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
-.amenity-tags span{font-size:.72rem;letter-spacing:.03em;text-transform:uppercase;color:var(--teal);background:rgba(47,93,90,.08);padding:5px 10px;border-radius:20px}
-
-/* availability form */
-.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.form-field{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
-.form-field.full{grid-column:1/-1}
-.form-field label{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
-.form-field input{font-size:.94rem;padding:12px 14px;border:1px solid rgba(107,99,85,.25);border-radius:2px;background:#fff;color:var(--ink)}
-.form-field input:focus{outline:2px solid var(--brass);outline-offset:1px;border-color:var(--brass)}
-@media(max-width:640px){.form-grid{grid-template-columns:1fr}}
-
-.notice{padding:14px 18px;border-radius:var(--radius);font-size:.9rem;margin-bottom:20px}
-.notice.error{background:rgba(185,60,45,.08);color:#a3392a;border:1px solid rgba(185,60,45,.2)}
-.loading-state,.empty-state{padding:48px 0;text-align:center;color:var(--text-muted)}
-.skeleton-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px}
-.skeleton-card{height:280px;border-radius:var(--radius);background:linear-gradient(100deg,var(--ivory-dim) 30%,rgba(255,255,255,.7) 50%,var(--ivory-dim) 70%);background-size:220% 100%;animation:shimmer 1.5s infinite}
+/* room cards */
+.room-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:30px}
+.rc{background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column;transition:transform .3s var(--ease-out),box-shadow .3s}
+.rc:hover{transform:translateY(-5px);box-shadow:0 30px 50px -28px rgba(13,16,21,.4)}
+.rc.sold{opacity:.72}
+.rc-media{position:relative;aspect-ratio:4/3;background:linear-gradient(135deg,var(--teal),var(--teal-light) 60%,var(--brass) 140%);overflow:hidden}
+.rc-media img.cover,.rc-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease-out)}
+.rc:hover .rc-media img.cover{transform:scale(1.05)}
+.rc-media .link{position:absolute;inset:0;z-index:1}
+.badges{position:absolute;top:12px;left:12px;z-index:3;display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;font-weight:600;padding:6px 11px;border-radius:999px;background:rgba(13,16,21,.72);color:#fff;backdrop-filter:blur(6px)}
+.badge.brass{background:var(--brass);color:var(--ink)}
+.badge.warn{background:#f3d6c8;color:#7a2d17}
+.badge.ok{background:#d7ecdf;color:#1d5236}
+.badge.no{background:#e8e2d6;color:#5b5446}
+.vbtn{position:absolute;right:12px;bottom:12px;z-index:3;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:9px 15px 9px 11px;background:rgba(255,255,255,.94);color:var(--ink);font-size:.8rem;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.vbtn:hover{background:#fff}
+.vbtn i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff}
+.rc-body{padding:22px 24px 24px;display:flex;flex-direction:column;gap:12px;flex:1}
+.rc-body h3{font-size:1.4rem}
+.rc-spec{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.84rem;color:var(--text-muted)}
+.rc-spec span{display:inline-flex;align-items:center;gap:6px}
+.rc-desc{font-size:.92rem;color:#4a4439;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags span{font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--teal);background:rgba(47,93,90,.09);padding:5px 10px;border-radius:20px}
+.rc-foot{margin-top:auto;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.price{font-family:var(--font-display);font-size:1.5rem;line-height:1}
+.price small{display:block;font-family:var(--font-body);font-size:.74rem;color:var(--text-muted);font-weight:400;margin-top:6px}
+.price .from{display:block;font-family:var(--font-body);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px}
+.rc-cta{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.rc-cta .btn{padding:11px 18px}
+.alt{margin-top:30px;border:1px solid var(--line);background:#fff;border-radius:var(--radius-lg);padding:26px}
+.alt h3{font-size:1.3rem;margin-bottom:6px}
+.alt ul{list-style:none;display:grid;gap:10px;margin-top:16px}
+.alt li a{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:14px 18px;border:1px solid var(--line);border-radius:10px;transition:.2s}
+.alt li a:hover{border-color:var(--brass);background:rgba(185,141,69,.06)}
+.skeleton{height:420px;border-radius:var(--radius-lg);background:linear-gradient(100deg,var(--ivory-dim) 30%,rgba(255,255,255,.7) 50%,var(--ivory-dim) 70%);background-size:220% 100%;animation:shimmer 1.5s infinite}
 @keyframes shimmer{to{background-position:-220% 0}}
+.empty-state,.loading-state{padding:44px 20px;text-align:center;color:var(--text-muted);border:1px dashed var(--line);border-radius:var(--radius-lg);background:rgba(255,255,255,.5)}
+.notice{padding:14px 18px;border-radius:var(--radius);font-size:.92rem;margin-bottom:20px}
+.notice.error{background:rgba(163,57,42,.08);color:var(--danger);border:1px solid rgba(163,57,42,.22)}
 
-/* branch contact section (feeds the branch's own details — the shared
-   footer.js below only carries the company-wide info) */
-.contact-band{background:var(--ink-soft);border-block:1px solid var(--line-on-ink)}
+/* gallery */
+.gal{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:210px;gap:12px}
+.gal button{position:relative;border:0;padding:0;overflow:hidden;border-radius:10px;background:var(--ivory-dim)}
+.gal button:first-child{grid-column:span 2;grid-row:span 2}
+.gal button:nth-child(5){grid-column:span 2}
+.gal img{width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease-out)}
+.gal button:hover img{transform:scale(1.06)}
+.gal .more{position:absolute;inset:0;display:grid;place-items:center;background:rgba(13,16,21,.55);color:#fff;font-weight:600}
+@media(max-width:800px){.gal{grid-template-columns:repeat(2,1fr);grid-auto-rows:160px}.gal button:first-child{grid-column:span 2;grid-row:span 2}.gal button:nth-child(5){grid-column:auto}}
+
+/* events */
+.ev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:26px}
+.ev{background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden;display:flex;flex-direction:column}
+.ev-img{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,var(--ink-soft),var(--teal))}
+.ev-img img{width:100%;height:100%;object-fit:cover}
+.ev-date{position:absolute;left:14px;top:14px;background:#fff;border-radius:10px;padding:8px 12px;text-align:center;line-height:1.1;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.ev-date b{display:block;font-family:var(--font-display);font-size:1.4rem}
+.ev-date span{font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--text-muted)}
+.ev-body{padding:20px 22px 22px;display:flex;flex-direction:column;gap:10px;flex:1}
+.ev-body h3{font-size:1.2rem}
+.ev-body p{font-size:.9rem;color:#4a4439;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.ev-foot{margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:.9rem}
+.host{margin-top:34px;display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;background:var(--ink);color:var(--text-on-ink);border-radius:var(--radius-lg);padding:34px 38px;position:relative;overflow:hidden}
+.host::before{content:"";position:absolute;inset:0;background:radial-gradient(70% 120% at 100% 0%,rgba(185,141,69,.28),transparent 60%)}
+.host>*{position:relative}
+.host h3{font-size:1.6rem;margin-bottom:8px}
+.host p{color:rgba(237,230,214,.75);max-width:56ch}
+@media(max-width:700px){.host{grid-template-columns:1fr;padding:28px 24px}}
+
+/* reviews */
+.rev-top{display:grid;grid-template-columns:260px 1fr;gap:44px;align-items:center;margin-bottom:34px}
+.rev-score b{font-family:var(--font-display);font-size:4.2rem;line-height:1;font-weight:500}
+.rev-score .stars{font-size:1.2rem;display:block;margin:8px 0 4px}
+.rev-score small{color:var(--text-muted)}
+.bars{display:grid;gap:8px}
+.bars div{display:grid;grid-template-columns:26px 1fr 34px;gap:12px;align-items:center;font-size:.82rem;color:var(--text-muted)}
+.bars i{display:block;height:6px;border-radius:6px;background:var(--ivory-dim);overflow:hidden}
+.bars i::after{content:"";display:block;height:100%;width:var(--w,0%);background:var(--brass);border-radius:6px}
+.rev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:22px}
+.rev{background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:24px}
+.rev h4{font-size:1.08rem;margin:8px 0}
+.rev p{font-size:.92rem;color:#4a4439}
+.rev footer{margin-top:14px;font-size:.8rem;color:var(--text-muted)}
+.reply{margin-top:14px;padding:12px 14px;border-left:3px solid var(--brass);background:rgba(185,141,69,.08);font-size:.86rem;border-radius:0 8px 8px 0}
+.reply b{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--brass-deep);margin-bottom:4px}
+@media(max-width:800px){.rev-top{grid-template-columns:1fr;gap:24px}}
+
+/* map */
+.map-grid{display:grid;grid-template-columns:.9fr 1.3fr;gap:34px;align-items:stretch}
+.map-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius-lg);padding:30px;display:flex;flex-direction:column;gap:18px}
+.map-card h3{font-size:1.5rem}
+.map-card .row{display:flex;gap:12px;align-items:flex-start;font-size:.95rem}
+.map-card svg{flex:none;color:var(--teal);margin-top:3px}
+.map-card .acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:auto}
+.map-frame{border-radius:var(--radius-lg);overflow:hidden;border:1px solid var(--line);min-height:380px;background:var(--ivory-dim)}
+.map-frame iframe{width:100%;height:100%;min-height:380px;border:0;display:block}
+@media(max-width:900px){.map-grid{grid-template-columns:1fr}}
+
+/* other locations */
+.loc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:22px}
+.loc{position:relative;border-radius:var(--radius-lg);overflow:hidden;min-height:260px;display:flex;align-items:flex-end;color:#fff;background:linear-gradient(135deg,var(--ink-soft),var(--teal))}
+.loc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .8s var(--ease-out)}
+.loc:hover img{transform:scale(1.06)}
+.loc::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(13,16,21,.88))}
+.loc div{position:relative;z-index:2;padding:22px}
+.loc h3{font-size:1.3rem}
+.loc span{font-size:.84rem;color:rgba(237,230,214,.8)}
+
+/* contact */
+.contact-band{background:var(--ink-soft);border-block:1px solid var(--line-on-ink);color:var(--text-on-ink)}
+.contact-band .section-head h2{color:var(--ivory)}
+.contact-band .section-head .eyebrow{color:var(--brass-light)}
+.contact-band .section-head .eyebrow::before{background:var(--brass)}
 .contact-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:26px}
 .contact-item{border-top:1px solid var(--line-on-ink);padding-top:18px}
 .contact-item h4{font-size:1.02rem;margin-bottom:8px;color:var(--ivory)}
-.contact-item p,.contact-item a{font-size:.9rem;color:rgba(237,230,214,.66)}
+.contact-item p,.contact-item a{font-size:.94rem;color:rgba(237,230,214,.72)}
 .contact-item a:hover{color:var(--brass-light)}
+
+/* lightbox */
+#lb{position:fixed;inset:0;z-index:2000;background:rgba(8,10,13,.94);display:none;align-items:center;justify-content:center;padding:40px 70px}
+#lb.open{display:flex}
+#lb .stage{max-width:min(1100px,100%);width:100%;max-height:100%;display:grid;place-items:center}
+#lb .stage img{max-height:84vh;width:auto;max-width:100%;border-radius:6px}
+#lb .vid{width:min(1000px,100%);aspect-ratio:16/9;background:#000;border-radius:8px;overflow:hidden}
+#lb .cap{position:absolute;left:0;right:0;bottom:16px;text-align:center;color:rgba(237,230,214,.8);font-size:.88rem}
+#lb button{position:absolute;border:0;background:rgba(255,255,255,.12);color:#fff;width:46px;height:46px;border-radius:50%;font-size:1.4rem;display:grid;place-items:center}
+#lb button:hover{background:rgba(255,255,255,.25)}
+#lb .x{top:18px;right:18px}#lb .prev{left:16px}#lb .next{right:16px}
+@media(max-width:700px){#lb{padding:60px 12px}#lb .prev{left:6px}#lb .next{right:6px}}
+
+/* mobile dock */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:95;display:none;gap:14px;align-items:center;justify-content:space-between;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:rgba(20,24,31,.96);backdrop-filter:blur(12px);border-top:1px solid var(--line-on-ink);color:#fff;transform:translateY(110%);transition:transform .4s var(--ease-out)}
+.dock.show{transform:none}
+.dock small{display:block;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(237,230,214,.6)}
+.dock b{font-family:var(--font-display);font-size:1.2rem;font-weight:500}
+@media(max-width:900px){.dock{display:flex}body{padding-bottom:70px}}
+
+/* footer.js's 2-column phone grid can push the page wider than the screen; keep it inside */
+#siteFooter{overflow-x:clip}
+@media(max-width:820px){#siteFooter .ft-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+@media(max-width:520px){#siteFooter .ft-grid{grid-template-columns:minmax(0,1fr)}}
+#siteFooter *{overflow-wrap:anywhere}
 </style>
 <script src="config.js"></script>
 <script src="web-core.js"></script>
 <script src="site-controller.js" defer></script>
+<script src="room-media.js"></script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -174,19 +343,20 @@ section{padding:96px 0}
 </div>
 <div id="scrollProgress"></div>
 
-<nav class="site-nav" id="siteNav">
+<nav class="site-nav" id="siteNav" aria-label="Main">
   <div class="wrap">
     <a href="index.html" class="brand" id="navBrand">Uyeh Hotel</a>
     <div class="nav-links" id="navLinks">
       <a href="index.html">Home</a>
       <a href="index.html#locations">Locations</a>
-      <a href="index.html#experiences">Experiences</a>
+      <a href="#rooms">Rooms</a>
+      <a href="#events">Events</a>
       <a href="blog.html">Blog</a>
       <a href="about.html">About</a>
       <a href="contact.html">Contact</a>
-      <a href="#rooms" class="nav-cta">Check availability</a>
+      <a href="#book" class="nav-cta" id="navCta">Check availability</a>
     </div>
-    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="navLinks">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </button>
   </div>
@@ -194,373 +364,693 @@ section{padding:96px 0}
 
 <main id="main">
 
-<!-- Everything below is populated by the script at the bottom, driven
-     entirely by ?branch= in the URL. One file serves every branch —
-     nothing here is hardcoded to a specific location. -->
-
 <div id="notFoundState" style="display:none;">
-  <div class="wrap" style="padding:180px 0 120px; text-align:center;">
+  <div class="wrap" style="padding:190px 28px 120px; text-align:center;">
     <p class="eyebrow" style="justify-content:center;">Location not found</p>
-    <h1 style="font-size:2rem;margin-bottom:16px;color:var(--ink);">We couldn't find that location.</h1>
-    <p style="color:var(--text-muted);margin-bottom:32px;">It may have closed, or the link might be out of date.</p>
+    <h1 style="font-size:2.2rem;margin-bottom:16px;">We couldn't find that location.</h1>
+    <p style="color:var(--text-muted);margin-bottom:32px;" id="notFoundMsg">It may have closed, or the link might be out of date.</p>
     <a href="index.html#locations" class="btn btn-dark">See all locations</a>
   </div>
 </div>
 
+<div id="branchSkeleton" class="wrap" style="padding:190px 28px 120px;">
+  <div class="skeleton" style="height:46px;width:40%;margin-bottom:18px"></div>
+  <div class="skeleton" style="height:300px"></div>
+</div>
+
 <div id="branchContent" style="display:none;">
 
-  <header class="hero">
+  <!-- ===== HERO ===== -->
+  <header class="hero" id="hero">
+    <div class="hero-slides" id="heroSlides" aria-hidden="true"></div>
     <div class="wrap">
       <p class="eyebrow fade-up" id="branchCity">—</p>
       <h1 class="fade-up" id="branchName">—</h1>
-      <p class="lead fade-up" id="branchAddress">—</p>
+      <p class="lead fade-up" id="branchAddress"></p>
+      <div class="facts fade-up" id="heroFacts"></div>
       <div class="hero-actions fade-up" id="heroActions">
-        <a href="#rooms" class="btn btn-primary magnetic">Check room availability</a>
-        <a href="#events" class="btn btn-ghost magnetic">Upcoming events</a>
+        <a href="#book" class="btn btn-primary">Check availability</a>
+        <a href="#location" class="btn btn-ghost" id="dirBtn">Get directions</a>
+        <a href="#" class="btn btn-ghost" id="callBtn" style="display:none">Call us</a>
       </div>
     </div>
+    <div class="hero-dots" id="heroDots"></div>
   </header>
 
-  <!-- ===== SERVICES AT THIS BRANCH ===== -->
-  <section class="reveal">
+  <!-- ===== SEARCH BAR (sticky) ===== -->
+  <div class="bar-wrap" id="book">
     <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Available here</p>
-        <h2>What this location offers.</h2>
-      </div>
-      <div class="branch-services" id="branchServices"></div>
-    </div>
-  </section>
-
-  <!-- ===== ROOM TYPES AT THIS LOCATION — browse first, no dates needed ===== -->
-  <section id="roomTypesCatalog" class="reveal" style="background:#fff;">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Room types here</p>
-        <h2>What you can book at this location.</h2>
-        <p>Starting prices shown — pick your dates below to see exactly what's free.</p>
-      </div>
-      <div class="room-grid" id="roomTypesGrid">
-        <div class="loading-state">Loading room types…</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== AVAILABILITY CHECK ===== -->
-  <section id="rooms" class="reveal" style="background:#fff;">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Rooms</p>
-        <h2>Check what's available.</h2>
-        <p>Real-time — a room shown here is actually free for those dates.</p>
-      </div>
-
-      <form id="availabilityForm" class="form-grid" style="margin-bottom:40px;max-width:640px;">
-        <div class="form-field">
-          <label for="checkIn">Check-in</label>
-          <input type="date" id="checkIn" required>
-        </div>
-        <div class="form-field">
-          <label for="checkOut">Check-out</label>
-          <input type="date" id="checkOut" required>
-        </div>
-        <div class="form-field full">
-          <button type="submit" class="btn btn-primary" id="checkAvailabilityBtn">Check availability</button>
-        </div>
+      <form class="sbar" id="availabilityForm" novalidate aria-label="Check availability">
+        <div class="fld"><label for="checkIn">Check-in</label><input type="date" id="checkIn" required></div>
+        <div class="fld"><label for="checkOut">Check-out</label><input type="date" id="checkOut" required></div>
+        <div class="fld"><label for="guests">Guests</label>
+          <select id="guests"></select></div>
+        <button type="submit" class="btn btn-primary" id="searchBtn">Check availability</button>
+        <div class="sbar-meta"><span id="barNights">Choose your dates to see what is free.</span><span id="barError" class="err" role="alert"></span></div>
       </form>
+    </div>
+  </div>
 
-      <div id="availabilityNotice" aria-live="polite"></div>
-      <div class="room-grid" id="roomGrid">
-        <div class="loading-state">Pick your dates above to see available rooms.</div>
+  <!-- ===== ABOUT ===== -->
+  <section id="about" class="reveal">
+    <div class="wrap">
+      <div class="about">
+        <div>
+          <div class="section-head" style="margin-bottom:22px">
+            <p class="eyebrow">About this location</p>
+            <h2 id="aboutTitle">Stay with us.</h2>
+          </div>
+          <p class="prose" id="aboutText"></p>
+          <div class="service-chips" id="branchServices"></div>
+        </div>
+        <dl class="good" id="goodToKnow"></dl>
       </div>
+      <ul class="amen" id="amenities"></ul>
     </div>
   </section>
 
-  <!-- ===== EVENTS AT THIS BRANCH ===== -->
-  <section id="events" class="reveal">
+  <!-- ===== ROOMS ===== -->
+  <section id="rooms" class="white reveal">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Rooms &amp; suites</p>
+        <h2>Choose your room.</h2>
+        <p>Prices are per night. Pick your dates in the bar above and every card shows what is actually free.</p>
+      </div>
+      <div class="toolbar">
+        <div class="left" id="roomFilters">
+          <button class="chip" type="button" id="fVideo" aria-pressed="false" hidden>▶ Video tours</button>
+          <button class="chip" type="button" id="fFree" aria-pressed="false" hidden>Available only</button>
+        </div>
+        <label class="sort">Sort by
+          <select id="sortBy" aria-label="Sort rooms">
+            <option value="rec">Recommended</option>
+            <option value="low">Price: low to high</option>
+            <option value="high">Price: high to low</option>
+            <option value="sleeps">Sleeps the most</option>
+          </select>
+        </label>
+      </div>
+      <div class="summary" id="roomSummary" aria-live="polite"></div>
+      <div id="availabilityNotice" aria-live="polite"></div>
+      <div class="room-grid" id="roomGrid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+      <div id="altBranches"></div>
+    </div>
+  </section>
+
+  <!-- ===== GALLERY ===== -->
+  <section id="galleryWrap" class="reveal" style="display:none">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Gallery</p>
+        <h2>See it before you arrive.</h2>
+      </div>
+      <div class="gal" id="gallery"></div>
+    </div>
+  </section>
+
+  <!-- ===== EVENTS ===== -->
+  <section id="events" class="white reveal">
     <div class="wrap">
       <div class="section-head">
         <p class="eyebrow">Events</p>
-        <h2>Upcoming at this location.</h2>
+        <h2>Happening at this location.</h2>
       </div>
-      <div class="room-grid" id="eventsGrid">
-        <div class="skeleton-grid"><div class="skeleton-card"></div><div class="skeleton-card"></div></div>
+      <div class="ev-grid" id="eventsGrid"><div class="skeleton" style="height:320px"></div><div class="skeleton" style="height:320px"></div></div>
+      <div class="host" id="hostBand" style="display:none">
+        <div>
+          <h3>Planning your own event?</h3>
+          <p>Weddings, birthdays, conferences, launches. Tell us the date and the size of your guest list and this location's events team will reply with availability and a quote.</p>
+        </div>
+        <a class="btn btn-primary" id="hostBtn" href="guest-panel.html?returnTo=events">Ask about hiring a venue</a>
       </div>
     </div>
   </section>
 
-  <!-- ===== THIS BRANCH'S OWN CONTACT DETAILS ===== -->
+  <!-- ===== REVIEWS ===== -->
+  <section id="reviewsWrap" class="reveal" style="display:none">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Guest reviews</p>
+        <h2>What guests say.</h2>
+      </div>
+      <div class="rev-top">
+        <div class="rev-score" id="revScore"></div>
+        <div class="bars" id="revBars"></div>
+      </div>
+      <div class="rev-grid" id="revGrid"></div>
+      <div style="text-align:center;margin-top:28px"><button class="btn btn-line" id="revMore" style="display:none">Show more reviews</button></div>
+    </div>
+  </section>
+
+  <!-- ===== MAP ===== -->
+  <section id="location" class="white reveal">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Finding us</p>
+        <h2>Where we are.</h2>
+      </div>
+      <div class="map-grid">
+        <div class="map-card" id="mapCard"></div>
+        <div class="map-frame" id="mapFrame"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== OTHER LOCATIONS ===== -->
+  <section id="othersWrap" class="reveal" style="display:none">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">More Uyeh locations</p>
+        <h2>Visiting more than one city?</h2>
+      </div>
+      <div class="loc-grid" id="otherLocs"></div>
+    </div>
+  </section>
+
+  <!-- ===== CONTACT ===== -->
   <section class="contact-band reveal">
     <div class="wrap">
       <div class="section-head">
-        <p class="eyebrow">Visit or call this location</p>
-        <h2 style="color:var(--ivory);">Get in touch directly.</h2>
+        <p class="eyebrow">Talk to this location</p>
+        <h2>Get in touch directly.</h2>
       </div>
       <div class="contact-grid" id="branchContactGrid"></div>
     </div>
   </section>
 
 </div>
-
 </main>
+
+<div class="dock" id="dock" aria-hidden="true">
+  <div><small id="dockLabel">Rooms from</small><b id="dockPrice">—</b></div>
+  <a href="#book" class="btn btn-primary" tabindex="-1">Check dates</a>
+</div>
+
+<div id="lb" role="dialog" aria-modal="true" aria-label="Media viewer">
+  <button class="x" type="button" aria-label="Close">×</button>
+  <button class="prev" type="button" aria-label="Previous">‹</button>
+  <div class="stage" id="lbStage"></div>
+  <button class="next" type="button" aria-label="Next">›</button>
+  <div class="cap" id="lbCap"></div>
+</div>
 
 <div id="siteFooter"></div>
 <script src="footer.js"></script>
-
 <script>
-/* ============================================================
-   All page logic lives here, inline. Nothing shared with
-   index.html or any other page — this page has its own
-   independent copy of whatever it needs. That's deliberate:
-   a shared main.js meant editing one page could silently
-   change another. footer.js is the one intentional exception —
-   it's the shared component, not page logic.
-   ============================================================ */
 (function () {
   "use strict";
 
-  const API_BASE = window.Uyeh.API_BASE;
+  const U = window.Uyeh, API_BASE = U.API_BASE, api = U.api, priceHtml = U.priceHtml, L = U.t, fmtDate = U.fmtDate;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const finePointer = window.matchMedia("(pointer: fine)").matches;
   const $ = (id) => document.getElementById(id);
-  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const fmtMoney = window.Uyeh.fmtMoney, priceHtml = window.Uyeh.priceHtml, L = window.Uyeh.t, fmtDate = window.Uyeh.fmtDate;
+  const esc = (v) => String(v == null ? "" : v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const url = (u) => (u && !/^\s*(javascript|data|vbscript):/i.test(String(u))) ? String(u) : "";
+  const qs = new URLSearchParams(location.search);
+  const branchParam = qs.get("branch");
+  const FALLBACK = ["images/gallery17.jpg", "images/gallery18.jpg", "images/gallery19.jpg", "images/gallery20.jpg"];
+  const MEDIA = window.UyehMedia || null;
 
-  const api = window.Uyeh.api;
+  const S = {
+    branch: null, platformName: "Uyeh Hotel", types: [], avail: null, searched: false,
+    checkIn: "", checkOut: "", guests: 2, sort: "rec", videoOnly: false, freeOnly: false, showAll: false,
+    reviews: [], revShown: 6, ratingAvg: null, ratingCount: 0, minPrice: null,
+  };
+  const slug = () => S.branch.slug || S.branch.id;
 
-  const params = new URLSearchParams(window.location.search);
-  const branchParam = params.get("branch");
-  let currentBranch = null;
-  let platformName = "Uyeh Hotel";
+  /* ---------- helpers ---------- */
+  const pad = (n) => String(n).padStart(2, "0");
+  const isoLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const today = () => isoLocal(new Date());
+  const addDays = (iso, n) => { const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n); return isoLocal(d); };
+  const nightsBetween = (a, b) => (a && b ? Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000) : 0);
+  const pretty = (iso) => fmtDate(iso, { weekday: "short", day: "numeric", month: "short", year: undefined });
+  const stars = (n) => "★".repeat(Math.round(n)) + "☆".repeat(5 - Math.round(n));
+  const label = (k) => ({ rooms: "Rooms & suites", restaurant: "Restaurant", bar: "Bar & lounge", spa: "Spa & wellness", laundry: "Laundry", events: "Events & venues", upcoming_events: "Ticketed events", gym: "Gym", pool: "Swimming pool", conference: "Conference rooms" }[k] || String(k).replace(/[_-]+/g, " ").replace(/^./, (c) => c.toUpperCase()));
+  const ICON = {
+    wifi: '<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10.5 10.5 0 0 1 14 0M8.5 16a5.5 5.5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/>',
+    pool: '<path d="M2 18c2 0 2-1.5 5-1.5S9 18 12 18s2-1.5 5-1.5S20 18 22 18M2 13c2 0 2-1.5 5-1.5S9 13 12 13s2-1.5 5-1.5S20 13 22 13M8 11V5a2 2 0 0 1 4 0M16 11V5a2 2 0 0 1 4 0"/>',
+    park: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M10 16V8h3a2.5 2.5 0 0 1 0 5h-3"/>',
+    gym: '<path d="M3 9v6M6 7v10M18 7v10M21 9v6M6 12h12"/>',
+    air: '<path d="M3 8h13a3 3 0 1 0-3-3M3 12h17a3 3 0 1 1-3 3M3 16h9a3 3 0 1 1-3 3"/>',
+    food: '<path d="M6 3v8a2 2 0 0 0 2 2v8M10 3v8M6 7h4M17 3c-2 2-2 6 0 8v10"/>',
+    bar: '<path d="M4 4h16l-8 9zM12 13v8M8 21h8"/>',
+    spa: '<path d="M12 21c5 0 8-3.5 8-9-5 0-8 3-8 9zM12 21c-5 0-8-3.5-8-9 5 0 8 3 8 9zM12 12c-2-2-2-6 0-8 2 2 2 6 0 8z"/>',
+    power: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+    shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
+    bus: '<rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16M7 21v-3M17 21v-3"/><circle cx="8" cy="14.5" r=".8"/><circle cx="16" cy="14.5" r=".8"/>',
+    tv: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/>',
+    wash: '<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M7 7h.01M10 7h.01"/>',
+    check: '<path d="m5 12 5 5 9-10"/>',
+    pin: '<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+    phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+    bed: '<path d="M3 18V7M3 14h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5"/><circle cx="7" cy="11" r="1.8"/>',
+    user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+    size: '<path d="M4 4h6M4 4v6M20 20h-6M20 20v-6M4 20l6-6M20 4l-6 6"/>',
+  };
+  const svg = (k, s = 20) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ICON.check}</svg>`;
+  const amenIcon = (t) => { t = String(t).toLowerCase(); return /wi-?fi|internet/.test(t) ? "wifi" : /pool|swim/.test(t) ? "pool" : /park/.test(t) ? "park" : /gym|fitness/.test(t) ? "gym" : /air|a\/c|\bac\b|cooling/.test(t) ? "air" : /breakfast|restaurant|dining|kitchen/.test(t) ? "food" : /bar|lounge/.test(t) ? "bar" : /spa|massage|sauna/.test(t) ? "spa" : /generator|power|electric|inverter/.test(t) ? "power" : /security|cctv|guard/.test(t) ? "shield" : /shuttle|airport|transfer|pickup/.test(t) ? "bus" : /\btv\b|television|cable/.test(t) ? "tv" : /laundry|wash/.test(t) ? "wash" : "check"; };
 
-  /* ---------- preloader ---------- */
+  /* ---------- page chrome ---------- */
   function initPreloader() {
     const el = $("preloader");
     if (!el || reduced) { if (el) el.style.display = "none"; return; }
-    const min = new Promise((r) => setTimeout(r, 700));
+    const min = new Promise((r) => setTimeout(r, 600));
     const load = new Promise((r) => (document.readyState === "complete" ? r() : window.addEventListener("load", r, { once: true })));
-    Promise.race([Promise.all([min, load]), new Promise((r) => setTimeout(r, 2400))]).then(() => {
-      el.classList.add("lifted");
-      setTimeout(() => { el.style.display = "none"; }, 950);
-    });
+    Promise.race([Promise.all([min, load]), new Promise((r) => setTimeout(r, 2200))]).then(() => { el.classList.add("lifted"); setTimeout(() => { el.style.display = "none"; }, 950); });
   }
-
-  /* ---------- nav ---------- */
   function initNav() {
     const toggle = $("navToggle"), links = $("navLinks"), nav = $("siteNav"), progress = $("scrollProgress");
-    toggle.addEventListener("click", () => {
-      const open = links.classList.toggle("open");
-      toggle.classList.toggle("active", open);
-      toggle.setAttribute("aria-expanded", String(open));
-    });
-    links.addEventListener("click", (e) => { if (e.target.tagName === "A") { links.classList.remove("open"); toggle.classList.remove("active"); } });
-    let lastY = window.scrollY, ticking = false;
-    function onScroll() {
-      const y = window.scrollY;
-      const h = document.documentElement.scrollHeight - window.innerHeight;
-      progress.style.width = `${h > 0 ? (y / h) * 100 : 0}%`;
-      if (!links.classList.contains("open")) nav.classList.toggle("nav-hidden", y > lastY && y > 160);
-      lastY = y; ticking = false;
-    }
-    window.addEventListener("scroll", () => { if (!ticking) { requestAnimationFrame(onScroll); ticking = true; } }, { passive: true });
-  }
-
-  function initMagnetic() {
-    if (reduced || !finePointer) return;
-    document.querySelectorAll(".magnetic").forEach((el) => {
-      el.addEventListener("mousemove", (e) => {
-        const r = el.getBoundingClientRect();
-        el.style.setProperty("--mx", `${(e.clientX - r.left - r.width / 2) * 0.2}px`);
-        el.style.setProperty("--my", `${(e.clientY - r.top - r.height / 2) * 0.28}px`);
+    toggle.addEventListener("click", () => { const open = links.classList.toggle("open"); toggle.classList.toggle("active", open); toggle.setAttribute("aria-expanded", String(open)); });
+    links.addEventListener("click", (e) => { if (e.target.closest("a")) { links.classList.remove("open"); toggle.classList.remove("active"); toggle.setAttribute("aria-expanded", "false"); } });
+    let lastY = scrollY, ticking = false;
+    window.addEventListener("scroll", () => {
+      if (ticking) return; ticking = true;
+      requestAnimationFrame(() => {
+        const y = scrollY, h = document.documentElement.scrollHeight - innerHeight;
+        progress.style.width = `${h > 0 ? (y / h) * 100 : 0}%`;
+        if (!links.classList.contains("open")) { const hide = y > lastY && y > 160; nav.classList.toggle("nav-hidden", hide); document.body.classList.toggle("nav-away", hide); }
+        lastY = y; ticking = false;
       });
-      el.addEventListener("mouseleave", () => { el.style.setProperty("--mx", "0px"); el.style.setProperty("--my", "0px"); });
-    });
+    }, { passive: true });
   }
-
-  function observe(nodes) {
+  function observeReveals() {
+    const nodes = [...document.querySelectorAll(".reveal")];
     if (reduced || !("IntersectionObserver" in window)) { nodes.forEach((n) => n.classList.add("is-visible")); return; }
-    const io = new IntersectionObserver((entries) => entries.forEach((en) => {
-      if (en.isIntersecting) { en.target.classList.add("is-visible"); io.unobserve(en.target); }
-    }), { threshold: 0.15, rootMargin: "0px 0px -60px 0px" });
+    const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("is-visible"); io.unobserve(e.target); } }), { threshold: 0.08, rootMargin: "0px 0px -40px 0px" });
     nodes.forEach((n) => io.observe(n));
   }
+  // Broken image URLs never leave a hole: gallery tiles are removed, other images hidden.
+  document.addEventListener("error", (e) => {
+    const t = e.target; if (!t || t.tagName !== "IMG") return;
+    const tile = t.closest(".gal button");
+    if (tile) { tile.remove(); if (!document.querySelector("#gallery button")) $("galleryWrap").style.display = "none"; return; }
+    t.classList.add("img-fail");
+  }, true);
 
-  function revealHero() {
-    ["branchCity", "branchName", "branchAddress", "heroActions"].forEach((id, i) => {
-      setTimeout(() => $(id).classList.add("in"), reduced ? 0 : 220 + i * 130);
+  async function hydratePlatform() {
+    try {
+      const { settings } = await api("/settings");
+      S.platformName = settings.platformName || "Uyeh Hotel";
+      const nb = $("navBrand");
+      if (settings.logoUrl && url(settings.logoUrl)) nb.innerHTML = `<img class="brand-logo" src="${esc(url(settings.logoUrl))}" alt="${esc(S.platformName)}">`; else nb.textContent = S.platformName;
+    } catch (err) { console.warn("platform name:", err.message); }
+  }
+
+  /* ---------- lightbox (photos + room videos) ---------- */
+  const LB = { items: [], i: 0, opener: null };
+  function lbRender() {
+    const it = LB.items[LB.i], st = $("lbStage");
+    if (it.type === "video") {
+      st.innerHTML = `<div class="vid">${MEDIA ? MEDIA.player(it.url, { title: it.cap, autoplay: false }) : `<video controls playsinline src="${esc(it.url)}" style="width:100%;height:100%"></video>`}</div>`;
+      if (MEDIA) MEDIA.guard(st);
+    } else st.innerHTML = `<img src="${esc(it.url)}" alt="${esc(it.cap || "")}">`;
+    $("lbCap").textContent = it.cap ? `${it.cap}${LB.items.length > 1 ? `  ·  ${LB.i + 1} / ${LB.items.length}` : ""}` : "";
+    $("lb").querySelector(".prev").style.display = $("lb").querySelector(".next").style.display = LB.items.length > 1 ? "" : "none";
+  }
+  function lbOpen(items, i, opener) { LB.items = items; LB.i = i || 0; LB.opener = opener || document.activeElement; lbRender(); $("lb").classList.add("open"); document.body.style.overflow = "hidden"; $("lb").querySelector(".x").focus(); }
+  function lbClose() { $("lbStage").innerHTML = ""; $("lb").classList.remove("open"); document.body.style.overflow = ""; if (LB.opener && LB.opener.focus) LB.opener.focus(); }
+  function lbStep(d) { LB.i = (LB.i + d + LB.items.length) % LB.items.length; lbRender(); }
+  function initLightbox() {
+    const lb = $("lb");
+    lb.querySelector(".x").onclick = lbClose; lb.querySelector(".prev").onclick = () => lbStep(-1); lb.querySelector(".next").onclick = () => lbStep(1);
+    lb.addEventListener("click", (e) => { if (e.target === lb || e.target.id === "lbStage") lbClose(); });
+    document.addEventListener("keydown", (e) => {
+      if (!lb.classList.contains("open")) return;
+      if (e.key === "Escape") lbClose();
+      else if (e.key === "ArrowLeft" && LB.items.length > 1) lbStep(-1);
+      else if (e.key === "ArrowRight" && LB.items.length > 1) lbStep(1);
+      else if (e.key === "Tab") {
+        const f = [...lb.querySelectorAll("button")].filter((b) => b.style.display !== "none"); if (!f.length) return;
+        const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
     });
   }
 
-  /* Platform name is set only by the Director via /settings — never
-     hardcoded. GET /settings is public and auto-creates a default row
-     ("Uyeh Hotel") server-side if unset, so this never 404s. */
-  async function hydratePlatformName() {
-    try {
-      const { settings } = await api("/settings");
-      platformName = settings.platformName || "Uyeh Hotel";
-      const logo = settings.logoUrl ? `<img class="brand-logo" src="${esc(settings.logoUrl)}" alt="${esc(platformName)}">` : null;
-      const navBrand = $("navBrand");
-      if (logo) navBrand.innerHTML = logo; else navBrand.textContent = platformName;
-    } catch (err) {
-      console.warn("Could not load platform name, using fallback:", err.message);
-    }
+  /* ---------- branch ---------- */
+  function showNotFound(msg) {
+    $("branchSkeleton").style.display = "none"; $("branchContent").style.display = "none"; $("notFoundState").style.display = "block";
+    if (msg) $("notFoundMsg").textContent = msg;
+  }
+  function heroImages(b) {
+    const list = [b.heroImageUrl, ...(b.images || [])].map(url).filter(Boolean);
+    return [...new Set(list)].slice(0, 5).length ? [...new Set(list)].slice(0, 5) : FALLBACK.slice(0, 2);
+  }
+  let heroTimer = null;
+  function renderHero(b) {
+    const imgs = heroImages(b);
+    $("heroSlides").innerHTML = imgs.map((u, i) => `<div class="hero-slide${i === 0 ? " on" : ""}"><img src="${esc(u)}" alt=""${i === 0 ? ' fetchpriority="high"' : ' loading="lazy"'} decoding="async"></div>`).join("");
+    $("heroDots").innerHTML = imgs.length > 1 ? imgs.map((_, i) => `<button type="button" aria-label="Show photo ${i + 1}" aria-current="${i === 0}"></button>`).join("") : "";
+    let cur = 0;
+    const go = (n) => {
+      const slides = $("heroSlides").children, dots = $("heroDots").children; if (slides.length < 2) return;
+      slides[cur].classList.remove("on"); dots[cur] && dots[cur].setAttribute("aria-current", "false");
+      cur = (n + slides.length) % slides.length; slides[cur].classList.add("on"); dots[cur] && dots[cur].setAttribute("aria-current", "true");
+    };
+    [...$("heroDots").children].forEach((d, i) => d.addEventListener("click", () => { go(i); restart(); }));
+    const restart = () => { clearInterval(heroTimer); if (!reduced && imgs.length > 1) heroTimer = setInterval(() => go(cur + 1), 6500); };
+    restart();
+
+    $("branchCity").textContent = [b.city, b.state].filter(Boolean).join(", ") || S.platformName;
+    $("branchName").textContent = b.name;
+    $("branchAddress").innerHTML = b.address ? `${svg("pin", 18)}<span>${esc(b.address)}</span>` : "";
+    renderFacts();
+    const dest = b.latitude != null && b.longitude != null ? `https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([b.name, b.address, b.city].filter(Boolean).join(", "))}`;
+    $("dirBtn").href = dest; $("dirBtn").target = "_blank"; $("dirBtn").rel = "noopener";
+    if (b.phone) { const c = $("callBtn"); c.href = `tel:${b.phone.replace(/\s+/g, "")}`; c.style.display = ""; }
+    ["branchCity", "branchName", "branchAddress", "heroFacts", "heroActions"].forEach((id, i) => setTimeout(() => $(id).classList.add("in"), reduced ? 0 : 200 + i * 120));
+  }
+  function renderFacts() {
+    const b = S.branch; if (!b) return;
+    const out = [];
+    if (S.ratingCount) out.push(`<span class="fact"><span class="stars" aria-hidden="true">★</span><b>${S.ratingAvg.toFixed(1)}</b> <span>${esc(L("{n} reviews", { n: S.ratingCount }))}</span></span>`);
+    if (b.checkInTime) out.push(`<span class="fact">${esc(L("Check-in"))} <b>${esc(b.checkInTime)}</b></span>`);
+    if (b.checkOutTime) out.push(`<span class="fact">${esc(L("Check-out"))} <b>${esc(b.checkOutTime)}</b></span>`);
+    if (S.minPrice) out.push(`<span class="fact">${esc(L("From"))} <b>${priceHtml(S.minPrice.amount, S.minPrice.currency)}</b> / ${esc(L("night"))}</span>`);
+    $("heroFacts").innerHTML = out.join("");
+  }
+  function renderAbout(b) {
+    $("aboutTitle").textContent = `Welcome to ${b.name}.`;
+    $("aboutText").textContent = b.description || `Book directly with ${S.platformName} at ${b.name}${b.city ? ", " + b.city : ""}. Real-time availability, the best rate we offer, and no booking-site fees.`;
+    $("branchServices").innerHTML = (b.services || []).map((s) => `<span>${esc(L(label(s)))}</span>`).join("");
+    const rows = [];
+    if (b.checkInTime) rows.push(["Check-in", `from ${b.checkInTime}`]);
+    if (b.checkOutTime) rows.push(["Check-out", `by ${b.checkOutTime}`]);
+    if (b.cancellationPolicy) rows.push(["Cancellation", b.cancellationPolicy]);
+    rows.push(["Taxes & fees", "Shown in full before you pay"]);
+    if (b.phone) rows.push(["Front desk", b.phone]);
+    $("goodToKnow").innerHTML = rows.map(([k, v]) => `<div><dt>${esc(L(k))}</dt><dd>${esc(v)}</dd></div>`).join("");
+    $("amenities").innerHTML = (b.amenities || []).map((a) => `<li>${svg(amenIcon(a), 22)}<span>${esc(a)}</span></li>`).join("");
+    if (!(b.amenities || []).length) $("amenities").style.display = "none";
+  }
+  function renderGallery(b) {
+    const pics = [...new Set([...(b.images || []).map(url).filter(Boolean)])];
+    const list = pics.length ? pics : FALLBACK;
+    $("galleryWrap").style.display = "";
+    const shown = list.slice(0, 5), extra = list.length - shown.length;
+    $("gallery").innerHTML = shown.map((u, i) => `<button type="button" data-i="${i}" aria-label="Open photo ${i + 1} of ${list.length}"><img src="${esc(u)}" alt="${esc(b.name)} photo ${i + 1}" loading="lazy" decoding="async">${i === shown.length - 1 && extra > 0 ? `<span class="more">+${extra} more</span>` : ""}</button>`).join("");
+    $("gallery").onclick = (e) => { const btn = e.target.closest("button[data-i]"); if (btn) lbOpen(list.map((u, i) => ({ type: "img", url: u, cap: `${b.name} · ${i + 1}` })), Number(btn.dataset.i), btn); };
+  }
+  function renderMap(b) {
+    const has = b.latitude != null && b.longitude != null;
+    const dest = has ? `https://www.google.com/maps/dir/?api=1&destination=${b.latitude},${b.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([b.name, b.address, b.city].filter(Boolean).join(", "))}`;
+    $("mapCard").innerHTML = `<h3>${esc(b.name)}</h3>
+      ${b.address ? `<div class="row">${svg("pin")}<span>${esc([b.address, b.city, b.state].filter(Boolean).join(", "))}</span></div>` : ""}
+      ${b.phone ? `<div class="row">${svg("phone")}<a href="tel:${esc(b.phone.replace(/\s+/g, ""))}">${esc(b.phone)}</a></div>` : ""}
+      ${b.checkInTime ? `<div class="row">${svg("bed")}<span>Check-in from ${esc(b.checkInTime)}${b.checkOutTime ? `, check-out by ${esc(b.checkOutTime)}` : ""}</span></div>` : ""}
+      <div class="acts"><a class="btn btn-dark" href="${esc(dest)}" target="_blank" rel="noopener">Get directions</a>${b.address ? `<button class="btn btn-line" type="button" id="copyAddr">Copy address</button>` : ""}</div>`;
+    const copy = $("copyAddr");
+    if (copy) copy.onclick = async () => { try { await navigator.clipboard.writeText([b.address, b.city, b.state].filter(Boolean).join(", ")); copy.textContent = "Copied ✓"; setTimeout(() => (copy.textContent = "Copy address"), 2000); } catch { copy.textContent = "Select and copy from the text above"; } };
+    if (has) {
+      const d = 0.012, lat = Number(b.latitude), lng = Number(b.longitude);
+      $("mapFrame").innerHTML = `<iframe title="Map of ${esc(b.name)}" loading="lazy" referrerpolicy="no-referrer" src="https://www.openstreetmap.org/export/embed.html?bbox=${lng - d * 1.6},${lat - d},${lng + d * 1.6},${lat + d}&layer=mapnik&marker=${lat},${lng}"></iframe>`;
+    } else $("mapFrame").style.display = "none", document.querySelector(".map-grid").style.gridTemplateColumns = "1fr";
+  }
+  function renderContact(b) {
+    $("branchContactGrid").innerHTML = `
+      ${b.phone ? `<div class="contact-item"><h4>Phone</h4><p><a href="tel:${esc(b.phone.replace(/\s+/g, ""))}">${esc(b.phone)}</a></p></div>` : ""}
+      ${b.email ? `<div class="contact-item"><h4>Email</h4><p><a href="mailto:${esc(b.email)}">${esc(b.email)}</a></p></div>` : ""}
+      <div class="contact-item"><h4>Address</h4><p>${esc([b.address, b.city, b.state].filter(Boolean).join(", ") || "—")}</p></div>
+      ${b.checkInTime ? `<div class="contact-item"><h4>Arrival &amp; departure</h4><p>Check-in from ${esc(b.checkInTime)}${b.checkOutTime ? `<br>Check-out by ${esc(b.checkOutTime)}` : ""}</p></div>` : ""}`;
+  }
+  function setMeta(b) {
+    const title = `${b.name}${b.city ? " — " + b.city : ""} | ${S.platformName}`;
+    const desc = (b.description || `Book directly at ${S.platformName} ${b.name}${b.city ? ", " + b.city : ""}. Real-time availability, no booking-site fees.`).replace(/\s+/g, " ").slice(0, 158);
+    const img = new URL(heroImages(b)[0], location.href).href;
+    document.title = title; $("pageDescription").content = desc;
+    $("ogTitle").content = title; $("ogDescription").content = desc; $("ogImage").content = img; $("twImage").content = img;
+    $("canonicalLink").href = `${location.origin}${location.pathname}?branch=${encodeURIComponent(slug())}`;
+  }
+  function setJsonLd() {
+    const b = S.branch; if (!b) return;
+    const ld = { "@context": "https://schema.org", "@type": "Hotel", name: b.name, url: $("canonicalLink").href, image: heroImages(b).map((u) => new URL(u, location.href).href), description: b.description || undefined, telephone: b.phone || undefined, email: b.email || undefined,
+      address: { "@type": "PostalAddress", streetAddress: b.address || undefined, addressLocality: b.city || undefined, addressRegion: b.state || undefined },
+      geo: b.latitude != null && b.longitude != null ? { "@type": "GeoCoordinates", latitude: b.latitude, longitude: b.longitude } : undefined,
+      checkinTime: b.checkInTime || undefined, checkoutTime: b.checkOutTime || undefined,
+      amenityFeature: (b.amenities || []).map((a) => ({ "@type": "LocationFeatureSpecification", name: a, value: true })),
+      aggregateRating: S.ratingCount ? { "@type": "AggregateRating", ratingValue: S.ratingAvg.toFixed(1), reviewCount: S.ratingCount, bestRating: 5 } : undefined };
+    let el = $("ld"); if (!el) { el = document.createElement("script"); el.type = "application/ld+json"; el.id = "ld"; document.head.appendChild(el); }
+    el.textContent = JSON.stringify(ld);
   }
 
-  function showNotFound() {
-    $("notFoundState").style.display = "block";
-    $("branchContent").style.display = "none";
-  }
-
-  /** Accepts either the branch's slug or its raw ID — the backend's
-   * publicRoutes.param("branchId", ...) resolver handles either
-   * transparently. */
   async function loadBranch() {
-    if (!branchParam) { showNotFound(); return; }
+    if (!branchParam) return showNotFound();
     try {
       const { branch } = await api(`/branches/${encodeURIComponent(branchParam)}`);
-      currentBranch = branch;
-
-      $("notFoundState").style.display = "none";
-      $("branchContent").style.display = "block";
-
-      $("pageTitle").textContent = `${branch.name} — ${platformName}`;
-      $("pageDescription").setAttribute("content", `Book directly at ${platformName} — ${branch.name}, ${branch.city || ""}. Real-time availability, no OTA fees.`);
-
-      $("branchCity").textContent = `${branch.city || ""}${branch.state ? `, ${branch.state}` : ""}`;
-      $("branchName").textContent = branch.name;
-      $("branchAddress").textContent = branch.address || "";
-
-      $("branchServices").innerHTML = (branch.services || []).map((s) => `<span>${esc(s)}</span>`).join("");
-
-      $("branchContactGrid").innerHTML = `
-        ${branch.phone ? `<div class="contact-item"><h4>Phone</h4><p><a href="tel:${esc(branch.phone.replace(/\s+/g, ""))}">${esc(branch.phone)}</a></p></div>` : ""}
-        ${branch.email ? `<div class="contact-item"><h4>Email</h4><p><a href="mailto:${esc(branch.email)}">${esc(branch.email)}</a></p></div>` : ""}
-        <div class="contact-item"><h4>Address</h4><p>${esc(branch.address || "—")}</p></div>
-      `;
-
-      revealHero();
-      observe([...document.querySelectorAll("section.reveal")]);
-      loadRoomTypesCatalog();
-      loadEvents();
-    } catch (err) {
-      showNotFound();
-    }
+      S.branch = branch;
+    } catch (err) { return showNotFound(err.status === 0 ? err.message : undefined); }
+    const b = S.branch;
+    $("branchSkeleton").style.display = "none"; $("notFoundState").style.display = "none"; $("branchContent").style.display = "block";
+    if (Number(b.reviewCount) > 0 && Number(b.avgRating) > 0) { S.ratingAvg = Number(b.avgRating); S.ratingCount = Number(b.reviewCount); }
+    setMeta(b); renderHero(b); renderAbout(b); renderGallery(b); renderMap(b); renderContact(b); setJsonLd();
+    const hosts = (b.services || []).some((s) => s === "events" || s === "upcoming_events");
+    $("hostBand").style.display = hosts ? "" : "none";
+    $("hostBtn").href = `guest-panel.html?returnTo=events`;
+    initBar(); observeReveals(); initDock();
+    loadRooms(); loadEvents(); loadReviews(); loadOthers();
+    if (S.checkIn && S.checkOut) search(false);
   }
 
-  /** Browse-first catalog — every room type this branch offers, no
-   * dates required. Separate from checkAvailability() below, which
-   * needs dates and tells you what's actually free right now. This one
-   * just answers "what do you even have here?" */
-  async function loadRoomTypesCatalog() {
-    const grid = $("roomTypesGrid");
-    if (!grid) return;
+  /* ---------- search bar ---------- */
+  function initBar() {
+    const gi = $("guests");
+    gi.innerHTML = Array.from({ length: 10 }, (_, i) => `<option value="${i + 1}">${i + 1} guest${i ? "s" : ""}</option>`).join("");
+    const t = today();
+    const ci = qs.get("checkIn") || qs.get("checkin") || "", co = qs.get("checkOut") || qs.get("checkout") || "";
+    const okDate = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if (okDate(ci) && okDate(co) && ci >= t && co > ci) { S.checkIn = ci; S.checkOut = co; }
+    const g = parseInt(qs.get("guests") || qs.get("adults") || "2", 10); S.guests = g >= 1 && g <= 10 ? g : 2;
+    $("checkIn").min = t; $("checkIn").value = S.checkIn; $("checkOut").min = addDays(t, 1); $("checkOut").value = S.checkOut; gi.value = String(S.guests);
+    syncBarText();
+    $("checkIn").addEventListener("change", () => {
+      const v = $("checkIn").value; if (!v) return;
+      $("checkOut").min = addDays(v, 1);
+      if (!$("checkOut").value || $("checkOut").value <= v) $("checkOut").value = addDays(v, 1);
+      syncBarText();
+      if (!reduced && $("checkOut").showPicker && document.activeElement === $("checkIn")) { try { $("checkOut").focus(); } catch (_) { /* ignore */ } }
+    });
+    $("checkOut").addEventListener("change", syncBarText);
+    gi.addEventListener("change", () => { S.guests = Number(gi.value); S.showAll = false; renderRooms(); });
+    $("availabilityForm").addEventListener("submit", (e) => { e.preventDefault(); search(true); });
+    $("navCta").addEventListener("click", () => setTimeout(() => $("checkIn").focus({ preventScroll: true }), 400));
+  }
+  function syncBarText() {
+    const a = $("checkIn").value, b = $("checkOut").value, n = nightsBetween(a, b);
+    $("barNights").textContent = n > 0 ? `${n} night${n === 1 ? "" : "s"} · ${pretty(a)} → ${pretty(b)}` : "Choose your dates to see what is free.";
+    $("barError").textContent = "";
+  }
+  function barError(m) { $("barError").textContent = m; }
+  function focusDates() { const c = $("checkIn"); c.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" }); setTimeout(() => c.focus({ preventScroll: true }), 350); }
+
+  async function search(fromUser) {
+    const a = $("checkIn").value, b = $("checkOut").value;
+    if (!a || !b) return barError("Please choose both dates.");
+    if (a < today()) return barError("Check-in can't be in the past.");
+    if (b <= a) return barError("Check-out must be after check-in.");
+    S.checkIn = a; S.checkOut = b; S.guests = Number($("guests").value) || 2; S.showAll = false;
+    const btn = $("searchBtn"); btn.disabled = true; btn.textContent = "Checking…";
+    $("availabilityNotice").innerHTML = ""; $("altBranches").innerHTML = "";
     try {
-      const { roomTypes } = await api(`/branches/${encodeURIComponent(currentBranch.id)}/room-types`);
-      if (!roomTypes || !roomTypes.length) {
-        grid.innerHTML = `<div class="empty-state">Room types for this location are being added — check back shortly.</div>`;
-        return;
-      }
-      grid.innerHTML = roomTypes.map((t) => `
-        <div class="room-card">
-          <div class="room-card-image"${t.images && t.images[0] ? ` style="background-image:url('${esc(t.images[0])}')"` : ""}><div class="key-tag">R</div></div>
-          <div class="room-card-body">
-            <h3>${esc(t.name)}</h3>
-            <p class="desc">${esc(t.description || "")}</p>
-            <div class="room-meta">
-              <div class="price">${esc(L("From"))} ${priceHtml(t.basePrice, t.currency)}<small> / night</small></div>
-              ${t.maxOccupancy ? `<span style="color:var(--text-muted);font-size:.85rem;">${esc(L("Sleeps {n}", { n: t.maxOccupancy }))}</span>` : ""}
-            </div>
-            <a href="room-details.html?branch=${esc(currentBranch.slug || currentBranch.id)}&roomType=${esc(t.id)}" class="btn btn-dark" style="width:100%;">View details &amp; check dates</a>
-          </div>
-        </div>`).join("");
+      const { types } = await api(`/branches/${encodeURIComponent(S.branch.id)}/type-availability?checkIn=${a}&checkOut=${b}`);
+      S.avail = new Map((types || []).map((t) => [t.roomTypeId, Number(t.sellable) || 0])); S.searched = true;
+      const p = new URLSearchParams(location.search); p.set("checkIn", a); p.set("checkOut", b); p.set("guests", S.guests);
+      history.replaceState(null, "", `${location.pathname}?${p}`);
+      if (S.types.length) renderRooms();
+      if (fromUser) $("rooms").scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
     } catch (err) {
-      grid.innerHTML = `<div class="empty-state">Couldn't load room types right now — please try again shortly.</div>`;
-      console.error("Room types catalog failed:", err.message);
-    }
+      $("availabilityNotice").innerHTML = `<div class="notice error" role="alert">${esc(err.status === 404 ? "This location doesn't take room bookings online." : "We couldn't check availability just now. Please try again.")}</div>`;
+    } finally { btn.disabled = false; btn.textContent = "Check availability"; }
   }
 
+  /* ---------- rooms ---------- */
+  async function loadRooms() {
+    try {
+      const { roomTypes } = await api(`/branches/${encodeURIComponent(S.branch.id)}/room-types`);
+      S.types = (roomTypes || []).filter((t) => t.isActive !== false);
+    } catch (err) {
+      $("roomGrid").innerHTML = `<div class="empty-state" style="grid-column:1/-1">${esc(err.status === 404 ? "Rooms at this location can't be booked online yet. Please call the front desk." : "We couldn't load the rooms just now. Please refresh in a moment.")}</div>`;
+      $("rooms").querySelector(".toolbar").style.display = "none"; return;
+    }
+    if (S.types.length) { const m = S.types.reduce((a, t) => (Number(t.basePrice) < Number(a.basePrice) ? t : a)); S.minPrice = { amount: Number(m.basePrice), currency: m.currency }; renderFacts(); updateDock(); }
+    $("fVideo").hidden = !S.types.some((t) => t.videoUrl);
+    renderRooms();
+  }
+  function eligible(t) { return S.showAll || !t.maxOccupancy || Number(t.maxOccupancy) >= S.guests; }
+  function renderRooms() {
+    const grid = $("roomGrid"); if (!grid || !S.branch) return;
+    $("fFree").hidden = !S.avail;
+    const nights = nightsBetween(S.checkIn, S.checkOut);
+    let list = S.types.filter(eligible);
+    const hiddenForGuests = S.types.length - list.length;
+    if (S.videoOnly) list = list.filter((t) => t.videoUrl);
+    if (S.freeOnly && S.avail) list = list.filter((t) => (S.avail.get(t.id) || 0) > 0);
+    const price = (t) => Number(t.basePrice);
+    const by = { rec: (a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0), low: (a, b) => price(a) - price(b), high: (a, b) => price(b) - price(a), sleeps: (a, b) => (b.maxOccupancy || 0) - (a.maxOccupancy || 0) }[S.sort];
+    list = list.map((t, i) => ({ t, i })).sort((x, y) => by(x.t, y.t) || x.i - y.i).map((x) => x.t);
+    if (S.avail) list = list.map((t, i) => ({ t, i })).sort((x, y) => ((S.avail.get(y.t.id) > 0) - (S.avail.get(x.t.id) > 0)) || x.i - y.i).map((x) => x.t); // free rooms first
+
+    const free = S.avail ? list.filter((t) => S.avail.get(t.id) > 0).length : 0;
+    let sum = "";
+    if (!S.types.length) sum = "";
+    else if (S.avail) sum = free ? `<b>${free}</b> room type${free === 1 ? "" : "s"} available for <b>${nights} night${nights === 1 ? "" : "s"}</b> (${esc(pretty(S.checkIn))} → ${esc(pretty(S.checkOut))}) for ${S.guests} guest${S.guests === 1 ? "" : "s"}.` : `Nothing is free for ${esc(pretty(S.checkIn))} → ${esc(pretty(S.checkOut))}.`;
+    else sum = `<b>${list.length}</b> room type${list.length === 1 ? "" : "s"} at this location.`;
+    if (hiddenForGuests > 0 && !S.showAll) sum += ` ${hiddenForGuests} sleep${hiddenForGuests === 1 ? "s" : ""} fewer than ${S.guests} — <a href="#" id="showAllLink" style="text-decoration:underline">show anyway</a>.`;
+    $("roomSummary").innerHTML = sum;
+    const sa = $("showAllLink"); if (sa) sa.onclick = (e) => { e.preventDefault(); S.showAll = true; renderRooms(); };
+
+    if (!S.types.length) { grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">Room types for this location are being added — check back shortly.</div>`; return; }
+    if (!list.length) { grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">No rooms match these filters. ${S.videoOnly || S.freeOnly ? "Try clearing a filter." : ""}</div>`; } else grid.innerHTML = list.map(roomCard).join("");
+    bindRoomCards();
+    const noneFree = S.avail && !list.some((t) => S.avail.get(t.id) > 0);
+    if (noneFree) loadAlternatives(); else $("altBranches").innerHTML = "";
+  }
+  function roomCard(t) {
+    const sell = S.avail ? S.avail.get(t.id) || 0 : null;
+    const nights = nightsBetween(S.checkIn, S.checkOut);
+    const img = url((t.images || [])[0]);
+    const spec = [
+      t.bedConfiguration ? `<span>${svg("bed", 16)}${esc(t.bedConfiguration)}</span>` : "",
+      t.maxOccupancy ? `<span>${svg("user", 16)}${esc(L("Sleeps {n}", { n: t.maxOccupancy }))}</span>` : "",
+      t.sizeSqm ? `<span>${svg("size", 16)}${esc(t.sizeSqm)} m²</span>` : "",
+    ].join("");
+    const detail = `room-details.html?branch=${encodeURIComponent(slug())}&roomType=${encodeURIComponent(t.id)}${S.searched ? `&checkIn=${S.checkIn}&checkOut=${S.checkOut}&guests=${S.guests}` : ""}`;
+    const book = `booking.html?branch=${encodeURIComponent(slug())}&roomType=${encodeURIComponent(t.id)}&checkIn=${encodeURIComponent(S.checkIn)}&checkOut=${encodeURIComponent(S.checkOut)}&guests=${S.guests}`;
+    let badge = t.isFeatured ? `<span class="badge brass">Signature</span>` : "";
+    if (sell !== null) badge += sell === 0 ? `<span class="badge no">Sold out</span>` : sell <= 2 ? `<span class="badge warn">Only ${sell} left</span>` : `<span class="badge ok">Available</span>`;
+    const cta = sell === null ? `<button type="button" class="btn btn-dark" data-act="dates">${esc(L("Select dates"))}</button><a class="btn btn-line" href="${esc(detail)}">Details</a>`
+      : sell > 0 ? `<a class="btn btn-primary" href="${esc(book)}">${esc(L("Book now"))}</a><a class="btn btn-line" href="${esc(detail)}">Details</a>`
+      : `<button type="button" class="btn btn-dark" data-act="dates">Change dates</button>`;
+    const total = S.searched && nights > 0 && sell > 0 ? `<small>${nights} night${nights === 1 ? "" : "s"} · about ${priceHtml(Number(t.basePrice) * nights, t.currency)}</small>` : `<small>${esc(L("per night"))}</small>`;
+    return `<article class="rc${sell === 0 ? " sold" : ""}" data-id="${esc(t.id)}">
+      <div class="rc-media"${t.videoUrl && MEDIA ? ` data-video="${esc(t.videoUrl)}"` : ""}>
+        ${img ? `<img class="cover" src="${esc(img)}" alt="${esc(t.name)}" loading="lazy" decoding="async">` : ""}
+        <a class="link" href="${esc(detail)}" aria-label="${esc(t.name)} — details"></a>
+        <div class="badges">${badge}</div>
+        ${t.videoUrl ? `<button type="button" class="vbtn" data-act="video"><i><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l14-8z"/></svg></i>Video tour</button>` : ""}
+      </div>
+      <div class="rc-body">
+        <h3>${esc(t.name)}</h3>
+        <div class="rc-spec">${spec}</div>
+        ${t.description ? `<p class="rc-desc">${esc(t.description)}</p>` : ""}
+        ${(t.amenities || []).length ? `<div class="tags">${t.amenities.slice(0, 4).map((a) => `<span>${esc(a)}</span>`).join("")}${t.amenities.length > 4 ? `<span>+${t.amenities.length - 4}</span>` : ""}</div>` : ""}
+        <div class="rc-foot">
+          <div class="price"><span class="from">${esc(L("From"))}</span>${priceHtml(t.basePrice, t.currency)}${total}</div>
+          <div class="rc-cta">${cta}</div>
+        </div>
+      </div>
+    </article>`;
+  }
+  function bindRoomCards() {
+    $("roomGrid").querySelectorAll(".rc").forEach((card) => {
+      const t = S.types.find((x) => x.id === card.dataset.id); if (!t) return;
+      const media = card.querySelector(".rc-media");
+      const vb = card.querySelector('[data-act="video"]');
+      if (vb) vb.onclick = () => lbOpen([{ type: "video", url: t.videoUrl, cap: `${t.name} — video tour` }, ...(t.images || []).map(url).filter(Boolean).map((u, i) => ({ type: "img", url: u, cap: `${t.name} · ${i + 1}` }))], 0, vb);
+      const dates = card.querySelector('[data-act="dates"]'); if (dates) dates.onclick = focusDates;
+      // Hover preview: a silent looping clip on desktop. Embedded (YouTube/Vimeo) links are only played in the viewer.
+      if (media && media.dataset.video && finePointer && !reduced && !MEDIA.embed(t.videoUrl)) {
+        let v = null;
+        media.addEventListener("pointerenter", () => {
+          if (v) return; v = document.createElement("video"); v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.setAttribute("aria-hidden", "true");
+          const p = MEDIA.poster(t.videoUrl); if (p) v.poster = p; v.src = MEDIA.mp4(t.videoUrl); v.style.zIndex = "2"; v.style.pointerEvents = "none";
+          v.addEventListener("error", () => { if (v) { v.remove(); v = null; } }); media.insertBefore(v, media.querySelector(".link")); v.play().catch(() => {});
+        });
+        media.addEventListener("pointerleave", () => { if (v) { v.pause(); v.remove(); v = null; } });
+      }
+    });
+  }
+  async function loadAlternatives() {
+    const box = $("altBranches");
+    try {
+      const { results } = await api(`/availability?checkIn=${S.checkIn}&checkOut=${S.checkOut}&guests=${S.guests}`);
+      const alts = (results || []).filter((r) => r.branch && r.branch.id !== S.branch.id && r.availableCount > 0).slice(0, 4);
+      if (!alts.length) { box.innerHTML = `<div class="alt"><h3>Nothing free on those dates</h3><p style="color:var(--text-muted)">Try moving your dates by a day or two, or call the front desk${S.branch.phone ? ` on <a href="tel:${esc(S.branch.phone.replace(/\s+/g, ""))}" style="text-decoration:underline">${esc(S.branch.phone)}</a>` : ""} — they can often help.</p></div>`; return; }
+      box.innerHTML = `<div class="alt"><h3>Rooms are free at our other locations</h3><p style="color:var(--text-muted)">Same dates, same direct-booking rate.</p><ul>${alts.map((r) => `<li><a href="location.html?branch=${encodeURIComponent(r.branch.slug || r.branch.id)}&checkIn=${S.checkIn}&checkOut=${S.checkOut}&guests=${S.guests}"><span><b>${esc(r.branch.name)}</b><br><small style="color:var(--text-muted)">${esc([r.branch.city, r.branch.state].filter(Boolean).join(", "))} · ${r.availableCount} room type${r.availableCount === 1 ? "" : "s"} free</small></span><span>${r.fromPrice != null ? `from ${priceHtml(r.fromPrice, r.currency)}` : "View rooms"} →</span></a></li>`).join("")}</ul></div>`;
+    } catch (_) { box.innerHTML = ""; }
+  }
+  function initRoomControls() {
+    $("sortBy").addEventListener("change", (e) => { S.sort = e.target.value; renderRooms(); });
+    const tog = (id, key) => $(id).addEventListener("click", (e) => { S[key] = !S[key]; e.currentTarget.setAttribute("aria-pressed", String(S[key])); renderRooms(); });
+    tog("fVideo", "videoOnly"); tog("fFree", "freeOnly");
+  }
+
+  /* ---------- events ---------- */
   async function loadEvents() {
-    const grid = $("eventsGrid");
-    try {
-      const { events } = await api(`/branches/${encodeURIComponent(currentBranch.id)}/events`);
-      if (!events || !events.length) {
-        grid.innerHTML = `<div class="empty-state">No upcoming events at this location right now.</div>`;
-        return;
-      }
-      grid.innerHTML = events.map((e) => `
-        <div class="room-card">
-          <div class="room-card-image"><div class="key-tag">E</div></div>
-          <div class="room-card-body">
-            <h3>${esc(e.title)}</h3>
-            <p class="desc">${esc(e.description || "")}</p>
-            <div class="room-meta"><span style="color:var(--text-muted);font-size:.88rem;">${e.date ? esc(fmtDate(e.date)) : ""}</span></div>
-          </div>
-        </div>`).join("");
-    } catch (err) {
-      grid.innerHTML = `<div class="empty-state">Couldn't load events right now.</div>`;
+    const grid = $("eventsGrid"), id = encodeURIComponent(S.branch.id);
+    const [a, b] = await Promise.allSettled([api(`/branches/${id}/events`), api(`/branches/${id}/upcoming-events`)]);
+    const now = Date.now();
+    const items = [
+      ...((a.status === "fulfilled" ? a.value.events : []) || []).map((e) => ({ id: "e" + e.id, title: e.name || e.title, desc: e.description, start: e.startsAt || e.date, end: e.endsAt, price: e.price, cur: e.currency, img: (e.images || [])[0], cap: e.capacity })),
+      ...((b.status === "fulfilled" ? b.value.upcomingEvents : []) || []).map((e) => ({ id: "u" + e.id, title: e.title || e.name, desc: e.description, start: e.startsAt, end: e.endsAt, price: e.ticketPrice, cur: e.currency, img: (e.images || [])[0], cap: e.capacity })),
+    ].filter((e) => e.title && e.start && new Date(e.end || e.start).getTime() >= now - 3600000).sort((x, y) => new Date(x.start) - new Date(y.start));
+    if (!items.length) {
+      const hosts = (S.branch.services || []).some((s) => s === "events" || s === "upcoming_events");
+      if (a.status === "rejected" && b.status === "rejected" && !hosts) { $("events").style.display = "none"; return; }
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">No upcoming events at this location right now.</div>`; return;
     }
+    grid.innerHTML = items.slice(0, 9).map((e) => {
+      const d = new Date(e.start), im = url(e.img);
+      return `<article class="ev"><div class="ev-img">${im ? `<img src="${esc(im)}" alt="" loading="lazy" decoding="async">` : ""}<div class="ev-date"><b>${d.getDate()}</b><span>${esc(d.toLocaleDateString(undefined, { month: "short" }))}</span></div></div>
+        <div class="ev-body"><h3>${esc(e.title)}</h3><div style="font-size:.82rem;color:var(--text-muted)">${esc(fmtDate(e.start, { weekday: "short", day: "numeric", month: "short", year: undefined }))} · ${esc(d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }))}</div>
+          ${e.desc ? `<p>${esc(e.desc)}</p>` : ""}
+          <div class="ev-foot"><b>${Number(e.price) > 0 ? priceHtml(Number(e.price), e.cur) : "Free entry"}</b><a class="btn btn-line" style="padding:10px 16px" href="guest-panel.html?returnTo=events">${Number(e.price) > 0 ? "Get tickets" : "Reserve a spot"}</a></div></div></article>`;
+    }).join("");
   }
 
-  /* Calls GET /branches/:id/availability — requires the fix in
-     server-availability-patch.md (Fix 1: undefined roomTypeId) to
-     actually return results instead of a 500. */
-  async function checkAvailability(e) {
-    e.preventDefault();
-    const btn = $("checkAvailabilityBtn"), notice = $("availabilityNotice"), grid = $("roomGrid");
-    notice.innerHTML = "";
-    grid.innerHTML = `<div class="skeleton-grid"><div class="skeleton-card"></div><div class="skeleton-card"></div></div>`;
-    btn.disabled = true;
-    btn.textContent = "Checking…";
-
+  /* ---------- reviews ---------- */
+  function who(n) { const p = String(n || "Guest").trim().split(/\s+/); return p.length > 1 ? `${p[0]} ${p[p.length - 1][0]}.` : p[0]; }
+  async function loadReviews() {
     try {
-      const checkIn = $("checkIn").value;
-      const checkOut = $("checkOut").value;
-      // Switched from /availability (per-room, requires every Room to have
-      // a linked RoomType or it crashes here) to /type-availability
-      // (already grouped server-side, always returns a real roomTypeId —
-      // see backfill-room-types.js / checkAvailability hardening patch).
-      const { types } = await api(`/branches/${encodeURIComponent(currentBranch.id)}/type-availability?checkIn=${checkIn}&checkOut=${checkOut}`);
-      const available = (types || []).filter((t) => Number(t.sellable) > 0);
+      const { reviews } = await api(`/branches/${encodeURIComponent(S.branch.id)}/reviews`);
+      S.reviews = (reviews || []).filter((r) => r.ratingValue);
+    } catch (_) { return; }
+    if (!S.reviews.length) return;
+    S.ratingCount = S.reviews.length; S.ratingAvg = S.reviews.reduce((s, r) => s + r.ratingValue, 0) / S.reviews.length;
+    renderFacts(); setJsonLd();
+    $("reviewsWrap").style.display = "";
+    $("revScore").innerHTML = `<b>${S.ratingAvg.toFixed(1)}</b><span class="stars" aria-label="${S.ratingAvg.toFixed(1)} out of 5">${stars(S.ratingAvg)}</span><small>${S.ratingCount} verified guest review${S.ratingCount === 1 ? "" : "s"}</small>`;
+    $("revBars").innerHTML = [5, 4, 3, 2, 1].map((n) => { const c = S.reviews.filter((r) => r.ratingValue === n).length; return `<div><span>${n}★</span><i style="--w:${(c / S.ratingCount) * 100}%"></i><span>${c}</span></div>`; }).join("");
+    drawReviews(); observeReveals();
+  }
+  function drawReviews() {
+    $("revGrid").innerHTML = S.reviews.slice(0, S.revShown).map((r) => `<article class="rev"><span class="stars" aria-label="${r.ratingValue} out of 5">${stars(r.ratingValue)}</span>${r.title ? `<h4>${esc(r.title)}</h4>` : ""}${r.body ? `<p>${esc(r.body)}</p>` : ""}<footer>${esc(who(r.guest && r.guest.name))} · ${esc(fmtDate(r.createdAt, { day: undefined }))}</footer>${r.staffReplyBody ? `<div class="reply"><b>Reply from the hotel</b>${esc(r.staffReplyBody)}</div>` : ""}</article>`).join("");
+    const more = $("revMore"); more.style.display = S.reviews.length > S.revShown ? "" : "none";
+    more.onclick = () => { S.revShown += 6; drawReviews(); };
+  }
 
-      if (!available.length) {
-        grid.innerHTML = `<div class="empty-state">No rooms available for those dates at this location — try different dates.</div>`;
-        return;
-      }
+  /* ---------- other locations ---------- */
+  async function loadOthers() {
+    try {
+      const { branches } = await api("/branches");
+      const others = (branches || []).filter((b) => b.id !== S.branch.id).slice(0, 4);
+      if (!others.length) return;
+      const keep = S.searched ? `&checkIn=${S.checkIn}&checkOut=${S.checkOut}&guests=${S.guests}` : "";
+      $("otherLocs").innerHTML = others.map((b, i) => `<a class="loc" href="location.html?branch=${encodeURIComponent(b.slug || b.id)}${keep}"><img src="${esc(url(b.heroImageUrl) || FALLBACK[(i + 2) % FALLBACK.length])}" alt="" loading="lazy" decoding="async"><div><h3>${esc(b.name)}</h3><span>${esc([b.city, b.state].filter(Boolean).join(", "))}</span></div></a>`).join("");
+      $("othersWrap").style.display = ""; observeReveals();
+    } catch (_) { /* optional section */ }
+  }
 
-      grid.innerHTML = available.map((t) => `
-        <div class="room-card">
-          <div class="room-card-image"${t.images && t.images[0] ? ` style="background-image:url('${esc(t.images[0])}')"` : ""}><div class="key-tag">R</div></div>
-          <div class="room-card-body">
-            <h3>${esc(t.name)}</h3>
-            <p class="desc">${esc(t.description || "")}</p>
-            <div class="room-meta">
-              <div class="price">${priceHtml(t.basePrice, t.currency)}<small> / night</small></div>
-              <span style="color:var(--text-muted);font-size:.85rem;">${esc(L("{n} available", { n: t.sellable }))}</span>
-            </div>
-            <a href="booking.html?branch=${esc(currentBranch.slug || currentBranch.id)}&roomType=${esc(t.roomTypeId)}&checkIn=${encodeURIComponent(checkIn)}&checkOut=${encodeURIComponent(checkOut)}" class="btn btn-dark" style="width:100%;">${esc(L("Book this room"))}</a>
-          </div>
-        </div>`).join("");
-    } catch (err) {
-      grid.innerHTML = "";
-      notice.innerHTML = `<div class="notice error">Something went wrong checking availability — please try again.</div>`;
-      console.error("Availability check failed:", err.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Check availability";
-    }
+  /* ---------- mobile dock ---------- */
+  function updateDock() { if (S.minPrice) $("dockPrice").innerHTML = priceHtml(S.minPrice.amount, S.minPrice.currency) + " <small style='display:inline;letter-spacing:0;text-transform:none'>/ night</small>"; }
+  function initDock() {
+    const dock = $("dock"); let heroGone = false, barSeen = true;
+    const sync = () => dock.classList.toggle("show", heroGone && !barSeen);
+    if (!("IntersectionObserver" in window)) return;
+    new IntersectionObserver(([e]) => { heroGone = !e.isIntersecting; sync(); }, { threshold: 0 }).observe($("hero"));
+    new IntersectionObserver(([e]) => { barSeen = e.isIntersecting; sync(); }, { threshold: 0.3 }).observe($("book"));
+    dock.querySelector("a").addEventListener("click", () => setTimeout(() => $("checkIn").focus({ preventScroll: true }), 450));
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
-    initPreloader();
-    initNav();
-    initMagnetic();
-    await hydratePlatformName(); // must resolve first — loadBranch() uses platformName for the title
+    initPreloader(); initNav(); initLightbox(); initRoomControls();
+    await hydratePlatform();
     loadBranch();
-    $("availabilityForm").addEventListener("submit", checkAvailability);
   });
 })();
 </script>
-<script src="/chat-widget.js"></script>
 <script src="guest-link.js" defer></script>
+<script src="/chat-widget.js"></script>
 </body>
 </html>

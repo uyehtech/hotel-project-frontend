@@ -367,6 +367,15 @@ td { padding: 13px 12px; border-bottom: 1px solid var(--border-soft); vertical-a
 .room-card.clickable { cursor: pointer; } .room-card.clickable:hover { box-shadow: var(--shadow); }
 .prose { line-height: 1.75; } .prose p { margin-bottom: 12px; } .prose img { border-radius: 10px; margin: 8px 0; } .prose h2, .prose h3 { margin: 18px 0 8px; } .prose ul, .prose ol { margin: 0 0 12px 22px; } .prose a { color: var(--brass-dark); text-decoration: underline; }
 
+.field-err { color: var(--danger); font-size: .8rem; min-height: 0; margin-top: 5px; }
+.field-err:empty { display: none; }
+input[aria-invalid="true"] { border-color: var(--danger) !important; }
+.pw-rules { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; margin: 10px 0 0; padding: 0; font-size: .78rem; color: var(--muted, #6b6355); }
+.pw-rules li::before { content: "○"; margin-right: 6px; }
+.pw-rules li.ok { color: #2f5d5a; }
+.pw-rules li.ok::before { content: "✓"; font-weight: 700; }
+@media (max-width: 420px) { .pw-rules { grid-template-columns: 1fr; } }
+.checkbox-item a { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -407,15 +416,23 @@ td { padding: 13px 12px; border-bottom: 1px solid var(--border-soft); vertical-a
       </form>
 
       <form id="registerForm" style="display:none;" novalidate>
-        <div class="form-field"><label for="regName">Full name</label><input type="text" id="regName" autocomplete="name" required></div>
-        <div class="form-field"><label for="regEmail">Email</label><input type="email" id="regEmail" autocomplete="email" inputmode="email" required></div>
-        <div class="form-field"><label for="regPhone">Phone <span class="opt">(optional)</span></label><input type="tel" id="regPhone" autocomplete="tel"></div>
+        <div class="form-field"><label for="regName">Full name</label><input type="text" id="regName" autocomplete="name" maxlength="100" required><div class="field-err" id="regNameErr" role="alert"></div></div>
+        <div class="form-field"><label for="regEmail">Email</label><input type="email" id="regEmail" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" maxlength="254" required><div class="field-err" id="regEmailErr" role="alert"></div></div>
+        <div class="form-field"><label for="regPhone">Phone <span class="opt">(optional)</span></label><input type="tel" id="regPhone" autocomplete="tel" inputmode="tel" maxlength="24" placeholder="+234 801 234 5678"><div class="hint">Used only for your stay, e.g. if we need to reach you on arrival.</div><div class="field-err" id="regPhoneErr" role="alert"></div></div>
         <div class="form-field"><label for="regPassword">Password</label>
-          <div class="pw-wrap"><input type="password" id="regPassword" autocomplete="new-password" minlength="8" required><button type="button" class="pw-toggle" aria-label="Show password" onclick="togglePw(this)"><i class="fas fa-eye"></i></button></div>
-          <div class="strength" id="regStrength"><i></i></div><div class="hint">At least 8 characters. A mix of letters, numbers and symbols is stronger.</div></div>
+          <div class="pw-wrap"><input type="password" id="regPassword" autocomplete="new-password" minlength="8" maxlength="72" aria-describedby="regRules" required><button type="button" class="pw-toggle" aria-label="Show password" onclick="togglePw(this)"><i class="fas fa-eye"></i></button></div>
+          <div class="strength" id="regStrength"><i></i></div>
+          <ul class="pw-rules" id="regRules" aria-live="polite"><li data-r="len">At least 8 characters</li><li data-r="mix">Upper and lower case letters</li><li data-r="num">A number</li><li data-r="sym">A symbol (recommended)</li></ul>
+          <div class="field-err" id="regPasswordErr" role="alert"></div></div>
+        <div class="form-field"><label for="regPassword2">Confirm password</label>
+          <div class="pw-wrap"><input type="password" id="regPassword2" autocomplete="new-password" maxlength="72" required><button type="button" class="pw-toggle" aria-label="Show password" onclick="togglePw(this)"><i class="fas fa-eye"></i></button></div>
+          <div class="field-err" id="regPassword2Err" role="alert"></div></div>
+        <label class="checkbox-item"><input type="checkbox" id="regTerms" required> <span>I agree to the <a href="terms-of-use.html" target="_blank" rel="noopener">Terms of Use</a> and have read the <a href="privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+        <div class="field-err" id="regTermsErr" role="alert"></div>
         <label class="checkbox-item"><input type="checkbox" id="regNews"> <span>Send me offers and news (you can unsubscribe any time)</span></label>
         <button type="submit" class="btn btn-primary btn-block btn-lg" id="registerBtn" style="margin-top:10px;">Create account</button>
       </form>
+
 
       <form id="twoFactorForm" style="display:none;" novalidate>
         <div class="form-field"><label for="twoFactorCode">Verification code</label><input type="text" id="twoFactorCode" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required>
@@ -1065,6 +1082,7 @@ function showAuthNotice(message, type = "error") {
 function friendlyAuthError(err) {
   const m = String((err && err.message) || "");
   if (/at least 12 characters/i.test(m)) return "Please choose a password of at least 12 characters.";
+  if (err && err.status === 429) return "Too many attempts — please wait a few minutes and try again.";
   if (err && err.status === 423) return "Too many attempts — your account is locked for a few minutes. Please try again shortly or reset your password.";
   return m || "Something went wrong. Please try again.";
 }
@@ -1072,7 +1090,7 @@ function friendlyAuthError(err) {
 let _pendingTempToken = null;
 $("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = $("loginEmail").value.trim(), password = $("loginPassword").value;
+  const email = $("loginEmail").value.trim().toLowerCase(), password = $("loginPassword").value;
   if (!EMAIL_RE.test(email)) return showAuthNotice("Enter a valid email address.");
   if (!password) return showAuthNotice("Enter your password.");
   const btn = $("loginBtn");
@@ -1101,22 +1119,74 @@ $("twoFactorForm").addEventListener("submit", async (e) => {
 });
 $("twoFactorBackBtn").addEventListener("click", () => { _pendingTempToken = null; $("twoFactorForm").reset(); showAuthView("login"); });
 
+/* ---- registration (patch 15) ---- */
+const COMMON_PASSWORDS = ["password", "password1", "password123", "12345678", "123456789", "1234567890", "qwertyui", "qwerty123", "iloveyou", "11111111", "abc12345", "letmein1", "welcome1", "admin123", "passw0rd"];
+const normEmail = (v) => String(v || "").trim().toLowerCase();
+function normPhone(v) {
+  const raw = String(v || "").trim(); if (!raw) return { ok: true, value: undefined };
+  const cleaned = raw.replace(/[\s().-]/g, "");
+  return /^\+?\d{7,15}$/.test(cleaned) ? { ok: true, value: cleaned } : { ok: false };
+}
+function pwProblems(pw, email, name) {
+  if (pw.length < 8) return "Your password needs at least 8 characters.";
+  if (new TextEncoder().encode(pw).length > 72) return "Please use a password under 72 characters.";
+  if (COMMON_PASSWORDS.includes(pw.toLowerCase()) || /^(.)\1+$/.test(pw)) return "That password is too easy to guess — please choose another.";
+  const local = String(email || "").split("@")[0];
+  if (local.length >= 4 && pw.toLowerCase().includes(local.toLowerCase())) return "Your password shouldn't contain your email address.";
+  return "";
+}
+function setFieldErr(id, msg) {
+  const el = $(id + "Err"), inp = $(id); if (!el) return;
+  el.textContent = msg || ""; if (inp) { if (msg) inp.setAttribute("aria-invalid", "true"); else inp.removeAttribute("aria-invalid"); }
+}
+function updateRegRules() {
+  const pw = $("regPassword").value, ok = { len: pw.length >= 8, mix: /[A-Z]/.test(pw) && /[a-z]/.test(pw), num: /\d/.test(pw), sym: /[^A-Za-z0-9]/.test(pw) };
+  document.querySelectorAll("#regRules li").forEach((li) => li.classList.toggle("ok", !!ok[li.dataset.r]));
+}
+function regValidate(showAll) {
+  const name = $("regName").value.trim(), email = normEmail($("regEmail").value), pw = $("regPassword").value, pw2 = $("regPassword2").value, ph = normPhone($("regPhone").value);
+  const errs = {
+    regName: name.length < 2 ? "Please enter your full name." : "",
+    regEmail: !EMAIL_RE.test(email) ? "Enter a valid email address." : "",
+    regPhone: ph.ok ? "" : "Enter a valid phone number, with country code if abroad.",
+    regPassword: pwProblems(pw, email, name),
+    regPassword2: pw2 !== pw ? "The two passwords don't match." : "",
+    regTerms: $("regTerms").checked ? "" : "Please accept the terms to create an account.",
+  };
+  let first = null;
+  Object.entries(errs).forEach(([id, msg]) => { setFieldErr(id, showAll || $(id).dataset.touched ? msg : ""); if (msg && !first) first = id; });
+  return { errs, first, name, email, pw, phone: ph.value };
+}
+["regName", "regEmail", "regPhone", "regPassword", "regPassword2"].forEach((id) => {
+  $(id).addEventListener("blur", () => { $(id).dataset.touched = "1"; regValidate(false); });
+  $(id).addEventListener("input", () => { if ($(id).dataset.touched) regValidate(false); });
+});
+$("regTerms").addEventListener("change", () => regValidate(false));
+$("regPassword").addEventListener("input", updateRegRules);
+
 $("registerForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const name = $("regName").value.trim(), email = $("regEmail").value.trim(), password = $("regPassword").value;
-  if (!name) return showAuthNotice("Enter your full name.");
-  if (!EMAIL_RE.test(email)) return showAuthNotice("Enter a valid email address.");
-  if (password.length < 8) return showAuthNotice("Your password needs at least 8 characters.");
+  $("authNotice").replaceChildren();
+  const v = regValidate(true);
+  if (v.first) { $(v.first).focus(); return; }
   await withBusy($("registerBtn"), async () => {
     try {
       const result = await guestApi.register({
-        name, email, phone: $("regPhone").value.trim() || undefined, password, locale: currentLocale(),
+        name: v.name.replace(/\s+/g, " "), email: v.email, phone: v.phone, password: v.pw, locale: currentLocale(),
         ...($("regNews").checked ? { subscribeNewsletter: true } : {}),
       });
       setSession(result.token, result.refreshToken, result.guest);
+      $("registerForm").reset(); updateRegRules();
       showApp();
       toast("Welcome! We've emailed you a link to verify your address.", "success");
-    } catch (err) { showAuthNotice(friendlyAuthError(err)); }
+    } catch (err) {
+      if (err && err.status === 409) {
+        showAuthNotice("An account with this email already exists.");
+        const b = document.createElement("button"); b.type = "button"; b.className = "link-btn"; b.style.marginLeft = "8px"; b.textContent = "Log in instead";
+        b.onclick = () => { showAuthView("login"); $("loginEmail").value = v.email; $("loginPassword").focus(); };
+        $("authNotice").firstElementChild.appendChild(b);
+      } else showAuthNotice(friendlyAuthError(err));
+    }
   }, "Creating account…");
 });
 bindStrength("regPassword", "regStrength");
@@ -1124,7 +1194,7 @@ bindStrength("resetPw", "resetStrength");
 
 $("forgotForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const email = $("forgotEmail").value.trim();
+  const email = $("forgotEmail").value.trim().toLowerCase();
   if (!EMAIL_RE.test(email)) return showAuthNotice("Enter the email you registered with.");
   await withBusy($("forgotBtn"), async () => {
     try {
